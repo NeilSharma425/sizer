@@ -597,22 +597,13 @@ local function cameraStep(dt)
 	camera.CFrame = camera.CFrame:Lerp(desired, 1 - math.exp(-dt * 6))
 end
 
-local playerControls = nil
-local function setControlsEnabled(enabled)
-	if not playerControls then
-		local ok, module = pcall(function()
-			return require(player:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule"))
-		end)
-		if ok and module then
-			playerControls = module:GetControls()
-		end
-	end
-	if playerControls then
-		if enabled then
-			playerControls:Enable()
-		else
-			playerControls:Disable()
-		end
+-- Freeze the character while playing by anchoring its root locally (the
+-- client owns its character's physics). Never yields, unlike waiting on
+-- the PlayerModule, which may not exist in every setup.
+local function setCharacterFrozen(frozen)
+	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+	if root then
+		root.Anchored = frozen
 	end
 end
 
@@ -637,7 +628,7 @@ local function enterViewer()
 		camera.CFrame = desired
 	end
 	RunService:BindToRenderStep(CAMERA_STEP, Enum.RenderPriority.Camera.Value + 1, cameraStep)
-	setControlsEnabled(false)
+	setCharacterFrozen(true)
 end
 
 local function exitViewer()
@@ -658,7 +649,7 @@ local function exitViewer()
 	if humanoid then
 		camera.CameraSubject = humanoid
 	end
-	setControlsEnabled(true)
+	setCharacterFrozen(false)
 end
 
 -- White flash between the lobby and the viewing room.
