@@ -13,11 +13,12 @@
 
 local Pets = {}
 
--- rule kinds: start (everyone), streak (login streak day, granted by
+-- rule kinds: firstDaily (given for finishing the first daily challenge,
+-- by RoundManager), streak (login streak day, granted by
 -- Progress.updateStreak), rank (rank number from Ranks), category (every
 -- object in the category earned a Sizedex star), timed (60s challenge best).
 Pets.List = {
-	{ id = "mouse", perk = 0.02, name = "Pocket Mouse", color = Color3.fromRGB(190, 190, 205), rule = { kind = "start" }, how = "Everyone starts with this one", blurb = "Small, but it knows its sizes." },
+	{ id = "mouse", perk = 0.02, name = "Pocket Mouse", color = Color3.fromRGB(190, 190, 205), rule = { kind = "firstDaily" }, how = "Finish your first daily challenge", blurb = "Small, but it knows its sizes." },
 	{ id = "robot", perk = 0.05, name = "Ruler Bot", color = Color3.fromRGB(120, 190, 255), rule = { kind = "rank", rank = 4 }, how = "Reach the Estimator rank", blurb = "Measures everything it sees." },
 	{ id = "duck", perk = 0.08, name = "Rubber Duck", color = Color3.fromRGB(255, 220, 60), rule = { kind = "category", name = "Everyday Objects" }, how = "Earn a star on every Everyday Objects item", blurb = "Everyday hero." },
 	{ id = "owl", perk = 0.08, name = "Wise Owl", color = Color3.fromRGB(170, 120, 80), rule = { kind = "category", name = "Animals" }, how = "Earn a star on every Animals item", blurb = "Has seen every animal there is." },

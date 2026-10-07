@@ -635,6 +635,7 @@ responsive(endCard)
 
 -- End-of-daily card.
 local dailyCard = frame(hud, {
+	Name = "DailyCard",
 	AnchorPoint = Vector2.new(0.5, 0.5),
 	Position = UDim2.fromScale(0.5, 0.5),
 	Size = UDim2.new(0, 440, 0, 330),
@@ -1550,7 +1551,7 @@ local lastRewardAt = nil
 task.spawn(function()
 	while true do
 		local nextAt = player:GetAttribute("NextRewardAt")
-		local interval = player:GetAttribute("RewardInterval") or 120
+		local interval = player:GetAttribute("RewardInterval") or 600
 		local amount = player:GetAttribute("RewardAmount") or 25
 		if nextAt then
 			if lastRewardAt and nextAt ~= lastRewardAt then

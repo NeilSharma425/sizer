@@ -31,6 +31,7 @@ Progress.CATEGORY_SENSE = 100 -- first time every object in a category has a sta
 
 Progress.DAILY_PLAN = { "Easy", "Easy", "Medium", "Medium", "Hard" }
 Progress.DAILY_COUNT = #Progress.DAILY_PLAN
+Progress.FIRST_DAILY_COUNT = 3 -- a player's very first daily is shorter (the first 3 of the plan)
 Progress.WEEKLY_SENSE = { 300, 200, 100 } -- previous week's top 3
 
 local SECONDS_PER_DAY = 86400
@@ -70,7 +71,7 @@ function Progress.newProfile()
 		pet = "", -- equipped pet id ("" = none)
 		flags = {}, -- [name] = true, one-time hints already shown
 		wallet = { spent = 0, refunded = 0 }, -- egg shop spending (rank uses lifetime Sense)
-		daily = { day = 0, score = 0, answered = 0 }, -- today's run: score so far, questions answered
+		daily = { day = 0, score = 0, answered = 0, total = 0 }, -- today's run (total = its length): score so far, questions answered
 		weekly = { week = 0, best = 0, rewardWeek = 0 },
 	}
 end
@@ -94,7 +95,7 @@ function Progress.normalize(profile)
 	profile.flags = type(profile.flags) == "table" and profile.flags or {}
 	section("streak", { count = 0, best = 0, lastDay = 0 })
 	section("wallet", { spent = 0, refunded = 0 })
-	section("daily", { day = 0, score = 0, answered = 0 })
+	section("daily", { day = 0, score = 0, answered = 0, total = 0 })
 	section("weekly", { week = 0, best = 0, rewardWeek = 0 })
 	return profile
 end
@@ -151,9 +152,13 @@ function Progress.merge(base, extra)
 		base.daily.day = extra.daily.day
 		base.daily.score = extra.daily.score
 		base.daily.answered = extra.daily.answered
+		base.daily.total = extra.daily.total
 	elseif extra.daily.day == base.daily.day then
 		base.daily.score = math.max(base.daily.score, extra.daily.score)
 		base.daily.answered = math.max(base.daily.answered, extra.daily.answered)
+		if base.daily.total == 0 then
+			base.daily.total = extra.daily.total
+		end
 	end
 
 	if extra.weekly.week > base.weekly.week then
@@ -437,20 +442,32 @@ function Progress.dailyRounds(day, rounds, eligible)
 	return chosen
 end
 
--- Where the player is in today's daily challenge: { done, answered, score }.
--- Anything saved for another day counts as a fresh start.
+-- How many questions a new daily has for this player: 3 the very first
+-- time (never played one before), 5 after that.
+function Progress.dailyLength(profile)
+	local flags = profile.flags or {}
+	if flags.firstDaily or profile.daily.day ~= 0 then
+		return Progress.DAILY_COUNT
+	end
+	return Progress.FIRST_DAILY_COUNT
+end
+
+-- Where the player is in today's daily challenge: { done, answered, score,
+-- total }. Anything saved for another day counts as a fresh start.
 function Progress.dailyState(profile, today)
 	local daily = profile.daily
 	if daily.day ~= today then
-		return { done = false, answered = 0, score = 0 }
+		return { done = false, answered = 0, score = 0, total = Progress.dailyLength(profile) }
 	end
-	return { done = daily.answered >= Progress.DAILY_COUNT, answered = daily.answered, score = daily.score }
+	local total = (daily.total or 0) > 0 and daily.total or Progress.dailyLength(profile)
+	return { done = daily.answered >= total, answered = daily.answered, score = daily.score, total = total }
 end
 
 -- Records one answered daily question; returns the new state.
 function Progress.recordDaily(profile, today, score)
 	local daily = profile.daily
 	if daily.day ~= today then
+		daily.total = Progress.dailyLength(profile) -- before `day` changes
 		daily.day = today
 		daily.score = 0
 		daily.answered = 0

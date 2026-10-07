@@ -17,6 +17,7 @@ local Difficulty = require(ReplicatedStorage:WaitForChild("Difficulty"))
 local Progress = require(ReplicatedStorage:WaitForChild("Progress"))
 local Ranks = require(ReplicatedStorage:WaitForChild("Ranks"))
 local Pets = require(ReplicatedStorage:WaitForChild("Pets"))
+local STARTER_PET = "mouse" -- given for finishing the first daily challenge
 -- Saving is optional: if the module ever fails to load, run without it
 -- instead of taking the whole game down.
 local okPlayerData, PlayerData = pcall(function()
@@ -63,7 +64,7 @@ local HISTORY_LENGTH = 4
 -- Log-scale scoring constant: score = clamp(100 - logError * SCORE_SCALE, 0, 100)
 local SCORE_SCALE = 140
 
-local PLAYTIME_REWARD_INTERVAL = 120
+local PLAYTIME_REWARD_INTERVAL = 600 -- 10 minutes of playtime
 local PLAYTIME_REWARD_SENSE = 25
 
 -- 60-second challenge. Guesses submitted up to this long after the buzzer
@@ -297,7 +298,7 @@ local function serveDaily(player)
 	playerCurrentDaily[player] = question
 	RequestRound:FireClient(player, roundPayload(ScaleData.Rounds[roundIndex], {
 		index = question,
-		total = Progress.DAILY_COUNT,
+		total = state.total,
 		score = state.score,
 	}))
 end
@@ -368,10 +369,27 @@ local function onSubmitGuess(player, guessedTargetHeight)
 	local dailyQuestion = playerCurrentDaily[player]
 	if dailyQuestion then
 		local state = Progress.recordDaily(profile, Progress.dayOf(os.time()), score)
-		dailyInfo = { index = dailyQuestion, total = Progress.DAILY_COUNT, score = state.score, done = state.done }
+		dailyInfo = { index = dailyQuestion, total = state.total, score = state.score, done = state.done }
 		if state.done then
 			dailyInfo.reward = Progress.dailyReward(state.score)
 			addSense(player, dailyInfo.reward)
+			-- First daily ever: unlock the starter pet. The onboarding
+			-- (OnboardingClient) announces it once the player is back in the
+			-- lobby, so there's no toast here.
+			if not profile.flags.firstDaily then
+				profile.flags.firstDaily = true
+				dailyInfo.first = true
+				player:SetAttribute("FirstDailyDone", true)
+				local starter = Pets.get(STARTER_PET)
+				if starter and not profile.pets[STARTER_PET] then
+					profile.pets[STARTER_PET] = true
+					if profile.pet == "" then
+						profile.pet = STARTER_PET
+						player:SetAttribute("Pet", STARTER_PET)
+					end
+					sendProgress(player, "starterPet", { id = STARTER_PET, name = starter.name })
+				end
+			end
 		end
 	end
 	PlayerData.markDirty(player)
@@ -404,15 +422,21 @@ local function onSubmitGuess(player, guessedTargetHeight)
 	playerCurrentDaily[player] = nil
 end
 
+-- One-time hints the client may mark as seen; each is mirrored to a
+-- player attribute so the client knows not to show it again.
+local HINT_ATTRIBUTES = { streak = "StreakHintSeen", dailyIntro = "DailyIntroSeen", petIntro = "PetIntroSeen" }
+
 MarkHint.OnServerEvent:Connect(function(player, name)
-	if name == "streak" then
-		local profile = PlayerData.getProfile(player)
-		if not profile.flags.streak then
-			profile.flags.streak = true
-			PlayerData.markDirty(player)
-		end
-		player:SetAttribute("StreakHintSeen", true)
+	local attribute = HINT_ATTRIBUTES[name]
+	if not attribute then
+		return
 	end
+	local profile = PlayerData.getProfile(player)
+	if not profile.flags[name] then
+		profile.flags[name] = true
+		PlayerData.markDirty(player)
+	end
+	player:SetAttribute(attribute, true)
 end)
 
 EquipPet.OnServerEvent:Connect(function(player, id)
@@ -546,7 +570,7 @@ local function buildSnapshot(player)
 			done = daily.done,
 			answered = daily.answered,
 			score = daily.score,
-			total = Progress.DAILY_COUNT,
+			total = daily.total,
 			secondsLeft = Progress.secondsUntilNextDay(now),
 		},
 		weekly = { best = Progress.weeklyBest(profile, currentWeek()), secondsLeft = Progress.secondsUntilNextWeek(now) },
@@ -587,8 +611,13 @@ local function onDataLoaded(player)
 	end
 	player:SetAttribute("Pet", profile.pet ~= "" and profile.pet or nil)
 	player:SetAttribute("SenseSpent", Progress.netSpent(profile))
-	if profile.flags.streak then
-		player:SetAttribute("StreakHintSeen", true)
+	for flag, attribute in pairs(HINT_ATTRIBUTES) do
+		if profile.flags[flag] then
+			player:SetAttribute(attribute, true)
+		end
+	end
+	if profile.flags.firstDaily then
+		player:SetAttribute("FirstDailyDone", true)
 	end
 	petsReady[player] = true
 	checkPetUnlocks(player)

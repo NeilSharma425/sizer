@@ -666,8 +666,9 @@ if bus then
 			if pending then
 				local hud = playerGui:FindFirstChild("SizerHUD")
 				local panel = hud and hud:FindFirstChild("GamePanel")
+				local dailyCard = hud and hud:FindFirstChild("DailyCard")
 				local tile = dailyTile()
-				if panel and not panel.Visible and tile and tile.Parent and tile.Parent.Visible and not gui.Enabled then
+				if panel and not panel.Visible and not (dailyCard and dailyCard.Visible) and tile and tile.Parent and tile.Parent.Visible and not gui.Enabled then
 					pending = false
 					showHint()
 				end

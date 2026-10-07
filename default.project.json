@@ -95,6 +95,9 @@
         },
         "DuelsDemo": {
           "$path": "StarterPlayer/StarterPlayerScripts/DuelsDemo.client.lua"
+        },
+        "OnboardingClient": {
+          "$path": "StarterPlayer/StarterPlayerScripts/OnboardingClient.client.lua"
         }
       }
     }
