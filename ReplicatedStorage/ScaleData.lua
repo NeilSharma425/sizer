@@ -307,7 +307,7 @@ ScaleData.Rounds = {
 -- Pair up the objects above into more rounds, then tag every round Easy /
 -- Medium / Hard from how far apart the two sizes are.
 local RoundGenerator = require(script.Parent:WaitForChild("RoundGenerator"))
-RoundGenerator.expand(ScaleData.Rounds)
+RoundGenerator.expand(ScaleData.Rounds, require(script.Parent:WaitForChild("ExtraObjects")))
 
 local Difficulty = require(script.Parent:WaitForChild("Difficulty"))
 for _, round in ipairs(ScaleData.Rounds) do

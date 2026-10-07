@@ -27,6 +27,9 @@
       },
       "Pets": {
         "$path": "ReplicatedStorage/Pets.lua"
+      },
+      "ExtraObjects": {
+        "$path": "ReplicatedStorage/ExtraObjects.lua"
       }
     },
     "ServerScriptService": {

@@ -814,7 +814,11 @@ builders["Verity"] = function(m)
 end
 
 -- More planets live in their own module to keep this file manageable.
-require(script.Parent:WaitForChild("Models"):WaitForChild("Planets"))(builders)
+local ModelsFolder = script.Parent:WaitForChild("Models")
+require(ModelsFolder:WaitForChild("Planets"))(builders)
+for _, name in ipairs({ "ExtraAnimals", "ExtraLandmarks", "ExtraEveryday", "ExtraSpace", "ExtraBrainrot" }) do
+	require(ModelsFolder:WaitForChild(name))(builders)
+end
 
 --==========================================================================
 -- Fallback & public API

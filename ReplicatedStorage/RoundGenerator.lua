@@ -76,6 +76,9 @@ local function writeFact(reference, target)
 			formatMeters(reference.height)
 		)
 	end
+	if target.fact then
+		fact ..= " " .. target.fact
+	end
 	if reference.category == "Brainrot" then
 		fact ..= " (Made-up meme sizes!)"
 	end
@@ -83,20 +86,26 @@ local function writeFact(reference, target)
 end
 
 -- Appends generated rounds to `rounds` (in place) and returns how many
--- were added.
-function RoundGenerator.expand(rounds)
+-- were added. `extras` is an optional list of { name, icon, height,
+-- category, fact } objects to include in the pairing.
+function RoundGenerator.expand(rounds, extras)
 	local objects = {} -- [category] = { {name, icon, height, category}, ... }
 	local seenObject = {}
 	local existing = {} -- [referenceName .. "|" .. targetName] = true
 
-	local function note(name, icon, height, category)
+	local function note(name, icon, height, category, fact)
 		local key = category .. "|" .. name
 		if seenObject[key] then
 			return
 		end
 		seenObject[key] = true
 		objects[category] = objects[category] or {}
-		table.insert(objects[category], { name = name, icon = icon, height = height, category = category })
+		table.insert(objects[category], { name = name, icon = icon, height = height, category = category, fact = fact })
+	end
+
+	-- Extra objects (ExtraObjects) join the pool even without a hand-written round.
+	for _, object in ipairs(extras or {}) do
+		note(object.name, object.icon, object.height, object.category, object.fact)
 	end
 
 	for _, round in ipairs(rounds) do
