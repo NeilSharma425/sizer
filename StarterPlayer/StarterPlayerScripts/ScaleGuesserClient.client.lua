@@ -2,7 +2,7 @@
 	ScaleGuesserClient.client.lua
 	LocalScript: StarterPlayer.StarterPlayerScripts.ScaleGuesserClient
 
-	Lobby HUD (sense/trophies, playtime reward, Quick Play) and the game
+	Lobby HUD (playtime reward, Quick Play) and the game
 	itself: press E at a station podium (or Quick Play) to start rounds in
 	that station's category. Playing moves the camera to a local viewing
 	room where the reference and target fill the screen; leaving returns
@@ -174,54 +174,6 @@ local function updateHudScale()
 		scale.Scale = value
 	end
 end
-
--- Compact labeled counters stacked in the top-right corner, e.g.
--- [📏 SENSE 120]. Scale about their top-right anchor on small screens.
-local function counter(order, title, icon, color)
-	local card = frame(hud, {
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -14, 0, 12 + (order - 1) * 54),
-		Size = UDim2.new(0, 190, 0, 46),
-		BackgroundColor3 = Color3.fromRGB(30, 32, 48),
-		BackgroundTransparency = 0.15,
-	})
-	corner(card, UDim.new(0, 12))
-	stroke(card, 2.5, color:Lerp(INK, 0.3))
-
-	local badge = frame(card, {
-		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, 6, 0.5, 0),
-		Size = UDim2.new(0, 36, 0, 36),
-		BackgroundColor3 = color,
-	})
-	corner(badge, UDim.new(1, 0))
-	gloss(badge, color)
-	label(badge, {
-		Size = UDim2.fromScale(0.72, 0.72),
-		Position = UDim2.fromScale(0.14, 0.14),
-		Text = icon,
-	})
-
-	label(card, {
-		Size = UDim2.new(0, 70, 0, 16),
-		Position = UDim2.new(0, 50, 0, 5),
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextColor3 = color:Lerp(WHITE, 0.35),
-		Text = title,
-	})
-	local value = label(card, {
-		Size = UDim2.new(1, -60, 0, 22),
-		Position = UDim2.new(0, 50, 0, 20),
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Text = "0",
-	})
-	textStroke(value, 2)
-	responsive(card)
-	return value
-end
-
-local senseText = counter(1, "SENSE", "📏", Color3.fromRGB(255, 195, 40))
-local trophyText = counter(2, "SCORE", "🏆", Color3.fromRGB(255, 130, 50))
 
 -- Playtime reward card (bottom-left).
 local rewardCard = frame(hud, {
@@ -1200,23 +1152,6 @@ end)
 --==========================================================================
 -- HUD bindings
 --==========================================================================
-
-task.spawn(function()
-	local leaderstats = player:WaitForChild("leaderstats")
-	local sense = leaderstats:WaitForChild("Sense")
-	local score = leaderstats:WaitForChild("Score")
-
-	senseText.Text = tostring(sense.Value)
-	trophyText.Text = tostring(score.Value)
-	sense.Changed:Connect(function(value)
-		senseText.Text = tostring(value)
-		bump(senseText)
-	end)
-	score.Changed:Connect(function(value)
-		trophyText.Text = tostring(value)
-		bump(trophyText)
-	end)
-end)
 
 task.spawn(function()
 	while true do

@@ -2,7 +2,7 @@
 	RoundManager.server.lua
 	Script: ServerScriptService.RoundManager
 
-	Owns round selection, scoring, and leaderstats. The client never receives
+	Owns round selection, scoring, and the Sense tag over each player. The client never receives
 	targetHeight until after it submits a guess, preventing trivial cheating
 	via network inspection (client-side scale is still trusted for now --
 	no anti-cheat needed per current scope).
@@ -139,6 +139,10 @@ local function onRequestRound(player, categoryFilter)
 	)
 end
 
+local function addSense(player, amount)
+	player:SetAttribute("Sense", (player:GetAttribute("Sense") or 0) + amount)
+end
+
 local function onSubmitGuess(player, guessedTargetHeight)
 	local roundIndex = playerCurrentRound[player]
 	if not roundIndex then
@@ -159,15 +163,7 @@ local function onSubmitGuess(player, guessedTargetHeight)
 
 	local senseEarned = math.floor(score / 10)
 
-	local leaderstats = player:FindFirstChild("leaderstats")
-	local scoreValue = leaderstats and leaderstats:FindFirstChild("Score")
-	local senseValue = leaderstats and leaderstats:FindFirstChild("Sense")
-	if scoreValue then
-		scoreValue.Value += score
-	end
-	if senseValue then
-		senseValue.Value += senseEarned
-	end
+	addSense(player, senseEarned)
 
 	local timed = timedSessions[player]
 	local timedScore = nil
@@ -224,20 +220,67 @@ TimedStop.OnServerEvent:Connect(function(player)
 	timedSessions[player] = nil
 end)
 
+-- Floating tag over the player's head showing their Sense.
+local function attachSenseTag(player, character)
+	local head = character:WaitForChild("Head", 10)
+	if not head then
+		return
+	end
+
+	local tag = Instance.new("BillboardGui")
+	tag.Name = "SenseTag"
+	tag.Adornee = head
+	tag.Size = UDim2.new(0, 150, 0, 34)
+	tag.StudsOffsetWorldSpace = Vector3.new(0, 2.6, 0)
+	tag.MaxDistance = 80
+	tag.LightInfluence = 0
+	tag.Parent = head
+
+	local pill = Instance.new("Frame")
+	pill.Size = UDim2.fromScale(1, 1)
+	pill.BackgroundColor3 = Color3.fromRGB(30, 32, 48)
+	pill.BackgroundTransparency = 0.15
+	pill.Parent = tag
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(1, 0)
+	corner.Parent = pill
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(255, 195, 40)
+	stroke.Thickness = 2.5
+	stroke.Parent = pill
+
+	local text = Instance.new("TextLabel")
+	text.Size = UDim2.fromScale(1, 1)
+	text.BackgroundTransparency = 1
+	text.Font = Enum.Font.GothamBlack
+	text.TextScaled = true
+	text.TextColor3 = Color3.fromRGB(255, 255, 255)
+	text.Parent = pill
+	local padding = Instance.new("UIPadding")
+	padding.PaddingTop = UDim.new(0, 5)
+	padding.PaddingBottom = UDim.new(0, 5)
+	padding.Parent = text
+
+	local function refresh()
+		text.Text = string.format("📏 %d SENSE", player:GetAttribute("Sense") or 0)
+	end
+	refresh()
+	player:GetAttributeChangedSignal("Sense"):Connect(function()
+		if tag.Parent then
+			refresh()
+		end
+	end)
+end
+
 local function onPlayerAdded(player)
-	local leaderstats = Instance.new("Folder")
-	leaderstats.Name = "leaderstats"
-	leaderstats.Parent = player
+	player:SetAttribute("Sense", 0)
 
-	local score = Instance.new("IntValue")
-	score.Name = "Score"
-	score.Value = 0
-	score.Parent = leaderstats
-
-	local sense = Instance.new("IntValue")
-	sense.Name = "Sense"
-	sense.Value = 0
-	sense.Parent = leaderstats
+	player.CharacterAdded:Connect(function(character)
+		attachSenseTag(player, character)
+	end)
+	if player.Character then
+		task.spawn(attachSenseTag, player, player.Character)
+	end
 
 	-- Playtime reward; the client renders the countdown from NextRewardAt.
 	task.spawn(function()
@@ -250,7 +293,7 @@ local function onPlayerAdded(player)
 			if not player.Parent then
 				break
 			end
-			sense.Value += PLAYTIME_REWARD_SENSE
+			addSense(player, PLAYTIME_REWARD_SENSE)
 		end
 	end)
 end
