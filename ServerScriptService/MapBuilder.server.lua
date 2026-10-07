@@ -764,28 +764,56 @@ local function blockyStandIn(name, colors)
 	return model
 end
 
--- `userId` (optional) dresses the character as that player's real avatar;
--- otherwise it's a plain avatar in `colors`.
-local function robloxCharacter(name, cf, colors, parent, userId)
+-- The classic "bacon hair" is the free Pal Hair accessory.
+local PAL_HAIR = "376548738"
+
+-- Crude bacon hair from parts, for when the real accessory can't load.
+local function addPartHair(model)
+	local head = model:FindFirstChild("Head")
+	if not head then
+		return
+	end
+	local brown = Color3.fromRGB(105, 64, 40)
+	for i, spec in ipairs({
+		{ Vector3.new(1.35, 0.4, 1.35), Vector3.new(0, 0.62, 0.05) }, -- top
+		{ Vector3.new(1.4, 0.75, 0.3), Vector3.new(0, 0.25, 0.62) }, -- back
+		{ Vector3.new(1.2, 0.3, 0.3), CFrame.new(0.05, 0.55, -0.6) * CFrame.Angles(0, 0, math.rad(-12)) }, -- the "bacon" fringe
+	}) do
+		local hairPart = part({
+			Name = "BaconHair" .. i,
+			Size = spec[1],
+			CFrame = head.CFrame * (typeof(spec[2]) == "CFrame" and spec[2] or CFrame.new(spec[2])),
+			Color = brown,
+			Anchored = false,
+			CanCollide = false,
+			Parent = model,
+		})
+		local weld = Instance.new("WeldConstraint")
+		weld.Part0 = head
+		weld.Part1 = hairPart
+		weld.Parent = hairPart
+	end
+end
+
+-- look = { head, arms, torso, legs (colors), baconHair (bool) }
+local function robloxCharacter(name, cf, look, parent, withoutHair)
 	local Players = game:GetService("Players")
+	local colors = look
 	local ok, model = pcall(function()
-		local description
-		if userId then
-			description = Players:GetHumanoidDescriptionFromUserId(userId)
-		else
-			description = Instance.new("HumanoidDescription")
-			description.HeadColor = colors.head
-			description.LeftArmColor = colors.arms
-			description.RightArmColor = colors.arms
-			description.TorsoColor = colors.torso
-			description.LeftLegColor = colors.legs
-			description.RightLegColor = colors.legs
+		local description = Instance.new("HumanoidDescription")
+		description.HeadColor = colors.head
+		description.LeftArmColor = colors.arms
+		description.RightArmColor = colors.arms
+		description.TorsoColor = colors.torso
+		description.LeftLegColor = colors.legs
+		description.RightLegColor = colors.legs
+		if look.baconHair and not withoutHair then
+			description.HairAccessory = PAL_HAIR
 		end
 		return Players:CreateHumanoidModelFromDescription(description, Enum.HumanoidRigType.R15)
 	end)
-	if (not ok or not model) and userId then
-		-- That player's avatar couldn't be loaded: use a plain avatar instead.
-		return robloxCharacter(name, cf, colors, parent)
+	if (not ok or not model) and look.baconHair and not withoutHair then
+		return robloxCharacter(name, cf, look, parent, true) -- try again without the hair
 	end
 	if not ok or not model then
 		warn("[Sizer] Couldn't create a Roblox character for the DUELS stand, using a stand-in:", model)
@@ -809,6 +837,9 @@ local function robloxCharacter(name, cf, colors, parent, userId)
 		elseif d:IsA("Script") or d:IsA("LocalScript") then
 			d:Destroy()
 		end
+	end
+	if look.baconHair and not model:FindFirstChildOfClass("Accessory") then
+		addPartHair(model)
 	end
 	-- Stand it on the ground at `cf`.
 	model:PivotTo(cf)
@@ -922,26 +953,20 @@ local function buildStation(def, index, parent)
 	if def.duelsDemo then
 		local demo = folder("DuelsDemo", station)
 		local y = TILE_TOP
-		robloxCharacter("Slapper", at(-2, y, 3) * CFrame.Angles(0, -math.pi / 2, 0), {
+		-- Bacon hair (slapper) vs. a classic noob (gets slapped).
+		robloxCharacter("Slapper", at(-1.6, y, 3) * CFrame.Angles(0, -math.pi / 2, 0), {
+			head = Color3.fromRGB(234, 184, 146),
+			arms = Color3.fromRGB(234, 184, 146),
+			torso = Color3.fromRGB(52, 142, 64),
+			legs = Color3.fromRGB(39, 70, 120),
+			baconHair = true,
+		}, demo)
+		robloxCharacter("Victim", at(1.6, y, 3) * CFrame.Angles(0, math.pi / 2, 0), {
 			head = Color3.fromRGB(245, 205, 48),
 			arms = Color3.fromRGB(245, 205, 48),
 			torso = Color3.fromRGB(13, 105, 172),
 			legs = Color3.fromRGB(164, 189, 71),
 		}, demo)
-		-- The other one is a normal Roblox player: the avatar of the first
-		-- player in the server (built once someone joins).
-		local victimCFrame = at(2, y, 3) * CFrame.Angles(0, math.pi / 2, 0)
-		local plainColors = {
-			head = Color3.fromRGB(234, 184, 146),
-			arms = Color3.fromRGB(234, 184, 146),
-			torso = Color3.fromRGB(196, 40, 28),
-			legs = Color3.fromRGB(40, 40, 48),
-		}
-		task.spawn(function()
-			local Players = game:GetService("Players")
-			local first = Players:GetPlayers()[1] or Players.PlayerAdded:Wait()
-			robloxCharacter("Victim", victimCFrame, plainColors, demo, first.UserId)
-		end)
 		CollectionService:AddTag(demo, "DuelsDemo")
 	end
 
