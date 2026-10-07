@@ -26,6 +26,9 @@
         "$className": "StarterPlayerScripts",
         "ScaleGuesserClient": {
           "$path": "StarterPlayer/StarterPlayerScripts/ScaleGuesserClient.client.lua"
+        },
+        "MapEffects": {
+          "$path": "StarterPlayer/StarterPlayerScripts/MapEffects.client.lua"
         }
       }
     }
