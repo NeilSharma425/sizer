@@ -536,7 +536,8 @@ ProgressEvent.OnClientEvent:Connect(function(kind, payload)
 	if kind ~= "login" or type(payload) ~= "table" then
 		return
 	end
-	if player:GetAttribute("TutorialDone") == true or payload.pet then
+	-- Day 1 is skipped: new players already have plenty on screen.
+	if payload.count >= 2 and (player:GetAttribute("TutorialDone") == true or payload.pet) then
 		task.delay(1.6, function()
 			local hud = playerGui:FindFirstChild("SizerHUD")
 			local panel = hud and hud:FindFirstChild("GamePanel")

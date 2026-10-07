@@ -171,6 +171,21 @@ gui.Parent = playerGui
 
 local bus = playerGui:WaitForChild("SizerBus", 20)
 
+-- Roblox's default player list sits in the top-right corner, right where the
+-- rank card goes, so hide it (SetCore can fail early in startup; retry).
+task.spawn(function()
+	local StarterGui = game:GetService("StarterGui")
+	for _ = 1, 10 do
+		local ok = pcall(function()
+			StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
+		end)
+		if ok then
+			break
+		end
+		task.wait(1)
+	end
+end)
+
 -- Rank card -----------------------------------------------------------------
 
 local rankCard = frame(gui, {
