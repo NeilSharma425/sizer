@@ -137,9 +137,26 @@ local function sectionList(section)
 			table.insert(out, pet)
 		end
 	end
+	if section == "crate" then
+		-- rarest first
+		local rank = {}
+		for i, name in ipairs(Pets.RarityOrder) do
+			rank[name] = i
+		end
+		local indexOf = {}
+		for i, pet in ipairs(out) do
+			indexOf[pet.id] = i
+		end
+		table.sort(out, function(a, b)
+			if rank[a.rarity] ~= rank[b.rarity] then
+				return rank[a.rarity] > rank[b.rarity]
+			end
+			return indexOf[a.id] < indexOf[b.id]
+		end)
+	end
 	return out
 end
-local ROWS = math.ceil(math.max(#sectionList("earned"), #sectionList("crate")) / COLUMNS)
+local ROWS = 3 -- rows visible at once; longer lists scroll
 local WIDTH = COLUMNS * CARD_W + (COLUMNS - 1) * GAP + 40
 local HEIGHT = 84 + ROWS * (CARD_H + GAP) + 14
 
@@ -220,13 +237,17 @@ end
 local earnedTab = makeTab("earned", "MY PETS", -272)
 local crateTab = makeTab("crate", "CRATE PETS", -112)
 
-local grid = frame(window, {
-	Name = "Pets",
-	Position = UDim2.new(0, 20, 0, 84),
-	Size = UDim2.new(1, -40, 1, -98),
-	BackgroundTransparency = 1,
-	ZIndex = 3,
-})
+local grid = Instance.new("ScrollingFrame")
+grid.Name = "Pets"
+grid.Position = UDim2.new(0, 20, 0, 84)
+grid.Size = UDim2.new(1, -26, 1, -98)
+grid.BackgroundTransparency = 1
+grid.BorderSizePixel = 0
+grid.ScrollBarThickness = 8
+grid.ScrollingDirection = Enum.ScrollingDirection.Y
+grid.CanvasSize = UDim2.new(0, 0, 0, ROWS * (CARD_H + GAP))
+grid.ZIndex = 3
+grid.Parent = window
 local animations = {}
 local owned, equipped = {}, ""
 
@@ -237,6 +258,9 @@ local function render()
 	animations = {}
 	local count = 0
 	local shown = sectionList(section)
+	local rows = math.max(ROWS, math.ceil(#shown / COLUMNS))
+	grid.CanvasSize = UDim2.new(0, 0, 0, rows * (CARD_H + GAP))
+	grid.CanvasPosition = Vector2.new(0, grid.CanvasPosition.Y)
 	for key, tab in pairs(tabButtons) do
 		tab.BackgroundColor3 = key == section and (key == "crate" and Color3.fromRGB(190, 100, 255) or PINK) or Color3.fromRGB(95, 105, 140)
 	end
@@ -342,6 +366,7 @@ end)
 earnedTab.MouseButton1Click:Connect(function()
 	if section ~= "earned" then
 		section = "earned"
+		grid.CanvasPosition = Vector2.new(0, 0)
 		sfx("click")
 		render()
 	end
@@ -349,6 +374,7 @@ end)
 crateTab.MouseButton1Click:Connect(function()
 	if section ~= "crate" then
 		section = "crate"
+		grid.CanvasPosition = Vector2.new(0, 0)
 		sfx("click")
 		render()
 	end
