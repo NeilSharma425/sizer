@@ -300,6 +300,12 @@ local function drawIcon(parent, kind, color)
 		shape(21, 14, 3, 11, WHITE, round) -- hand
 		shape(21, 22, 9, 3, WHITE, round)
 		shape(20, 21, 5, 5, INK, round)
+	elseif kind == "paw" then
+		shape(11, 22, 22, 18, WHITE, round)
+		shape(3, 15, 9, 12, WHITE, round)
+		shape(14, 5, 9, 14, WHITE, round)
+		shape(22, 5, 9, 14, WHITE, round)
+		shape(32, 15, 9, 12, WHITE, round)
 	elseif kind == "book" then
 		shape(3, 8, 19, 30, WHITE, UDim.new(0, 4))
 		shape(22, 8, 19, 30, Color3.fromRGB(225, 225, 240), UDim.new(0, 4))
@@ -347,7 +353,7 @@ end
 
 local dailyButton = menuTile("DailyButton", 1, "calendar", "DAILY", DAILY_BLUE)
 local challengeButton = menuTile("ChallengeButton", 2, "stopwatch", "60s", GOLD)
-menuTile("SizedexButton", 3, "book", "SIZEDEX", Color3.fromRGB(110, 90, 220))
+menuTile("PetsButton", 3, "paw", "PETS", Color3.fromRGB(255, 120, 190))
 local helpButton = menuTile("HelpButton", 4, "help", "HELP", Color3.fromRGB(95, 110, 150))
 -- Only offered until the tutorial has been done.
 local function syncHelp()
@@ -640,7 +646,7 @@ textStroke(label(dailyCard, {
 local dailyScoreText = label(dailyCard, {
 	Size = UDim2.new(1, -40, 0, 56),
 	Position = UDim2.new(0, 20, 0, 84),
-	Text = "0 / 500",
+	Text = "ALL DONE!",
 	ZIndex = 6,
 })
 textStroke(dailyScoreText, 3)
@@ -655,7 +661,7 @@ textStroke(dailyRewardText, 2.5)
 label(dailyCard, {
 	Size = UDim2.new(1, -40, 0, 30),
 	Position = UDim2.new(0, 20, 0, 194),
-	Text = "COME BACK TOMORROW FOR NEW QUESTIONS",
+	Text = "COME BACK TOMORROW!",
 	TextColor3 = Color3.fromRGB(180, 190, 220),
 	ZIndex = 6,
 })
@@ -1375,7 +1381,6 @@ RoundResult.OnClientEvent:Connect(function(result)
 		task.delay(RESULT_DELAY_SECONDS, function()
 			if sessionId == mySession and activeStation and sessionMode == "daily" then
 				panel.Visible = false
-				dailyScoreText.Text = string.format("%d / %d", result.daily.score, result.daily.total * 100)
 				dailyRewardText.Text = string.format("+%d SENSE", result.daily.reward or 0)
 				dailyCard.Visible = true
 				bump(dailyCard)

@@ -4,12 +4,10 @@
 
 	Makes long-term progress visible:
 	  - a rank card (top right) with a progress bar toward the next rank,
-	    a login-streak flame and the Sizedex button
+	    and a login-streak flame
 	  - a "RANK UP!" banner when Sense crosses a rank threshold
-	  - toasts for logins, weekly rewards, Sizedex discoveries, mastery
-	    stars and completed categories
-	  - the Sizedex: a collection of every object, with mastery stars and a
-	    3D preview
+	  - toasts for logins, weekly rewards, new pets, mastery stars and
+	    completed categories
 
 	Shares the daily-challenge status with ScaleGuesserClient through
 	attributes on the PlayerGui "SizerBus" folder.
@@ -30,8 +28,6 @@ local RoundResult = remotes:WaitForChild("RoundResult")
 
 local Ranks = require(ReplicatedStorage:WaitForChild("Ranks"))
 local Progress = require(ReplicatedStorage:WaitForChild("Progress"))
-local ScaleData = require(ReplicatedStorage:WaitForChild("ScaleData"))
-local ObjectModels = require(ReplicatedStorage:WaitForChild("ObjectModels"))
 
 local FONT = Enum.Font.FredokaOne
 local INK = Color3.fromRGB(25, 20, 35)
@@ -40,20 +36,6 @@ local GOLD = Color3.fromRGB(255, 200, 50)
 local PANEL = Color3.fromRGB(30, 32, 48)
 local DARK_CARD = Color3.fromRGB(46, 50, 76)
 local RED = Color3.fromRGB(240, 70, 70)
-
-local objectIndex = Progress.buildIndex(ScaleData.Rounds)
-
-local CATEGORY_ICONS = {
-	Animals = "🐘",
-	Landmarks = "🗽",
-	["Everyday Objects"] = "☕",
-	Space = "🪐",
-	Brainrot = "🧠",
-	Vehicles = "🚗",
-	Food = "🍕",
-	Nature = "🌳",
-	Sports = "⚽",
-}
 
 --==========================================================================
 -- UI helpers
@@ -277,21 +259,6 @@ local streakText = label(streakPill, {
 })
 textStroke(streakText, 2)
 
--- The Sizedex button is a tile in the left-hand side menu (built by the
--- main HUD script).
-local dexButton
-do
-	local hud = playerGui:WaitForChild("SizerHUD", 30)
-	local menu = hud and hud:WaitForChild("SideMenu", 10)
-	dexButton = menu and menu:WaitForChild("SizedexButton", 10)
-	if not dexButton then
-		dexButton = Instance.new("TextButton") -- detached stand-in so nothing errors
-		local cap = Instance.new("TextLabel")
-		cap.Name = "Caption"
-		cap.Parent = dexButton
-	end
-end
-
 -- Responsive scaling (about the top-right corner).
 local cardScale = Instance.new("UIScale")
 cardScale.Parent = rankCard
@@ -496,7 +463,7 @@ function toast(text, color, seconds)
 end
 
 --==========================================================================
--- Progress snapshot (streak, daily, Sizedex)
+-- Progress snapshot (streak, daily)
 --==========================================================================
 
 local snapshot = nil
@@ -508,8 +475,6 @@ local function applySnapshot()
 		return
 	end
 	streakText.Text = "🔥 " .. snapshot.streak.count
-	local summary = Progress.summary({ dex = snapshot.dex }, objectIndex)
-	dexButton.Caption.Text = string.format("%d/%d", summary.discovered, summary.total)
 	if bus then
 		bus:SetAttribute("DailyDone", snapshot.daily.done)
 		bus:SetAttribute("DailyAnswered", snapshot.daily.answered)
@@ -518,8 +483,6 @@ local function applySnapshot()
 		bus:SetAttribute("DailyStatusAt", os.clock())
 	end
 end
-
-local dexRender -- set once the Sizedex window exists
 
 local function refresh()
 	if refreshing then
@@ -535,447 +498,12 @@ local function refresh()
 		if ok and type(result) == "table" then
 			snapshot = result
 			applySnapshot()
-			if dexRender then
-				dexRender()
-			end
 		else
 			warn("[Sizer] Could not load progress:", result)
 		end
 	until not refreshAgain
 	refreshing = false
 end
-
---==========================================================================
--- Sizedex window
---==========================================================================
-
-local dexGui = Instance.new("ScreenGui")
-dexGui.Name = "SizerDex"
-dexGui.ResetOnSpawn = false
-dexGui.DisplayOrder = 6
-dexGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-dexGui.Enabled = false
-dexGui.Parent = playerGui
-
-local dim = Instance.new("TextButton")
-dim.Name = "Dim"
-dim.Size = UDim2.fromScale(1, 1)
-dim.BackgroundColor3 = Color3.new(0, 0, 0)
-dim.BackgroundTransparency = 0.45
-dim.BorderSizePixel = 0
-dim.Text = ""
-dim.AutoButtonColor = false
-dim.Parent = dexGui
-
-local window = frame(dexGui, {
-	Name = "Window",
-	AnchorPoint = Vector2.new(0.5, 0.5),
-	Position = UDim2.fromScale(0.5, 0.5),
-	Size = UDim2.new(0, 920, 0, 580),
-	BackgroundColor3 = Color3.fromRGB(38, 42, 68),
-	ZIndex = 2,
-})
-corner(window, UDim.new(0, 24))
-stroke(window, 5, Color3.fromRGB(150, 130, 255))
-gloss(window, Color3.fromRGB(38, 42, 68))
-local windowScale = Instance.new("UIScale")
-windowScale.Parent = window
-
-local dexTitle = label(window, {
-	Position = UDim2.new(0, 22, 0, 12),
-	Size = UDim2.new(0, 260, 0, 52),
-	TextXAlignment = Enum.TextXAlignment.Left,
-	Text = "📖 SIZEDEX",
-	ZIndex = 3,
-})
-textStroke(dexTitle, 4)
-local dexStats = label(window, {
-	Position = UDim2.new(0, 290, 0, 18),
-	Size = UDim2.new(1, -420, 0, 40),
-	TextXAlignment = Enum.TextXAlignment.Left,
-	TextColor3 = Color3.fromRGB(205, 210, 240),
-	Text = "",
-	ZIndex = 3,
-})
-textStroke(dexStats, 2)
-local dexClose = button(window, "X", RED, {
-	AnchorPoint = Vector2.new(1, 0),
-	Position = UDim2.new(1, -16, 0, 14),
-	Size = UDim2.new(0, 52, 0, 48),
-	ZIndex = 3,
-})
-
-local tabList = Instance.new("ScrollingFrame")
-tabList.Name = "Tabs"
-tabList.Position = UDim2.new(0, 16, 0, 84)
-tabList.Size = UDim2.new(0, 190, 0, 480)
-tabList.BackgroundTransparency = 1
-tabList.BorderSizePixel = 0
-tabList.ScrollBarThickness = 4
-tabList.AutomaticCanvasSize = Enum.AutomaticSize.Y
-tabList.CanvasSize = UDim2.new()
-tabList.ZIndex = 3
-tabList.Parent = window
-local tabLayout = Instance.new("UIListLayout")
-tabLayout.Padding = UDim.new(0, 8)
-tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
-tabLayout.Parent = tabList
-
-local grid = Instance.new("ScrollingFrame")
-grid.Name = "Grid"
-grid.Position = UDim2.new(0, 220, 0, 84)
-grid.Size = UDim2.new(0, 440, 0, 480)
-grid.BackgroundColor3 = Color3.fromRGB(28, 31, 52)
-grid.BorderSizePixel = 0
-grid.ScrollBarThickness = 5
-grid.AutomaticCanvasSize = Enum.AutomaticSize.Y
-grid.CanvasSize = UDim2.new()
-grid.ZIndex = 3
-grid.Parent = window
-corner(grid, UDim.new(0, 16))
-local gridPadding = Instance.new("UIPadding")
-gridPadding.PaddingTop = UDim.new(0, 12)
-gridPadding.PaddingLeft = UDim.new(0, 12)
-gridPadding.PaddingBottom = UDim.new(0, 12)
-gridPadding.Parent = grid
-local gridLayout = Instance.new("UIGridLayout")
-gridLayout.CellSize = UDim2.new(0, 124, 0, 150)
-gridLayout.CellPadding = UDim2.new(0, 10, 0, 10)
-gridLayout.SortOrder = Enum.SortOrder.LayoutOrder
-gridLayout.Parent = grid
-
-local detail = frame(window, {
-	Name = "Detail",
-	Position = UDim2.new(0, 676, 0, 84),
-	Size = UDim2.new(0, 228, 0, 480),
-	BackgroundColor3 = Color3.fromRGB(28, 31, 52),
-	ZIndex = 3,
-})
-corner(detail, UDim.new(0, 16))
-
-local viewport = Instance.new("ViewportFrame")
-viewport.Name = "Preview"
-viewport.Position = UDim2.new(0, 10, 0, 10)
-viewport.Size = UDim2.new(1, -20, 0, 190)
-viewport.BackgroundColor3 = Color3.fromRGB(52, 58, 92)
-viewport.BorderSizePixel = 0
-viewport.Ambient = Color3.fromRGB(170, 170, 190)
-viewport.LightColor = Color3.new(1, 1, 1)
-viewport.LightDirection = Vector3.new(-1, -1.2, -0.6)
-viewport.ZIndex = 4
-viewport.Parent = detail
-corner(viewport, UDim.new(0, 12))
-local previewCamera = Instance.new("Camera")
-previewCamera.FieldOfView = 40
-previewCamera.Parent = viewport
-viewport.CurrentCamera = previewCamera
-local previewUnknown = label(viewport, {
-	Size = UDim2.fromScale(1, 1),
-	Text = "?",
-	TextColor3 = Color3.fromRGB(110, 115, 150),
-	ZIndex = 6,
-	Visible = false,
-})
-
-local detailName = label(detail, {
-	Position = UDim2.new(0, 12, 0, 208),
-	Size = UDim2.new(1, -24, 0, 36),
-	Text = "",
-	ZIndex = 4,
-})
-textStroke(detailName, 2.5)
-local detailCategory = label(detail, {
-	Position = UDim2.new(0, 12, 0, 246),
-	Size = UDim2.new(1, -24, 0, 20),
-	TextColor3 = Color3.fromRGB(165, 172, 210),
-	Text = "",
-	ZIndex = 4,
-})
-local detailFacts = label(detail, {
-	Position = UDim2.new(0, 12, 0, 274),
-	Size = UDim2.new(1, -24, 0, 70),
-	TextXAlignment = Enum.TextXAlignment.Left,
-	TextYAlignment = Enum.TextYAlignment.Top,
-	TextWrapped = true,
-	TextScaled = false,
-	TextSize = 17,
-	RichText = true,
-	Font = Enum.Font.GothamBold,
-	TextColor3 = Color3.fromRGB(225, 230, 250),
-	Text = "",
-	ZIndex = 4,
-})
-local detailStars = label(detail, {
-	Position = UDim2.new(0, 12, 0, 350),
-	Size = UDim2.new(1, -24, 0, 120),
-	TextXAlignment = Enum.TextXAlignment.Left,
-	TextYAlignment = Enum.TextYAlignment.Top,
-	TextWrapped = true,
-	TextScaled = false,
-	TextSize = 16,
-	RichText = true,
-	Font = Enum.Font.GothamBold,
-	TextColor3 = Color3.fromRGB(190, 196, 225),
-	Text = "",
-	ZIndex = 4,
-})
-
--- State and rendering ------------------------------------------------------------
-
-local selectedCategory = objectIndex.categories[1]
-local selectedName = nil
-local previewModel = nil
-local previewRadius, previewCenter, previewHeight = 6, Vector3.new(), 6
-local cardButtons = {}
-
-local function entryFor(name)
-	return snapshot and snapshot.dex[name] or nil
-end
-
-local function categoryColor(category)
-	return Color3.fromHSV(((#category * 37 + string.byte(category, 1)) % 360) / 360, 0.55, 0.95)
-end
-
-local function clearPreview()
-	if previewModel then
-		previewModel:Destroy()
-		previewModel = nil
-	end
-end
-
-local function showDetail(name)
-	selectedName = name
-	clearPreview()
-	local info = objectIndex.info[name]
-	if not info then
-		return
-	end
-	local entry = entryFor(name)
-	local discovered = entry ~= nil
-	detailName.Text = discovered and name or "???"
-	detailCategory.Text = string.upper(info.category)
-	previewUnknown.Visible = not discovered
-
-	if discovered then
-		local ok, model = pcall(function()
-			return (ObjectModels.build(name, info.icon, categoryColor(info.category)))
-		end)
-		if ok and model then
-			model.Parent = viewport
-			previewModel = model
-			local cf, size = model:GetBoundingBox()
-			previewCenter = cf.Position
-			previewRadius = math.max(size.X, size.Y, size.Z) * 0.5
-			previewHeight = size.Y
-		end
-		local stars = Progress.starsFor(entry)
-		detailFacts.Text = string.format(
-			"REAL SIZE   <font color=\"%s\">%s</font>\nBEST SCORE   <font color=\"%s\">%d</font>\nSEEN   %d TIMES",
-			colorHex(GOLD),
-			formatMeters(info.height),
-			colorHex(GOLD),
-			entry.b or 0,
-			entry.n or 0
-		)
-		local function line(reached, text)
-			local mark = reached and "✓" or "·"
-			local tint = reached and "#8CFF8C" or "#7C82A8"
-			return string.format('<font color="%s">%s %s</font>', tint, mark, text)
-		end
-		detailStars.Text = table.concat({
-			line(stars >= 1, "★  score 70+"),
-			line(stars >= 2, "★★  score 90+"),
-			line(stars >= 3, string.format("★★★  90+ three times (%d/3)", math.min(entry.g or 0, 3))),
-			snapshot.cats[info.category] and '<font color="#FFC832">🏆 CATEGORY COMPLETE</font>' or "",
-		}, "\n")
-	else
-		detailFacts.Text = "Not discovered yet.\nPlay rounds to find it!"
-		detailStars.Text = ""
-	end
-
-	for cardName, card in pairs(cardButtons) do
-		local selected = cardName == name
-		card.stroke.Color = selected and WHITE or card.baseStroke
-		card.stroke.Thickness = selected and 4 or 2.5
-	end
-end
-
-local function renderGrid()
-	for _, child in ipairs(grid:GetChildren()) do
-		if child:IsA("Frame") then
-			child:Destroy()
-		end
-	end
-	cardButtons = {}
-	local names = objectIndex.byCategory[selectedCategory] or {}
-	local tint = categoryColor(selectedCategory)
-	for i, name in ipairs(names) do
-		local info = objectIndex.info[name]
-		local entry = entryFor(name)
-		local discovered = entry ~= nil
-		local stars = Progress.starsFor(entry)
-
-		local card = frame(grid, {
-			Name = "Card",
-			LayoutOrder = i,
-			BackgroundColor3 = discovered and DARK_CARD:Lerp(tint, 0.22) or Color3.fromRGB(36, 39, 62),
-			ZIndex = 4,
-		})
-		corner(card, UDim.new(0, 14))
-		local baseStroke = stars >= 3 and GOLD or (discovered and tint or Color3.fromRGB(60, 64, 96))
-		local cardStroke = stroke(card, 2.5, baseStroke)
-
-		label(card, {
-			Position = UDim2.new(0, 8, 0, 8),
-			Size = UDim2.new(1, -16, 0, 70),
-			Text = discovered and info.icon or "?",
-			TextColor3 = discovered and WHITE or Color3.fromRGB(88, 93, 128),
-			ZIndex = 5,
-		})
-		local nameLabel = label(card, {
-			Position = UDim2.new(0, 6, 0, 82),
-			Size = UDim2.new(1, -12, 0, 34),
-			TextWrapped = true,
-			Text = discovered and name or "???",
-			TextColor3 = discovered and WHITE or Color3.fromRGB(110, 115, 150),
-			ZIndex = 5,
-		})
-		textStroke(nameLabel, 1.5)
-		local starLabel = label(card, {
-			Position = UDim2.new(0, 8, 1, -30),
-			Size = UDim2.new(1, -16, 0, 22),
-			RichText = true,
-			Text = starsText(stars),
-			ZIndex = 5,
-		})
-		starLabel.Visible = discovered
-
-		local hit = Instance.new("TextButton")
-		hit.Size = UDim2.fromScale(1, 1)
-		hit.BackgroundTransparency = 1
-		hit.Text = ""
-		hit.ZIndex = 8
-		hit.Parent = card
-		hit.MouseButton1Click:Connect(function()
-			showDetail(name)
-		end)
-		cardButtons[name] = { stroke = cardStroke, baseStroke = baseStroke }
-	end
-end
-
-local function renderTabs()
-	for _, child in ipairs(tabList:GetChildren()) do
-		if child:IsA("TextButton") then
-			child:Destroy()
-		end
-	end
-	for i, category in ipairs(objectIndex.categories) do
-		local names = objectIndex.byCategory[category]
-		local discovered = 0
-		for _, name in ipairs(names) do
-			if entryFor(name) then
-				discovered += 1
-			end
-		end
-		local selected = category == selectedCategory
-		local color = categoryColor(category)
-		local tab = button(tabList, "", selected and color or Color3.fromRGB(58, 63, 100), {
-			LayoutOrder = i,
-			Size = UDim2.new(1, -6, 0, 52),
-			ZIndex = 4,
-		})
-		tab:FindFirstChildOfClass("UIPadding"):Destroy()
-		label(tab, {
-			Position = UDim2.new(0, 8, 0.12, 0),
-			Size = UDim2.new(0, 34, 0.76, 0),
-			Text = CATEGORY_ICONS[category] or "📦",
-			ZIndex = 5,
-		})
-		local tabName = label(tab, {
-			Position = UDim2.new(0, 46, 0.08, 0),
-			Size = UDim2.new(1, -52, 0.48, 0),
-			TextXAlignment = Enum.TextXAlignment.Left,
-			Text = string.upper(category),
-			ZIndex = 5,
-		})
-		textStroke(tabName, 1.5)
-		local complete = snapshot and snapshot.cats[category]
-		label(tab, {
-			Position = UDim2.new(0, 46, 0.56, 0),
-			Size = UDim2.new(1, -52, 0.34, 0),
-			TextXAlignment = Enum.TextXAlignment.Left,
-			TextColor3 = complete and Color3.fromRGB(255, 225, 120) or Color3.fromRGB(215, 220, 245),
-			Text = string.format("%s%d / %d", complete and "🏆 " or "", discovered, #names),
-			ZIndex = 5,
-		})
-		tab.MouseButton1Click:Connect(function()
-			selectedCategory = category
-			selectedName = nil
-			dexRender()
-		end)
-	end
-end
-
-function dexRender()
-	if not snapshot or not dexGui.Enabled then
-		return
-	end
-	local summary = Progress.summary({ dex = snapshot.dex }, objectIndex)
-	dexStats.Text = string.format("FOUND %d / %d     ★ %d / %d     MASTERED %d", summary.discovered, summary.total, summary.stars, summary.maxStars, summary.mastered)
-	renderTabs()
-	renderGrid()
-	local names = objectIndex.byCategory[selectedCategory] or {}
-	local keep = selectedName
-	if not keep or objectIndex.info[keep] == nil or objectIndex.info[keep].category ~= selectedCategory then
-		keep = names[1]
-	end
-	if keep then
-		showDetail(keep)
-	end
-end
-
--- Spin the preview.
-RunService.RenderStepped:Connect(function()
-	if not dexGui.Enabled or not previewModel then
-		return
-	end
-	local t = os.clock() * 0.9
-	local distance = previewRadius / math.tan(math.rad(previewCamera.FieldOfView / 2)) * 1.25 + previewRadius
-	local eye = previewCenter + Vector3.new(math.sin(t) * distance, previewHeight * 0.15, -math.cos(t) * distance)
-	previewCamera.CFrame = CFrame.lookAt(eye, previewCenter)
-end)
-
-local function updateWindowScale()
-	local camera = workspace.CurrentCamera
-	if camera then
-		local size = camera.ViewportSize
-		windowScale.Scale = math.clamp(math.min(size.X / 980, size.Y / 640), 0.45, 1.15)
-	end
-end
-updateWindowScale()
-if workspace.CurrentCamera then
-	workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
-		updateScale()
-		updateWindowScale()
-	end)
-end
-
-local function openDex()
-	dexGui.Enabled = true
-	task.spawn(function()
-		refresh()
-		dexRender()
-	end)
-end
-
-local function closeDex()
-	dexGui.Enabled = false
-	clearPreview()
-end
-
-dexButton.MouseButton1Click:Connect(openDex)
-dexClose.MouseButton1Click:Connect(closeDex)
-dim.MouseButton1Click:Connect(closeDex)
 
 --==========================================================================
 -- Events from the server and the game screen
@@ -994,6 +522,8 @@ ProgressEvent.OnClientEvent:Connect(function(kind, payload)
 		task.defer(refresh)
 	elseif kind == "weekly" then
 		toast(string.format("🏆 LAST WEEK'S #%d  +%d SENSE", payload.place, payload.reward), GOLD, 5)
+	elseif kind == "pet" then
+		toast("🐾 NEW PET: " .. string.upper(payload.name or "PET"), Color3.fromRGB(255, 120, 200), 5)
 	elseif kind == "dailyDone" then
 		toast("📅 TODAY'S DAILY IS ALREADY DONE", Color3.fromRGB(70, 150, 255), 3)
 	end
@@ -1002,12 +532,6 @@ end)
 RoundResult.OnClientEvent:Connect(function(result)
 	local dex = result.dex
 	if dex then
-		local found = dex.discovered or {}
-		if #found == 1 then
-			toast("📖 NEW IN SIZEDEX: " .. string.upper(found[1]), Color3.fromRGB(150, 130, 255))
-		elseif #found > 1 then
-			toast(string.format("📖 2 NEW IN SIZEDEX: %s + %s", string.upper(found[1]), string.upper(found[2])), Color3.fromRGB(150, 130, 255))
-		end
 		for _, up in ipairs(dex.starUps or {}) do
 			toast(string.format("%s %s  +%d SENSE", string.rep("⭐", up.to), string.upper(up.name), up.reward), GOLD)
 		end
@@ -1015,7 +539,7 @@ RoundResult.OnClientEvent:Connect(function(result)
 			toast(string.format("🏆 %s COMPLETE  +%d SENSE", string.upper(category), Progress.CATEGORY_SENSE), Color3.fromRGB(255, 225, 120), 4.5)
 		end
 	end
-	-- Pick up the new Sizedex totals and daily status.
+	-- Pick up the new daily status.
 	task.delay(0.4, refresh)
 end)
 
@@ -1037,7 +561,7 @@ end
 player:GetAttributeChangedSignal("Sense"):Connect(onSenseChanged)
 onSenseChanged()
 
--- The streak/Sizedex row is only shown out in the lobby.
+-- The streak row is only shown out in the lobby.
 task.spawn(function()
 	local hud = playerGui:WaitForChild("SizerHUD", 30)
 	local gamePanel = hud and hud:WaitForChild("GamePanel", 10)

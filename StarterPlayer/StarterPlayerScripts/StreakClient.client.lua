@@ -373,7 +373,13 @@ local function buildPets(owned, equipped)
 		ZIndex = 4,
 	})
 	local cardW = (WIDTH - 40 - 2 * GAP) / 3
-	for i, pet in ipairs(Pets.List) do
+	local streakPets = {}
+	for _, pet in ipairs(Pets.List) do
+		if pet.rule.kind == "streak" then
+			table.insert(streakPets, pet)
+		end
+	end
+	for i, pet in ipairs(streakPets) do
 		local has = owned[pet.id] == true
 		local card = frame(petsRow, {
 			Name = "Pet_" .. pet.id,
@@ -437,7 +443,7 @@ local function buildPets(owned, equipped)
 				Position = UDim2.new(0, 108, 0, 40),
 				Size = UDim2.new(1, -114, 0, 40),
 				TextXAlignment = Enum.TextXAlignment.Left,
-				Text = "REACH DAY " .. pet.day,
+				Text = "REACH DAY " .. pet.rule.day,
 				TextColor3 = GOLD,
 				ZIndex = 4,
 			})

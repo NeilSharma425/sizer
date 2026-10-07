@@ -62,6 +62,9 @@
         },
         "StreakClient": {
           "$path": "StarterPlayer/StarterPlayerScripts/StreakClient.client.lua"
+        },
+        "PetMenuClient": {
+          "$path": "StarterPlayer/StarterPlayerScripts/PetMenuClient.client.lua"
         }
       }
     }

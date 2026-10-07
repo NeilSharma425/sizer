@@ -16,6 +16,7 @@ local ScaleData = require(ReplicatedStorage:WaitForChild("ScaleData"))
 local Difficulty = require(ReplicatedStorage:WaitForChild("Difficulty"))
 local Progress = require(ReplicatedStorage:WaitForChild("Progress"))
 local Ranks = require(ReplicatedStorage:WaitForChild("Ranks"))
+local Pets = require(ReplicatedStorage:WaitForChild("Pets"))
 -- Saving is optional: if the module ever fails to load, run without it
 -- instead of taking the whole game down.
 local okPlayerData, PlayerData = pcall(function()
@@ -155,6 +156,34 @@ local function sendProgress(player, kind, payload)
 	else
 		progressQueue[player] = progressQueue[player] or {}
 		table.insert(progressQueue[player], { kind, payload })
+	end
+end
+
+-- Unlocks any pets whose requirement (rank, Sizedex category, 60s score) is
+-- now met. Only runs once the player's saved data is in.
+local petsReady = {} -- [player] = true
+local function checkPetUnlocks(player)
+	if not petsReady[player] then
+		return
+	end
+	local profile = PlayerData.getProfile(player)
+	local state = {
+		rank = Ranks.forSense(player:GetAttribute("Sense") or 0).index,
+		cats = profile.cats,
+		timedBest = player:GetAttribute("TimedBest") or 0,
+	}
+	for _, pet in ipairs(Pets.List) do
+		if pet.rule.kind ~= "streak" and not profile.pets[pet.id] and Pets.qualifies(pet.rule, state) then
+			profile.pets[pet.id] = true
+			if profile.pet == "" then
+				profile.pet = pet.id
+				player:SetAttribute("Pet", pet.id)
+			end
+			PlayerData.markDirty(player)
+			if pet.rule.kind ~= "start" then
+				sendProgress(player, "pet", { id = pet.id, name = pet.name })
+			end
+		end
 	end
 end
 
@@ -341,6 +370,7 @@ local function onSubmitGuess(player, guessedTargetHeight)
 		end
 	end
 	PlayerData.markDirty(player)
+	checkPetUnlocks(player)
 
 	local timed = timedSessions[player]
 	local timedScore = nil
@@ -554,6 +584,8 @@ local function onDataLoaded(player)
 	if profile.flags.streak then
 		player:SetAttribute("StreakHintSeen", true)
 	end
+	petsReady[player] = true
+	checkPetUnlocks(player)
 
 	if profile.weekly.rewardWeek < week then
 		local place = PlayerData.getLastWeekPlace(player)
@@ -573,6 +605,12 @@ local function onPlayerAdded(player)
 	-- on top as soon as they load.
 	player:SetAttribute("Sense", 0)
 	PlayerData.init(player)
+	player:GetAttributeChangedSignal("Sense"):Connect(function()
+		checkPetUnlocks(player)
+	end)
+	player:GetAttributeChangedSignal("TimedBest"):Connect(function()
+		checkPetUnlocks(player)
+	end)
 	task.spawn(function()
 		local loaded = PlayerData.load(player)
 		-- If saving exists but loading failed, don't hand out streak or
@@ -606,6 +644,7 @@ local function onPlayerAdded(player)
 end
 
 local function onPlayerRemoving(player)
+	petsReady[player] = nil
 	playerHistory[player] = nil
 	playerCurrentRound[player] = nil
 	playerCurrentDaily[player] = nil

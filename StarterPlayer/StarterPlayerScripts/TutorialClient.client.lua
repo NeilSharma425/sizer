@@ -10,7 +10,7 @@
 	     LOCK IN
 	  3. round 2: just the LOCK IN pulse
 	  4. the game screen closes and a quick spotlight tour points out the
-	     reasons to come back (DAILY, 60s challenge, Sizedex, rank)
+	     reasons to come back (DAILY, 60s challenge, pets, rank)
 
 	It reads the game's UI by name (SizerHUD > GamePanel, SliderTrack,
 	LockInButton, ResultText, SideMenu) and only ever asks the game to leave
@@ -526,7 +526,7 @@ end
 local SINK_TARGETS = {
 	{ "SizerHUD", "SideMenu", "DailyButton" },
 	{ "SizerHUD", "SideMenu", "ChallengeButton" },
-	{ "SizerHUD", "SideMenu", "SizedexButton" },
+	{ "SizerHUD", "SideMenu", "PetsButton" },
 	{ "SizerHUD", "SideMenu", "HelpButton" },
 	{ "SizerHUD", "QuickPlayButton" },
 	{ "SizerProgress", "ProgressRow", "StreakPill" },
@@ -632,7 +632,7 @@ end
 local TOUR = {
 	{ find = function() return findMenuTile("DailyButton") end, text = "5 new questions every day", color = Color3.fromRGB(70, 150, 255) },
 	{ find = function() return findMenuTile("ChallengeButton") end, text = "60 seconds. Beat the clock!", color = GOLD },
-	{ find = function() return findMenuTile("SizedexButton") end, text = "Collect every object", color = Color3.fromRGB(150, 120, 255) },
+	{ find = function() return findMenuTile("PetsButton") end, text = "Unlock cool pets", color = Color3.fromRGB(255, 120, 190) },
 	{ find = findProgressGui, text = "Earn Sense, rank up, keep your streak", color = Color3.fromRGB(255, 140, 40) },
 }
 local TOUR_STEP_SECONDS = 2.1
