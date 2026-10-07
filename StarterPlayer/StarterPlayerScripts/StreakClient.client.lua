@@ -21,6 +21,8 @@ local remotes = ReplicatedStorage:WaitForChild("ScaleGameRemotes")
 local GetProgress = remotes:WaitForChild("GetProgress")
 local ProgressEvent = remotes:WaitForChild("ProgressEvent")
 local EquipPet = remotes:WaitForChild("EquipPet")
+local MarkHint = remotes:WaitForChild("MarkHint")
+local bus = playerGui:WaitForChild("SizerBus", 20)
 
 local FONT = Enum.Font.FredokaOne
 local INK = Color3.fromRGB(25, 20, 35)
@@ -538,3 +540,120 @@ ProgressEvent.OnClientEvent:Connect(function(kind, payload)
 		end)
 	end
 end)
+
+--==========================================================================
+-- Tapping DAILY after it's done opens this window; the first time a player
+-- finishes the daily, a spotlight points them at that button.
+--==========================================================================
+
+local hintGui = Instance.new("ScreenGui")
+hintGui.Name = "SizerStreakHint"
+hintGui.ResetOnSpawn = false
+hintGui.DisplayOrder = 6
+hintGui.Enabled = false
+hintGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+hintGui.Parent = playerGui
+
+local hintRing = frame(hintGui, { BackgroundTransparency = 1, ZIndex = 3 })
+corner(hintRing, UDim.new(0, 18))
+local hintRingStroke = stroke(hintRing, 5, GOLD)
+local hintCard = frame(hintGui, {
+	AnchorPoint = Vector2.new(0, 0.5),
+	Size = UDim2.new(0, 280, 0, 84),
+	BackgroundColor3 = PANEL,
+	ZIndex = 4,
+})
+corner(hintCard, UDim.new(0, 16))
+stroke(hintCard, 4, GOLD)
+label(hintCard, {
+	Position = UDim2.new(0, 14, 0, 8),
+	Size = UDim2.new(1, -28, 1, -16),
+	TextXAlignment = Enum.TextXAlignment.Left,
+	Text = "TAP DAILY AGAIN TO SEE YOUR STREAK REWARDS",
+	ZIndex = 5,
+})
+
+local hintShown = false
+local hintToken = 0
+local function hideHint()
+	hintShown = false
+	hintToken += 1
+	hintGui.Enabled = false
+end
+
+local function dailyTile()
+	local hud = playerGui:FindFirstChild("SizerHUD")
+	local menu = hud and hud:FindFirstChild("SideMenu")
+	return menu and menu:FindFirstChild("DailyButton")
+end
+
+RunService.RenderStepped:Connect(function()
+	if not hintShown then
+		return
+	end
+	local tile = dailyTile()
+	if not tile then
+		return
+	end
+	local pad = 8
+	local grow = 3 + 3 * (0.5 + 0.5 * math.sin(os.clock() * 6))
+	local pos, size = tile.AbsolutePosition, tile.AbsoluteSize
+	hintRing.Position = UDim2.fromOffset(pos.X - pad - grow, pos.Y - pad - grow)
+	hintRing.Size = UDim2.fromOffset(size.X + (pad + grow) * 2, size.Y + (pad + grow) * 2)
+	hintRingStroke.Transparency = 0.1 + 0.4 * (0.5 + 0.5 * math.sin(os.clock() * 6))
+	hintCard.Position = UDim2.fromOffset(pos.X + size.X + pad + 18, pos.Y + size.Y / 2)
+end)
+
+local function showHint()
+	hideHint()
+	hintShown = true
+	hintGui.Enabled = true
+	local myToken = hintToken
+	task.delay(20, function()
+		if hintToken == myToken then
+			hideHint() -- not marked as seen, so it comes back next time
+		end
+	end)
+end
+
+local function markSeen()
+	if player:GetAttribute("StreakHintSeen") ~= true then
+		player:SetAttribute("StreakHintSeen", true)
+		MarkHint:FireServer("streak")
+	end
+end
+
+if bus then
+	bus:GetAttributeChangedSignal("OpenStreak"):Connect(function()
+		if hintShown then
+			markSeen()
+		end
+		hideHint()
+		open()
+	end)
+
+	-- Detect the daily being finished during this session (false -> true).
+	local lastDone = bus:GetAttribute("DailyDone")
+	local pending = false
+	bus:GetAttributeChangedSignal("DailyDone"):Connect(function()
+		local done = bus:GetAttribute("DailyDone")
+		if lastDone == false and done == true and player:GetAttribute("StreakHintSeen") ~= true then
+			pending = true
+		end
+		lastDone = done
+	end)
+	task.spawn(function()
+		while true do
+			task.wait(0.3)
+			if pending then
+				local hud = playerGui:FindFirstChild("SizerHUD")
+				local panel = hud and hud:FindFirstChild("GamePanel")
+				local tile = dailyTile()
+				if panel and not panel.Visible and tile and tile.Parent and tile.Parent.Visible and not gui.Enabled then
+					pending = false
+					showHint()
+				end
+			end
+		end
+	end)
+end

@@ -1445,6 +1445,9 @@ dailyStation:SetAttribute("Mode", "daily")
 dailyButton.MouseButton1Click:Connect(function()
 	if not bus:GetAttribute("DailyDone") then
 		startSession(dailyStation)
+	else
+		-- Already done today: show the streak rewards instead.
+		bus:SetAttribute("OpenStreak", os.clock())
 	end
 end)
 

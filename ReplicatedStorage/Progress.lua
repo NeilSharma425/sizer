@@ -68,6 +68,7 @@ function Progress.newProfile()
 		streak = { count = 0, best = 0, lastDay = 0 },
 		pets = {}, -- [petId] = true, unlocked from streak rewards
 		pet = "", -- equipped pet id ("" = none)
+		flags = {}, -- [name] = true, one-time hints already shown
 		daily = { day = 0, score = 0, answered = 0 }, -- today's run: score so far, questions answered
 		weekly = { week = 0, best = 0, rewardWeek = 0 },
 	}
@@ -89,6 +90,7 @@ function Progress.normalize(profile)
 	end
 	profile.pets = type(profile.pets) == "table" and profile.pets or {}
 	profile.pet = type(profile.pet) == "string" and profile.pet or ""
+	profile.flags = type(profile.flags) == "table" and profile.flags or {}
 	section("streak", { count = 0, best = 0, lastDay = 0 })
 	section("daily", { day = 0, score = 0, answered = 0 })
 	section("weekly", { week = 0, best = 0, rewardWeek = 0 })
@@ -121,6 +123,11 @@ function Progress.merge(base, extra)
 	for id, owned in pairs(extra.pets) do
 		if owned then
 			base.pets[id] = true
+		end
+	end
+	for name, on in pairs(extra.flags) do
+		if on then
+			base.flags[name] = true
 		end
 	end
 	if extra.pet ~= "" then

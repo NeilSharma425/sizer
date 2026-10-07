@@ -111,6 +111,11 @@ local GetProgress = Instance.new("RemoteFunction")
 GetProgress.Name = "GetProgress"
 GetProgress.Parent = remotesFolder
 
+-- Client -> server: a one-time hint was shown (only known names are kept).
+local MarkHint = Instance.new("RemoteEvent")
+MarkHint.Name = "MarkHint"
+MarkHint.Parent = remotesFolder
+
 -- Client -> server: equip one of the pets the player has unlocked.
 local EquipPet = Instance.new("RemoteEvent")
 EquipPet.Name = "EquipPet"
@@ -364,6 +369,17 @@ local function onSubmitGuess(player, guessedTargetHeight)
 	playerCurrentDaily[player] = nil
 end
 
+MarkHint.OnServerEvent:Connect(function(player, name)
+	if name == "streak" then
+		local profile = PlayerData.getProfile(player)
+		if not profile.flags.streak then
+			profile.flags.streak = true
+			PlayerData.markDirty(player)
+		end
+		player:SetAttribute("StreakHintSeen", true)
+	end
+end)
+
 EquipPet.OnServerEvent:Connect(function(player, id)
 	local profile = PlayerData.getProfile(player)
 	if type(id) == "string" and profile.pets[id] and profile.pet ~= id then
@@ -535,6 +551,9 @@ local function onDataLoaded(player)
 		sendProgress(player, "login", streak)
 	end
 	player:SetAttribute("Pet", profile.pet ~= "" and profile.pet or nil)
+	if profile.flags.streak then
+		player:SetAttribute("StreakHintSeen", true)
+	end
 
 	if profile.weekly.rewardWeek < week then
 		local place = PlayerData.getLastWeekPlace(player)

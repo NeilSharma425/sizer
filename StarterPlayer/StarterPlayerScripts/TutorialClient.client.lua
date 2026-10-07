@@ -518,6 +518,83 @@ end
 -- The tutorial flow
 --==========================================================================
 
+--==========================================================================
+-- While the tutorial runs, the lobby buttons are covered by invisible
+-- click-catchers so they can't be used (and break the flow).
+--==========================================================================
+
+local SINK_TARGETS = {
+	{ "SizerHUD", "SideMenu", "DailyButton" },
+	{ "SizerHUD", "SideMenu", "ChallengeButton" },
+	{ "SizerHUD", "SideMenu", "SizedexButton" },
+	{ "SizerHUD", "SideMenu", "HelpButton" },
+	{ "SizerHUD", "QuickPlayButton" },
+	{ "SizerProgress", "ProgressRow", "StreakPill" },
+}
+
+local sinkFolder = nil
+local sinkConnection = nil
+
+local function isShown(inst)
+	while inst and not inst:IsA("ScreenGui") do
+		if inst:IsA("GuiObject") and not inst.Visible then
+			return false
+		end
+		inst = inst.Parent
+	end
+	return true
+end
+
+local function lookup(path)
+	local current = playerGui
+	for _, name in ipairs(path) do
+		current = current and current:FindFirstChild(name)
+	end
+	return current
+end
+
+local function stopSinks()
+	if sinkConnection then
+		sinkConnection:Disconnect()
+		sinkConnection = nil
+	end
+	if sinkFolder then
+		sinkFolder:Destroy()
+		sinkFolder = nil
+	end
+end
+
+local function startSinks()
+	stopSinks()
+	sinkFolder = frame(gui, { Name = "Sinks", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1) })
+	local sinks = {}
+	for i = 1, #SINK_TARGETS do
+		local sink = Instance.new("TextButton")
+		sink.Name = "Sink"
+		sink.Text = ""
+		sink.AutoButtonColor = false
+		sink.BackgroundTransparency = 1
+		sink.BorderSizePixel = 0
+		sink.ZIndex = 50
+		sink.Visible = false
+		sink.Parent = sinkFolder
+		sinks[i] = sink
+	end
+	sinkConnection = RunService.RenderStepped:Connect(function()
+		for i, path in ipairs(SINK_TARGETS) do
+			local target = lookup(path)
+			local sink = sinks[i]
+			if target and isShown(target) then
+				sink.Visible = true
+				sink.Position = UDim2.fromOffset(target.AbsolutePosition.X, target.AbsolutePosition.Y)
+				sink.Size = UDim2.fromOffset(target.AbsoluteSize.X, target.AbsoluteSize.Y)
+			else
+				sink.Visible = false
+			end
+		end
+	end)
+end
+
 local function hideChrome()
 	skipButton.Visible = false
 	dotsRow.Visible = false
@@ -530,6 +607,7 @@ local function finish(myToken, completed)
 	token += 1
 	running = false
 	runCleanups()
+	stopSinks()
 	hideChrome()
 	if completed then
 		TutorialDoneRemote:FireServer()
@@ -784,6 +862,7 @@ local function startTutorial()
 	local myToken = token
 	skipButton.Visible = true
 	dotsRow.Visible = true
+	startSinks()
 
 	task.spawn(function()
 		local outcome = "restart"
