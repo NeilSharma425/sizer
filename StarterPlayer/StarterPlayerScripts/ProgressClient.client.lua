@@ -249,6 +249,7 @@ streakPill.BorderSizePixel = 0
 streakPill.Size = UDim2.new(0, 112, 1, 0)
 streakPill.BackgroundColor3 = PANEL
 streakPill.BackgroundTransparency = 0.1
+streakPill.Visible = false -- not shown on the main UI; the streak window opens from DAILY and on login
 streakPill.Parent = row
 corner(streakPill, UDim.new(1, 0))
 stroke(streakPill, 3, Color3.fromRGB(255, 140, 40))

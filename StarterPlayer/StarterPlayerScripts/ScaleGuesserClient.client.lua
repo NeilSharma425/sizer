@@ -184,11 +184,11 @@ local function updateHudScale()
 	end
 end
 
--- Playtime reward card (right column, under the rank card and streak).
+-- Playtime reward card (bottom-left).
 local rewardCard = frame(hud, {
 	Name = "RewardCard",
-	AnchorPoint = Vector2.new(1, 0),
-	Position = UDim2.new(1, -14, 0, 100),
+	AnchorPoint = Vector2.new(0, 1),
+	Position = UDim2.new(0, 14, 1, -22),
 	Size = UDim2.new(0, 290, 0, 78),
 	BackgroundColor3 = RED,
 })
