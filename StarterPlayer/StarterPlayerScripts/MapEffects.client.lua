@@ -12,7 +12,7 @@ local Players = game:GetService("Players")
 
 local player = Players.LocalPlayer
 
-local BOUNCE_SPEED = 95
+local BOUNCE_SPEED = 300
 local COOLDOWN = 0.35
 
 local lastBounce = 0
