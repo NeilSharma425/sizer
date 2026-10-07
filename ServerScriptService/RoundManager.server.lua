@@ -316,3 +316,5 @@ Players.PlayerRemoving:Connect(onPlayerRemoving)
 for _, player in ipairs(Players:GetPlayers()) do
 	onPlayerAdded(player)
 end
+
+print("[Sizer] Round manager ready")

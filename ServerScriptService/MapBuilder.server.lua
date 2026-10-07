@@ -1080,15 +1080,28 @@ end
 -- Build
 --==========================================================================
 
-setupLighting()
-buildGround()
-buildFence()
-buildPaths()
-buildStations()
-buildBoards()
-buildGiantGarden()
-buildPark()
-buildPlayground()
-buildPicnic()
-buildDecor()
-buildObby()
+-- Each step runs on its own so one failure can't leave the rest unbuilt.
+local steps = {
+	{ "lighting", setupLighting },
+	{ "ground", buildGround },
+	{ "fence", buildFence },
+	{ "paths", buildPaths },
+	{ "stations", buildStations },
+	{ "boards", buildBoards },
+	{ "giant garden", buildGiantGarden },
+	{ "park", buildPark },
+	{ "playground", buildPlayground },
+	{ "picnic", buildPicnic },
+	{ "decor", buildDecor },
+	{ "obby", buildObby },
+}
+
+local failed = 0
+for _, step in ipairs(steps) do
+	local ok, err = xpcall(step[2], debug.traceback)
+	if not ok then
+		failed += 1
+		warn("[Sizer] Map step '" .. step[1] .. "' failed:", err)
+	end
+end
+print(string.format("[Sizer] Map built (%d of %d steps ok)", #steps - failed, #steps))
