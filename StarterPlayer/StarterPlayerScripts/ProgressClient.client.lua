@@ -252,9 +252,9 @@ local senseText = label(rankCard, {
 
 local row = frame(gui, {
 	Name = "ProgressRow",
-	AnchorPoint = Vector2.new(1, 0),
-	Position = UDim2.new(1, -14, 0, 96),
-	Size = UDim2.new(0, 290, 0, 40),
+	AnchorPoint = Vector2.new(0, 1),
+	Position = UDim2.new(0, 14, 1, -22),
+	Size = UDim2.new(0, 112, 0, 40),
 	BackgroundTransparency = 1,
 })
 

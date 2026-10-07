@@ -188,7 +188,7 @@ end
 local rewardCard = frame(hud, {
 	Name = "RewardCard",
 	AnchorPoint = Vector2.new(1, 0),
-	Position = UDim2.new(1, -14, 0, 146),
+	Position = UDim2.new(1, -14, 0, 100),
 	Size = UDim2.new(0, 290, 0, 78),
 	BackgroundColor3 = RED,
 })
@@ -255,9 +255,10 @@ local quickPlayButton = button(hud, "QUICK PLAY", GREEN, {
 local DAILY_BLUE = Color3.fromRGB(70, 150, 255)
 local sideMenu = frame(hud, {
 	Name = "SideMenu",
-	AnchorPoint = Vector2.new(0, 0),
-	Position = UDim2.new(0, 14, 0, 12),
-	Size = UDim2.new(0, 92, 0, 4 * 84 + 3 * 8),
+	AnchorPoint = Vector2.new(0, 0.5),
+	Position = UDim2.new(0, 14, 0.5, 0),
+	Size = UDim2.new(0, 92, 0, 0),
+	AutomaticSize = Enum.AutomaticSize.Y, -- stays centered when HELP is hidden
 	BackgroundTransparency = 1,
 })
 local sideLayout = Instance.new("UIListLayout")
