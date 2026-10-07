@@ -764,8 +764,11 @@ local function blockyStandIn(name, colors)
 	return model
 end
 
--- The classic "bacon hair" is the free Pal Hair accessory.
-local PAL_HAIR = "376548738"
+-- The classic "Bacon Hair" default avatar: Pal Hair, the Blue and Black
+-- Motorcycle Shirt and Dark Green Jeans.
+local PAL_HAIR = "63690008"
+local BACON_SHIRT = 144076358
+local BACON_PANTS = 144076760
 
 -- Crude bacon hair from parts, for when the real accessory can't load.
 local function addPartHair(model)
@@ -809,6 +812,8 @@ local function robloxCharacter(name, cf, look, parent, withoutHair)
 		description.RightLegColor = colors.legs
 		if look.baconHair and not withoutHair then
 			description.HairAccessory = PAL_HAIR
+			description.Shirt = BACON_SHIRT
+			description.Pants = BACON_PANTS
 		end
 		return Players:CreateHumanoidModelFromDescription(description, Enum.HumanoidRigType.R15)
 	end)
@@ -957,8 +962,8 @@ local function buildStation(def, index, parent)
 		robloxCharacter("Slapper", at(-1.6, y, 3) * CFrame.Angles(0, -math.pi / 2, 0), {
 			head = Color3.fromRGB(234, 184, 146),
 			arms = Color3.fromRGB(234, 184, 146),
-			torso = Color3.fromRGB(52, 142, 64),
-			legs = Color3.fromRGB(39, 70, 120),
+			torso = Color3.fromRGB(40, 70, 140), -- shirt/jeans colors for the stand-in
+			legs = Color3.fromRGB(45, 80, 55),
 			baconHair = true,
 		}, demo)
 		robloxCharacter("Victim", at(1.6, y, 3) * CFrame.Angles(0, math.pi / 2, 0), {

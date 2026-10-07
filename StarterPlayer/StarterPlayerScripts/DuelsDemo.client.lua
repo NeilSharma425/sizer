@@ -14,7 +14,7 @@
 local CollectionService = game:GetService("CollectionService")
 local RunService = game:GetService("RunService")
 
-local LOOP = 5.6 -- seconds per slap
+local LOOP = 6 -- seconds per slap
 local VIEW_DISTANCE = 170
 
 local demos = {}
@@ -28,6 +28,7 @@ local JOINTS = {
 	rightLeg = { "RightHip", "Right Hip" },
 	neck = { "Neck" },
 	leftElbow = { "LeftElbow" },
+	leftWrist = { "LeftWrist" },
 	waist = { "Waist" },
 }
 
@@ -127,6 +128,29 @@ local function setup(folder)
 		stars[i] = star
 	end
 
+	-- A white streak behind the slapping hand so the swing reads clearly.
+	local hand = slapper:FindFirstChild("LeftHand") or slapper:FindFirstChild("Left Arm")
+	local trail
+	if hand then
+		local reach = hand.Name == "LeftHand" and 0 or -0.8 -- the stand-in's "hand" is the bottom of its arm
+		local a0 = Instance.new("Attachment")
+		a0.Position = Vector3.new(0, reach + 0.35, 0)
+		a0.Parent = hand
+		local a1 = Instance.new("Attachment")
+		a1.Position = Vector3.new(0, reach - 0.35, 0)
+		a1.Parent = hand
+		trail = Instance.new("Trail")
+		trail.Attachment0 = a0
+		trail.Attachment1 = a1
+		trail.Lifetime = 0.22
+		trail.FaceCamera = true
+		trail.Color = ColorSequence.new(Color3.new(1, 1, 1))
+		trail.Transparency = NumberSequence.new(0.2, 1)
+		trail.LightEmission = 1
+		trail.Enabled = false
+		trail.Parent = hand
+	end
+
 	-- White burst where the hand lands.
 	local flash = Instance.new("Part")
 	flash.Name = "SlapFlash"
@@ -149,7 +173,7 @@ local function setup(folder)
 	sound.RollOffMaxDistance = 60
 	sound.Parent = b.root
 
-	demos[folder] = { a = a, b = b, slapText = slapText, yellText = yellText, yellLabel = yellLabel, stars = stars, flash = flash, sound = sound, lastLoop = -1 }
+	demos[folder] = { a = a, b = b, slapText = slapText, yellText = yellText, yellLabel = yellLabel, stars = stars, flash = flash, trail = trail, sound = sound, lastLoop = -1 }
 end
 
 for _, folder in ipairs(CollectionService:GetTagged("DuelsDemo")) do
@@ -164,7 +188,7 @@ local function smooth(x)
 	return x * x * (3 - 2 * x)
 end
 
-local IMPACT = 1.33 -- the moment the hand lands
+local IMPACT = 1.66 -- the moment the hand lands
 
 -- Linear blend of keyframes { {time, value}, ... } with smoothing.
 local function keyed(t, keys)
@@ -199,24 +223,33 @@ RunService.RenderStepped:Connect(function()
 		-- Slapper (bacon hair): step in, wind the arm back, whip it across
 		-- the noob's face, follow through, then step back.
 		------------------------------------------------------------------
-		local step = keyed(t, { { 0.5, 0 }, { 0.75, 0.35 }, { 2.0, 0.35 }, { 2.5, 0 } })
-		local twist = keyed(t, { { 0.75, 0 }, { 1.25, 25 }, { 1.37, -20, true }, { 1.7, -20 }, { 2.3, 0 } })
-		local yaw = keyed(t, { { 0.75, 0 }, { 1.25, 110 }, { 1.37, -35, true }, { 1.7, -35 }, { 2.3, 0 } })
-		local pitch = keyed(t, { { 0.75, 0 }, { 1.1, 85 }, { 1.7, 85 }, { 2.3, 0 } })
-		local elbow = keyed(t, { { 0.75, 0 }, { 1.25, 70 }, { 1.37, 5, true }, { 1.7, 5 }, { 2.3, 0 } })
+		-- 0.4-0.7 step in, 0.7-1.3 raise the hand up by the head, hold,
+		-- 1.5-1.75 swing it down and across (hits at IMPACT), follow
+		-- through, 2.1-2.7 relax and step back.
+		local step = keyed(t, { { 0.4, 0 }, { 0.7, 0.35 }, { 2.3, 0.35 }, { 2.8, 0 } })
+		local twist = keyed(t, { { 0.7, 0 }, { 1.3, 30 }, { 1.5, 32 }, { 1.75, -25 }, { 2.1, -25 }, { 2.7, 0 } })
+		local pitch = keyed(t, { { 0.7, 0 }, { 1.3, 150 }, { 1.5, 155 }, { 1.75, 80 }, { 2.1, 80 }, { 2.7, 0 } })
+		local yaw = keyed(t, { { 0.7, 0 }, { 1.3, 55 }, { 1.5, 60 }, { 1.75, -45 }, { 2.1, -45 }, { 2.7, 0 } })
+		local elbow = keyed(t, { { 0.7, 0 }, { 1.3, 95 }, { 1.5, 100 }, { 1.75, 5 }, { 2.1, 10 }, { 2.7, 0 } })
+		local wrist = keyed(t, { { 1.3, 0 }, { 1.5, -35 }, { 1.75, 30 }, { 2.1, 0 } })
 		a.root.CFrame = a.base * CFrame.new(0, 0, -step) * CFrame.Angles(0, math.rad(twist), 0)
 		setJoint(a, "leftArm", CFrame.Angles(0, math.rad(yaw), 0) * CFrame.Angles(math.rad(pitch), 0, 0))
 		setJoint(a, "leftElbow", CFrame.Angles(math.rad(elbow), 0, 0))
+		setJoint(a, "leftWrist", CFrame.Angles(0, 0, math.rad(wrist)))
+		if d.trail then
+			d.trail.Enabled = t >= 1.48 and t < 1.85
+		end
 
 		------------------------------------------------------------------
 		-- Noob: head snaps away and he's knocked back, then goes wild,
 		-- then stands there dizzy.
 		------------------------------------------------------------------
-		local knock = keyed(t, { { IMPACT, 0 }, { IMPACT + 0.12, 1.2, true }, { 1.7, 1.2 }, { 3.8, 0 } })
-		local tilt = keyed(t, { { IMPACT, 0 }, { IMPACT + 0.1, 18, true }, { 1.7, 8 }, { 2.2, 0 } })
+		local knock = keyed(t, { { IMPACT, 0 }, { IMPACT + 0.12, 1.2, true }, { IMPACT + 0.4, 1.2 }, { IMPACT + 2.5, 0 } })
+		local tilt = keyed(t, { { IMPACT, 0 }, { IMPACT + 0.1, 18, true }, { IMPACT + 0.4, 8 }, { IMPACT + 0.9, 0 } })
 		local rootCF = b.base * CFrame.new(0, 0, knock) * CFrame.Angles(math.rad(tilt), 0, math.rad(-tilt * 0.6))
 		local neckCF = CFrame.new()
-		if t >= IMPACT and t < 1.7 then
+		local CRAZY_START, CRAZY_END = IMPACT + 0.4, IMPACT + 2.6
+		if t >= IMPACT and t < CRAZY_START then
 			-- head whips round, then wobbles back
 			local c = t - IMPACT
 			neckCF = CFrame.Angles(0, math.rad(70 * math.exp(-c * 4) * math.cos(c * 18)), math.rad(-25 * math.exp(-c * 5)))
@@ -225,8 +258,8 @@ RunService.RenderStepped:Connect(function()
 			end
 			setJoint(b, "leftArm", CFrame.Angles(0, 0, math.rad(-40) * math.exp(-c * 3)))
 			setJoint(b, "rightArm", CFrame.Angles(0, 0, math.rad(40) * math.exp(-c * 3)))
-		elseif t >= 1.7 and t < 3.9 then
-			local c = t - 1.7
+		elseif t >= CRAZY_START and t < CRAZY_END then
+			local c = t - CRAZY_START
 			local fade = 1 - smooth((c - 1.75) / 0.45) -- winds down at the end
 			local spin = CFrame.Angles(0, c * 14 * fade, 0)
 			local hop = math.abs(math.sin(c * 11)) * 1.5 * fade
@@ -242,7 +275,7 @@ RunService.RenderStepped:Connect(function()
 			for _, key in ipairs({ "leftArm", "rightArm", "leftLeg", "rightLeg" }) do
 				setJoint(b, key, CFrame.new())
 			end
-			if t >= 3.9 then
+			if t >= CRAZY_END then
 				-- dizzy sway
 				neckCF = CFrame.Angles(0, 0, math.sin(now * 3) * 0.15)
 				rootCF = rootCF * CFrame.Angles(0, 0, math.sin(now * 3) * 0.04)
@@ -269,9 +302,9 @@ RunService.RenderStepped:Connect(function()
 			d.flash.Transparency = 1
 		end
 		d.slapText.Enabled = sinceHit >= 0 and sinceHit < 0.6
-		d.yellText.Enabled = t >= 1.8 and t < 3.6
+		d.yellText.Enabled = t >= IMPACT + 0.45 and t < IMPACT + 2.3
 		d.yellLabel.Text = math.floor(now * 6) % 2 == 0 and "AAAAH!" or "WHY?!"
-		local showStars = t >= 3.9 and t < 5.5
+		local showStars = t >= IMPACT + 2.6 and t < LOOP - 0.1
 		local headPos = (rootCF * CFrame.new(0, 2.6, 0)).Position
 		for i, star in ipairs(d.stars) do
 			local ang = now * 5 + i * (math.pi * 2 / 3)
