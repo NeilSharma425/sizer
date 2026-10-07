@@ -109,9 +109,12 @@ local function onRequestRound(player, categoryFilter)
 		player,
 		{
 			referenceName = round.referenceName,
+			referenceIcon = round.referenceIcon,
 			referenceHeight = round.referenceHeight,
 			targetName = round.targetName,
+			targetIcon = round.targetIcon,
 			category = round.category,
+			shape = round.shape,
 		}
 	)
 end

@@ -4,8 +4,9 @@
 
 	Lobby HUD (coins/trophies, playtime reward, Quick Play) and the game
 	itself: press E at a station podium (or Quick Play) to start rounds in
-	that station's category. The reference/target parts are local to this
-	client and appear at the active station.
+	that station's category. Playing moves the camera to a local viewing
+	room where the reference and target fill the screen; leaving returns
+	the camera to the character in the lobby.
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -23,18 +24,12 @@ local RoundResult = remotesFolder:WaitForChild("RoundResult")
 
 local stationsFolder = workspace:WaitForChild("Map"):WaitForChild("Stations")
 
--- The reference part is always drawn this tall; matches the 1x line on
--- each station's back panel.
-local REFERENCE_DISPLAY_HEIGHT = 6
-local PART_OFFSET_X = 4
-
 local MIN_RATIO = 0.02
 local MAX_RATIO = 50
 local LOG_MIN = math.log(MIN_RATIO)
 local LOG_MAX = math.log(MAX_RATIO)
 
 local RESULT_DELAY_SECONDS = 4
-local LEAVE_DISTANCE = 35
 
 local FONT = Enum.Font.FredokaOne
 local INK = Color3.fromRGB(25, 20, 35)
@@ -379,32 +374,282 @@ if workspace.CurrentCamera then
 end
 
 --==========================================================================
--- Display parts (local to this client)
+-- Viewing room (local to this client, far away from the lobby)
 --==========================================================================
 
-local function makeDisplayPart(name, color)
+-- The camera is moved here while playing; the character stays in the lobby.
+local SCENE = Vector3.new(0, 400, 3000)
+local REF_H = 10
+local WIDTH_FACTOR = 0.6
+local VIEW_FOV = 50
+local MAX_RULER_LINES = 50
+local CAMERA_STEP = "ScaleViewerCamera"
+
+local viewer = Instance.new("Folder")
+viewer.Name = "ScaleViewer"
+
+local function scenePart(props)
 	local p = Instance.new("Part")
-	p.Name = name
 	p.Anchored = true
 	p.CanCollide = false
 	p.CanQuery = false
+	p.CanTouch = false
 	p.Material = Enum.Material.SmoothPlastic
-	p.Color = color
-	p.Size = Vector3.new(4, REFERENCE_DISPLAY_HEIGHT, 4)
-
-	local billboard = Instance.new("BillboardGui")
-	billboard.Size = UDim2.new(0, 220, 0, 56)
-	billboard.StudsOffsetWorldSpace = Vector3.new(0, REFERENCE_DISPLAY_HEIGHT / 2 + 2, 0)
-	billboard.LightInfluence = 0
-	billboard.Parent = p
-
-	local text = label(billboard, { Size = UDim2.fromScale(1, 1), Text = name })
-	textStroke(text, 3)
-	return p, text, billboard
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	if props.Shape then
+		p.Shape = props.Shape
+	end
+	for key, value in pairs(props) do
+		if key ~= "Shape" then
+			p[key] = value
+		end
+	end
+	p.Parent = viewer
+	return p
 end
 
-local referencePart, referenceLabel = makeDisplayPart("Reference", Color3.fromRGB(60, 120, 230))
-local targetPart, targetLabel, targetBillboard = makeDisplayPart("Target", Color3.fromRGB(255, 150, 40))
+scenePart({
+	Name = "Floor",
+	Size = Vector3.new(6000, 2, 6000),
+	Position = SCENE - Vector3.new(0, 1, 0),
+	Color = Color3.fromRGB(226, 232, 246),
+})
+scenePart({
+	Name = "Backdrop",
+	Size = Vector3.new(8000, 4000, 2),
+	Position = SCENE + Vector3.new(0, 1990, 1500),
+	Color = Color3.fromRGB(175, 205, 250),
+})
+local stageRing = scenePart({
+	Name = "StageRing",
+	Shape = Enum.PartType.Cylinder,
+	Material = Enum.Material.Neon,
+	Color = Color3.fromRGB(120, 200, 255),
+})
+local stageDisc = scenePart({ Name = "StageDisc", Shape = Enum.PartType.Cylinder, Color = WHITE })
+
+local function makeObject(name, color)
+	local p = scenePart({ Name = name, Color = color })
+
+	local outline = Instance.new("Highlight")
+	outline.FillTransparency = 1
+	outline.OutlineColor = INK
+	outline.DepthMode = Enum.HighlightDepthMode.Occluded
+	outline.Parent = p
+
+	-- Emoji icon on the face pointing at the camera.
+	local face = Instance.new("SurfaceGui")
+	face.Face = Enum.NormalId.Front
+	face.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize
+	face.CanvasSize = Vector2.new(400, 400)
+	face.LightInfluence = 0
+	face.Parent = p
+	local icon = label(face, {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromScale(0.8, 0.8),
+		Text = "",
+	})
+	local square = Instance.new("UIAspectRatioConstraint")
+	square.Parent = icon
+
+	local billboard = Instance.new("BillboardGui")
+	billboard.Size = UDim2.new(0, 280, 0, 64)
+	billboard.SizeOffset = Vector2.new(0, 0.75)
+	billboard.LightInfluence = 0
+	billboard.AlwaysOnTop = true
+	billboard.Parent = p
+	local text = label(billboard, { Size = UDim2.fromScale(1, 1), Text = name })
+	textStroke(text, 3)
+
+	return { part = p, face = face, icon = icon, billboard = billboard, label = text }
+end
+
+local reference = makeObject("Reference", Color3.fromRGB(60, 120, 230))
+local target = makeObject("Target", Color3.fromRGB(255, 150, 40))
+
+-- Horizontal lines at multiples of the reference height (1x, 2x, ...).
+local rulerLines = {}
+for k = 1, MAX_RULER_LINES do
+	local line = scenePart({
+		Name = "Ruler" .. k,
+		Material = Enum.Material.Neon,
+		Color = WHITE,
+		Transparency = 1,
+	})
+	local tag = Instance.new("BillboardGui")
+	tag.Size = UDim2.new(0, 70, 0, 30)
+	tag.LightInfluence = 0
+	tag.Enabled = false
+	tag.Parent = line
+	textStroke(label(tag, { Size = UDim2.fromScale(1, 1), Text = k .. "x" }), 2)
+	rulerLines[k] = { part = line, tag = tag }
+end
+
+local framing = { cx = 0, width = 20, height = REF_H, depth = REF_H * WIDTH_FACTOR }
+local currentShape = "Block"
+
+local function objectSize(height)
+	if currentShape == "Ball" then
+		return Vector3.new(height, height, height)
+	end
+	local width = height * WIDTH_FACTOR
+	return Vector3.new(width, height, width)
+end
+
+local function setObject(obj, size, centerX)
+	obj.part.Shape = currentShape == "Ball" and Enum.PartType.Ball or Enum.PartType.Block
+	obj.part.Size = size
+	obj.part.CFrame = CFrame.new(SCENE + Vector3.new(centerX, size.Y / 2, 0))
+	-- Match the canvas aspect to the face so the emoji isn't stretched.
+	obj.face.CanvasSize = Vector2.new(math.max(1, math.floor(400 * size.X / size.Y)), 400)
+	obj.billboard.StudsOffsetWorldSpace = Vector3.new(0, size.Y / 2, 0)
+end
+
+-- Camera that frames both objects so the taller one fills most of the
+-- screen, leaving the bottom clear for the game panel.
+local function cameraFor(f)
+	local camera = workspace.CurrentCamera
+	local viewport = camera.ViewportSize
+	local aspect = viewport.X / math.max(viewport.Y, 1)
+	local t = math.tan(math.rad(VIEW_FOV) / 2)
+	local dist = math.max(f.height / 0.68 / (2 * t), f.width / 0.86 / (2 * t * aspect)) + f.depth / 2
+	local viewHeight = 2 * dist * t
+	local aimY = math.max(f.height * 0.5 - viewHeight * 0.1, 0)
+	local aim = SCENE + Vector3.new(f.cx, aimY, 0)
+	local eye = SCENE + Vector3.new(f.cx, aimY + dist * 0.1, -dist)
+	return CFrame.lookAt(eye, aim), viewHeight
+end
+
+local function updateRuler(viewHeight)
+	local step = 10
+	for _, s in ipairs({ 1, 2, 5, 10 }) do
+		if REF_H * s / viewHeight >= 0.07 then
+			step = s
+			break
+		end
+	end
+	local lineLength = framing.width * 1.3 + 4
+	local thickness = math.max(viewHeight * 0.003, 0.03)
+	local z = framing.depth / 2 + 0.5
+	for k, entry in ipairs(rulerLines) do
+		local y = REF_H * k
+		local visible = k % step == 0 and y <= viewHeight * 1.05
+		entry.part.Transparency = visible and 0.4 or 1
+		entry.tag.Enabled = visible
+		if visible then
+			entry.part.Size = Vector3.new(lineLength, thickness, thickness)
+			entry.part.CFrame = CFrame.new(SCENE + Vector3.new(framing.cx, y, z))
+			entry.tag.StudsOffsetWorldSpace = Vector3.new(-lineLength / 2, 0, 0)
+		end
+	end
+end
+
+local function placeParts(ratio)
+	local refSize = objectSize(REF_H)
+	local targetSize = objectSize(math.max(REF_H * ratio, 0.05))
+	local tallest = math.max(refSize.Y, targetSize.Y)
+	local gap = tallest * 0.15 + 1
+	local refX = -(gap / 2 + refSize.X / 2)
+	local targetX = gap / 2 + targetSize.X / 2
+	setObject(reference, refSize, refX)
+	setObject(target, targetSize, targetX)
+
+	local left, right = refX - refSize.X / 2, targetX + targetSize.X / 2
+	framing.cx = (left + right) / 2
+	framing.width = right - left
+	framing.height = tallest
+	framing.depth = math.max(refSize.Z, targetSize.Z)
+
+	-- Stage disc under both objects; raised a hair (relative to scale) to
+	-- avoid z-fighting with the floor when zoomed far out.
+	local radius = framing.width * 0.6 + 2
+	local lift = tallest * 0.002 + 0.02
+	stageDisc.Size = Vector3.new(lift * 2, radius * 2, radius * 2)
+	stageDisc.CFrame = CFrame.new(SCENE + Vector3.new(framing.cx, 0, 0)) * CFrame.Angles(0, 0, math.pi / 2)
+	local ringRadius = radius * 1.04
+	stageRing.Size = Vector3.new(lift * 1.2, ringRadius * 2, ringRadius * 2)
+	stageRing.CFrame = stageDisc.CFrame
+
+	local _, viewHeight = cameraFor(framing)
+	updateRuler(viewHeight)
+end
+
+local function cameraStep(dt)
+	local camera = workspace.CurrentCamera
+	camera.CFrame = camera.CFrame:Lerp((cameraFor(framing)), 1 - math.exp(-dt * 6))
+end
+
+local playerControls = nil
+local function setControlsEnabled(enabled)
+	if not playerControls then
+		local ok, module = pcall(function()
+			return require(player:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule"))
+		end)
+		if ok and module then
+			playerControls = module:GetControls()
+		end
+	end
+	if playerControls then
+		if enabled then
+			playerControls:Enable()
+		else
+			playerControls:Disable()
+		end
+	end
+end
+
+local inViewer = false
+
+local function enterViewer()
+	inViewer = true
+	viewer.Parent = workspace
+	local camera = workspace.CurrentCamera
+	camera.CameraType = Enum.CameraType.Scriptable
+	camera.FieldOfView = VIEW_FOV
+	camera.CFrame = cameraFor(framing)
+	RunService:BindToRenderStep(CAMERA_STEP, Enum.RenderPriority.Camera.Value + 1, cameraStep)
+	setControlsEnabled(false)
+end
+
+local function exitViewer()
+	if not inViewer then
+		return
+	end
+	inViewer = false
+	RunService:UnbindFromRenderStep(CAMERA_STEP)
+	viewer.Parent = nil
+	local camera = workspace.CurrentCamera
+	camera.CameraType = Enum.CameraType.Custom
+	camera.FieldOfView = 70
+	local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		camera.CameraSubject = humanoid
+	end
+	setControlsEnabled(true)
+end
+
+-- White flash between the lobby and the viewing room.
+local fadeGui = Instance.new("ScreenGui")
+fadeGui.Name = "SizerFade"
+fadeGui.IgnoreGuiInset = true
+fadeGui.DisplayOrder = 10
+fadeGui.ResetOnSpawn = false
+fadeGui.Parent = player:WaitForChild("PlayerGui")
+local fade = frame(fadeGui, {
+	Size = UDim2.fromScale(1, 1),
+	BackgroundColor3 = WHITE,
+	BackgroundTransparency = 1,
+})
+
+local function fadeThrough(callback)
+	local fadeIn = TweenService:Create(fade, TweenInfo.new(0.18), { BackgroundTransparency = 0 })
+	fadeIn:Play()
+	fadeIn.Completed:Wait()
+	callback()
+	TweenService:Create(fade, TweenInfo.new(0.35), { BackgroundTransparency = 1 }):Play()
+end
 
 --==========================================================================
 -- State
@@ -416,24 +661,7 @@ local currentRound = nil
 local currentRatio = 1
 local isDragging = false
 local guessLocked = false
-
-local function displayOrigin()
-	return activeStation and activeStation:FindFirstChild("DisplayOrigin")
-end
-
-local function placeParts(ratio)
-	local origin = displayOrigin()
-	if not origin then
-		return
-	end
-	local targetHeight = math.max(REFERENCE_DISPLAY_HEIGHT * ratio, 0.05)
-	referencePart.Size = Vector3.new(4, REFERENCE_DISPLAY_HEIGHT, 4)
-	referencePart.CFrame = origin.CFrame * CFrame.new(-PART_OFFSET_X, REFERENCE_DISPLAY_HEIGHT / 2, 0)
-	targetPart.Size = Vector3.new(4, targetHeight, 4)
-	targetPart.CFrame = origin.CFrame * CFrame.new(PART_OFFSET_X, targetHeight / 2, 0)
-	-- Billboards anchor at the part's center; keep the label above its top.
-	targetBillboard.StudsOffsetWorldSpace = Vector3.new(0, targetHeight / 2 + 2, 0)
-end
+local transitioning = false
 
 local function withCommas(n)
 	local s = tostring(math.floor(n + 0.5))
@@ -541,21 +769,28 @@ local function requestRound()
 end
 
 local function stopSession()
+	if not activeStation or transitioning then
+		return
+	end
+	transitioning = true
 	activeStation = nil
 	sessionId += 1
 	currentRound = nil
 	isDragging = false
-	panel.Visible = false
-	quickPlayButton.Visible = true
-	rewardCard.Visible = true
-	referencePart.Parent = nil
-	targetPart.Parent = nil
+	fadeThrough(function()
+		exitViewer()
+		panel.Visible = false
+		quickPlayButton.Visible = true
+		rewardCard.Visible = true
+	end)
+	transitioning = false
 end
 
 local function startSession(station)
-	if activeStation == station then
+	if transitioning or activeStation == station then
 		return
 	end
+	transitioning = true
 	activeStation = station
 	sessionId += 1
 
@@ -564,14 +799,23 @@ local function startSession(station)
 	categoryGloss.Color = ColorSequence.new(color:Lerp(WHITE, 0.25), color:Lerp(INK, 0.12))
 	categoryText.Text = station:GetAttribute("DisplayName") or "MIXED"
 
-	panel.Visible = true
-	quickPlayButton.Visible = false
-	rewardCard.Visible = false
-	referenceLabel.Text = "Reference"
-	targetLabel.Text = "Target"
-	referencePart.Parent = workspace
-	targetPart.Parent = workspace
+	currentRound = nil
+	currentShape = "Block"
+	reference.label.Text = "Reference"
+	target.label.Text = "Target"
+	reference.icon.Text = ""
+	target.icon.Text = ""
 	setRatio(1)
+
+	fadeThrough(function()
+		if not inViewer then
+			enterViewer()
+		end
+		panel.Visible = true
+		quickPlayButton.Visible = false
+		rewardCard.Visible = false
+	end)
+	transitioning = false
 	requestRound()
 end
 
@@ -580,8 +824,11 @@ RequestRound.OnClientEvent:Connect(function(roundInfo)
 		return
 	end
 	currentRound = roundInfo
-	referenceLabel.Text = string.format("%s\n%s", roundInfo.referenceName, formatHeight(roundInfo.referenceHeight))
-	targetLabel.Text = roundInfo.targetName .. "\n???"
+	currentShape = roundInfo.shape == "Ball" and "Ball" or "Block"
+	reference.icon.Text = roundInfo.referenceIcon or ""
+	target.icon.Text = roundInfo.targetIcon or ""
+	reference.label.Text = string.format("%s\n%s", roundInfo.referenceName, formatHeight(roundInfo.referenceHeight))
+	target.label.Text = roundInfo.targetName .. "\n???"
 	questionText.Text = string.format("How big is a %s next to a %s?", roundInfo.targetName, roundInfo.referenceName)
 	setRatio(1)
 	setLockEnabled(true)
@@ -622,8 +869,9 @@ RoundResult.OnClientEvent:Connect(function(result)
 		return
 	end
 
+	-- Reveal: snap the target to its true size; the camera re-frames smoothly.
 	placeParts(result.trueTargetHeight / currentRound.referenceHeight)
-	targetLabel.Text = string.format("%s\n%s", currentRound.targetName, formatHeight(result.trueTargetHeight))
+	target.label.Text = string.format("%s\n%s", currentRound.targetName, formatHeight(result.trueTargetHeight))
 
 	local verdict = result.score >= 90 and "PERFECT!" or result.score >= 70 and "GREAT!" or result.score >= 40 and "CLOSE!" or "WAY OFF!"
 	resultText.Text = string.format(
@@ -667,28 +915,8 @@ stationsFolder.ChildAdded:Connect(hookStation)
 
 quickPlayButton.MouseButton1Click:Connect(function()
 	local stations = stationsFolder:GetChildren()
-	if #stations == 0 then
-		return
-	end
-	local station = stations[math.random(1, #stations)]
-	local approach = station:FindFirstChild("Approach")
-	local character = player.Character
-	if approach and character then
-		character:PivotTo(approach.CFrame)
-	end
-	startSession(station)
-end)
-
--- End the session if the player walks away from their station.
-RunService.Heartbeat:Connect(function()
-	local origin = displayOrigin()
-	if not origin then
-		return
-	end
-	local character = player.Character
-	local root = character and character:FindFirstChild("HumanoidRootPart")
-	if root and (root.Position - origin.Position).Magnitude > LEAVE_DISTANCE then
-		stopSession()
+	if #stations > 0 then
+		startSession(stations[math.random(1, #stations)])
 	end
 end)
 
