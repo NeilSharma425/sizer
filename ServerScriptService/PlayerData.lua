@@ -2,8 +2,10 @@
 	PlayerData.lua
 	ModuleScript: ServerScriptService.PlayerData
 
-	Persists each player's Sense and best 60s-challenge score across
-	sessions, and serves the lobby leaderboards.
+	Persists each player's Sense, best 60s-challenge score and progression
+	profile (Sizedex, login streak, daily challenge, weekly records -- see
+	ReplicatedStorage.Progress) across sessions, and serves the lobby
+	leaderboards.
 
 	- load(player) sets the "Sense" and "TimedBest" attributes from the
 	  DataStore (earnings made while loading are kept).
@@ -13,6 +15,10 @@
 	- Each save also updates two OrderedDataStores, which back the
 	  leaderboards (getTop). Online players' live values are merged in, so
 	  boards update instantly in-server and persist across servers.
+	- The profile is merged "best of both" into the saved copy on every save
+	  (Progress.merge), so progress can never be lost or rolled back.
+	- 60s records are weekly: each week has its own OrderedDataStore, and
+	  last week's top 3 can be looked up (getLastWeekPlace) for rewards.
 
 	In Studio, DataStores need the place published and
 	Game Settings > Security > "Enable Studio Access to API Services".
@@ -21,12 +27,13 @@
 
 local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Progress = require(ReplicatedStorage:WaitForChild("Progress"))
 
 local STORE_NAME = "SizerPlayerData_v1"
-local BOARD_NAMES = {
-	Sense = "SizerSenseBoard_v1",
-	TimedBest = "SizerTimedBoard_v1",
-}
+local SENSE_BOARD_NAME = "SizerSenseBoard_v1"
+local WEEKLY_BOARD_PREFIX = "SizerTimedWeek_v1_"
 local AUTOSAVE_SECONDS = 60
 local BOARD_REFRESH_SECONDS = 45
 local MAX_ATTEMPTS = 3
@@ -38,23 +45,22 @@ local PlayerData = {}
 -- API access is off). That must never break the game, so fall back to a
 -- memory-only mode where progress lasts for the session.
 local store = nil
-local orderedBoards = {}
+local senseBoard = nil
+local weeklyBoards = {} -- [week] = OrderedDataStore
 do
 	local ok, err = pcall(function()
 		store = DataStoreService:GetDataStore(STORE_NAME)
-		for kind, name in pairs(BOARD_NAMES) do
-			orderedBoards[kind] = DataStoreService:GetOrderedDataStore(name)
-		end
+		senseBoard = DataStoreService:GetOrderedDataStore(SENSE_BOARD_NAME)
 	end)
 	if not ok then
 		store = nil
-		orderedBoards = {}
+		senseBoard = nil
 		warn("[Sizer] Saving is unavailable (" .. tostring(err) .. "). Publish the place and enable Studio API access to save progress. Running without saving.")
 	end
 end
 
-local states = {} -- [player] = { loaded, saving, savedSense, savedTimed }
-local topCache = { Sense = {}, TimedBest = {} } -- kind -> { {userId, name, value} }
+local states = {} -- [player] = { loaded, saving, savedSense, savedTimed, profile, dirty, version }
+local topCache = { Sense = {}, TimedWeek = {} } -- kind -> { {userId, name, value} }
 local nameCache = {} -- [userId] = name
 local warnedBoards = false
 
@@ -73,9 +79,58 @@ local function withRetry(fn)
 	return false, lastError
 end
 
+local function currentWeek()
+	return Progress.weekOf(Progress.dayOf(os.time()))
+end
+
+local function weeklyBoard(week)
+	if not store then
+		return nil
+	end
+	if not weeklyBoards[week] then
+		local ok, board = pcall(function()
+			return DataStoreService:GetOrderedDataStore(WEEKLY_BOARD_PREFIX .. week)
+		end)
+		weeklyBoards[week] = ok and board or false
+	end
+	return weeklyBoards[week] or nil
+end
+
+local function newState()
+	return {
+		loaded = false,
+		saving = false,
+		savedSense = 0,
+		savedTimed = 0,
+		savedTutorial = false,
+		profile = Progress.newProfile(),
+		dirty = false,
+		version = 0,
+	}
+end
+
+-- Creates the player's state (and an empty profile) so progression can be
+-- recorded even before the saved data has finished loading.
+function PlayerData.init(player)
+	if not states[player] then
+		states[player] = newState()
+	end
+	return states[player]
+end
+
+function PlayerData.getProfile(player)
+	return PlayerData.init(player).profile
+end
+
+-- Call after changing the profile so the next save includes it.
+function PlayerData.markDirty(player)
+	local state = PlayerData.init(player)
+	state.dirty = true
+	state.version += 1
+end
+
 local function loadInternal(player)
-	local state = { loaded = false, saving = false, savedSense = 0, savedTimed = 0, savedTutorial = false }
-	states[player] = state
+	local state = PlayerData.init(player)
 	if not store then
 		return false
 	end
@@ -103,11 +158,20 @@ local function loadInternal(player)
 	if state.savedTutorial then
 		player:SetAttribute("TutorialDone", true)
 	end
+	-- Saved progress merges into anything recorded while loading.
+	Progress.merge(state.profile, type(data.profile) == "table" and data.profile or nil)
+	player:SetAttribute("TimedWeek", Progress.weeklyBest(state.profile, currentWeek()))
 
 	-- Anything earned while loading is added on top of the saved totals.
 	player:SetAttribute("Sense", storedSense + (player:GetAttribute("Sense") or 0))
 	player:SetAttribute("TimedBest", math.max(storedTimed, player:GetAttribute("TimedBest") or 0))
 	return true
+end
+
+-- False when DataStores can't be created at all (unpublished place); the
+-- game then runs in memory for the session.
+function PlayerData.available()
+	return store ~= nil
 end
 
 -- Loads saved data. The "DataLoaded" attribute is set once the attempt is
@@ -138,11 +202,15 @@ function PlayerData.save(player)
 	local timed = math.floor(player:GetAttribute("TimedBest") or 0)
 	local tutorial = player:GetAttribute("TutorialDone") == true
 	local deltaSense = sense - state.savedSense
-	if deltaSense == 0 and timed <= state.savedTimed and (state.savedTutorial or not tutorial) then
+	if deltaSense == 0 and timed <= state.savedTimed and (state.savedTutorial or not tutorial) and not state.dirty then
 		return true
 	end
 
 	state.saving = true
+	local versionAtSave = state.version
+	-- Copy so the DataStore callback (which may run more than once) never
+	-- sees the profile change underneath it.
+	local mine = Progress.merge(Progress.newProfile(), state.profile)
 	local key = tostring(player.UserId)
 	local ok, merged = withRetry(function()
 		return store:UpdateAsync(key, function(old)
@@ -152,6 +220,7 @@ function PlayerData.save(player)
 			if tutorial then
 				old.tutorialDone = true
 			end
+			old.profile = Progress.merge(type(old.profile) == "table" and old.profile or Progress.newProfile(), mine)
 			return old
 		end)
 	end)
@@ -160,10 +229,17 @@ function PlayerData.save(player)
 		state.savedSense = sense
 		state.savedTimed = math.max(state.savedTimed, timed)
 		state.savedTutorial = state.savedTutorial or tutorial
+		if state.version == versionAtSave then
+			state.dirty = false
+		end
 		pcall(function()
-			orderedBoards.Sense:SetAsync(key, math.floor(merged.sense or 0))
-			if (merged.timedBest or 0) > 0 then
-				orderedBoards.TimedBest:SetAsync(key, math.floor(merged.timedBest))
+			senseBoard:SetAsync(key, math.floor(merged.sense or 0))
+			local weekly = merged.profile and merged.profile.weekly
+			if weekly and (weekly.best or 0) > 0 and weekly.week > 0 then
+				local board = weeklyBoard(weekly.week)
+				if board then
+					board:SetAsync(key, math.floor(weekly.best))
+				end
 			end
 		end)
 	else
@@ -202,7 +278,8 @@ local function refreshBoards()
 	if not store then
 		return
 	end
-	for kind, ordered in pairs(orderedBoards) do
+	local boards = { Sense = senseBoard, TimedWeek = weeklyBoard(currentWeek()) }
+	for kind, ordered in pairs(boards) do
 		local ok, pages = pcall(function()
 			return ordered:GetSortedAsync(false, BOARD_SIZE)
 		end)
@@ -222,8 +299,33 @@ local function refreshBoards()
 	end
 end
 
--- Top entries for "Sense" or "TimedBest": the saved global list with
--- online players' live values merged in.
+-- Where the player finished (1-3) on last week's 60s board, or nil. Used
+-- for the weekly reward.
+function PlayerData.getLastWeekPlace(player)
+	local board = weeklyBoard(currentWeek() - 1)
+	if not board then
+		return nil
+	end
+	local ok, pages = pcall(function()
+		return board:GetSortedAsync(false, 3)
+	end)
+	if not ok then
+		return nil
+	end
+	local place = 0
+	for _, entry in ipairs(pages:GetCurrentPage()) do
+		if entry.value > 0 then
+			place += 1
+			if tonumber(entry.key) == player.UserId then
+				return place
+			end
+		end
+	end
+	return nil
+end
+
+-- Top entries for "Sense" or "TimedWeek" (this week's 60s best): the saved
+-- global list with online players' live values merged in.
 function PlayerData.getTop(kind, count)
 	local byUser = {}
 	for _, entry in ipairs(topCache[kind] or {}) do

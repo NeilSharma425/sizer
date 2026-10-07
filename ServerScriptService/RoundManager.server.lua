@@ -14,6 +14,8 @@ local Players = game:GetService("Players")
 
 local ScaleData = require(ReplicatedStorage:WaitForChild("ScaleData"))
 local Difficulty = require(ReplicatedStorage:WaitForChild("Difficulty"))
+local Progress = require(ReplicatedStorage:WaitForChild("Progress"))
+local Ranks = require(ReplicatedStorage:WaitForChild("Ranks"))
 -- Saving is optional: if the module ever fails to load, run without it
 -- instead of taking the whole game down.
 local okPlayerData, PlayerData = pcall(function()
@@ -21,7 +23,22 @@ local okPlayerData, PlayerData = pcall(function()
 end)
 if not okPlayerData then
 	warn("[Sizer] PlayerData failed to load; running without saving:", PlayerData)
+	local profiles = {}
 	PlayerData = {
+		init = function(player)
+			profiles[player] = profiles[player] or Progress.newProfile()
+		end,
+		getProfile = function(player)
+			profiles[player] = profiles[player] or Progress.newProfile()
+			return profiles[player]
+		end,
+		markDirty = function() end,
+		available = function()
+			return false
+		end,
+		getLastWeekPlace = function()
+			return nil
+		end,
 		load = function(player)
 			player:SetAttribute("DataLoaded", true)
 			return false
@@ -83,6 +100,17 @@ local TimedEnd = Instance.new("RemoteEvent")
 TimedEnd.Name = "TimedEnd"
 TimedEnd.Parent = remotesFolder
 
+-- Server -> client progression messages: ProgressEvent(kind, payload) for
+-- login rewards, weekly rewards and "daily already done"; GetProgress
+-- returns the player's Sizedex, streak, daily and weekly state.
+local ProgressEvent = Instance.new("RemoteEvent")
+ProgressEvent.Name = "ProgressEvent"
+ProgressEvent.Parent = remotesFolder
+
+local GetProgress = Instance.new("RemoteFunction")
+GetProgress.Name = "GetProgress"
+GetProgress.Parent = remotesFolder
+
 -- Client -> server: the player finished or skipped the tutorial.
 local TutorialDone = Instance.new("RemoteEvent")
 TutorialDone.Name = "TutorialDone"
@@ -97,6 +125,28 @@ local playerHistory = {} -- [player] = { roundIndex, roundIndex, ... }
 local playerCurrentRound = {} -- [player] = roundIndex
 local timedSessions = {} -- [player] = { id, endsAt, score }
 local nextTimedId = 0
+local playerCurrentDaily = {} -- [player] = question number if the current round is a daily one
+local dailySessions = {} -- [player] = { day, rounds }
+local combos = {} -- [player] = consecutive good guesses
+local progressReady = {} -- [player] = true once the client asked for its progress
+local progressQueue = {} -- [player] = { {kind, payload}, ... } waiting for the client
+
+local objectIndex = Progress.buildIndex(ScaleData.Rounds)
+
+local function currentWeek()
+	return Progress.weekOf(Progress.dayOf(os.time()))
+end
+
+-- Messages are held until the client has started (it asks for its progress
+-- on startup); anything fired earlier would be lost.
+local function sendProgress(player, kind, payload)
+	if progressReady[player] then
+		ProgressEvent:FireClient(player, kind, payload)
+	else
+		progressQueue[player] = progressQueue[player] or {}
+		table.insert(progressQueue[player], { kind, payload })
+	end
+end
 
 -- Categories left out of "any category" rounds (MIXED, 60s challenge); they
 -- are still playable from their own station.
@@ -161,7 +211,63 @@ for _, round in ipairs(ScaleData.Rounds) do
 	validCategories[round.category] = true
 end
 
+local DAILY_CATEGORY = "__daily"
+
+local function roundPayload(round, daily)
+	return {
+		referenceName = round.referenceName,
+		referenceIcon = round.referenceIcon,
+		referenceHeight = round.referenceHeight,
+		targetName = round.targetName,
+		targetIcon = round.targetIcon,
+		category = round.category,
+		difficulty = round.difficulty,
+		daily = daily,
+	}
+end
+
+-- The shared daily challenge: the same questions for every player today,
+-- one scored run per day. Progress is saved after each answer, so quitting
+-- and returning resumes at the next question instead of allowing a retry.
+local function serveDaily(player)
+	local profile = PlayerData.getProfile(player)
+	local today = Progress.dayOf(os.time())
+	local state = Progress.dailyState(profile, today)
+	if state.done then
+		sendProgress(player, "dailyDone", { score = state.score })
+		return
+	end
+
+	local session = dailySessions[player]
+	if not session or session.day ~= today then
+		session = {
+			day = today,
+			rounds = Progress.dailyRounds(today, ScaleData.Rounds, function(round)
+				return isEligible(round, nil)
+			end),
+		}
+		dailySessions[player] = session
+	end
+
+	local question = state.answered + 1
+	local roundIndex = session.rounds[question]
+	if not roundIndex then
+		return
+	end
+	playerCurrentRound[player] = roundIndex
+	playerCurrentDaily[player] = question
+	RequestRound:FireClient(player, roundPayload(ScaleData.Rounds[roundIndex], {
+		index = question,
+		total = Progress.DAILY_COUNT,
+		score = state.score,
+	}))
+end
+
 local function onRequestRound(player, categoryFilter)
+	if categoryFilter == DAILY_CATEGORY then
+		serveDaily(player)
+		return
+	end
 	if type(categoryFilter) ~= "string" or not validCategories[categoryFilter] then
 		categoryFilter = nil
 	end
@@ -169,20 +275,10 @@ local function onRequestRound(player, categoryFilter)
 	local round = ScaleData.Rounds[roundIndex]
 
 	playerCurrentRound[player] = roundIndex
+	playerCurrentDaily[player] = nil
 	recordHistory(player, roundIndex)
 
-	RequestRound:FireClient(
-		player,
-		{
-			referenceName = round.referenceName,
-			referenceIcon = round.referenceIcon,
-			referenceHeight = round.referenceHeight,
-			targetName = round.targetName,
-			targetIcon = round.targetIcon,
-			category = round.category,
-			difficulty = round.difficulty,
-		}
-	)
+	RequestRound:FireClient(player, roundPayload(round, nil))
 end
 
 local function addSense(player, amount)
@@ -207,9 +303,31 @@ local function onSubmitGuess(player, guessedTargetHeight)
 	local score = math.clamp(100 - logError * SCORE_SCALE, 0, 100)
 	score = math.floor(score + 0.5)
 
-	local senseEarned = math.floor(score / 10)
+	local senseBase = math.floor(score / 10)
 
+	-- Combo: back-to-back good guesses earn bonus Sense.
+	local combo, comboBonus = Progress.combo(combos[player] or 0, score)
+	combos[player] = combo
+
+	-- Sizedex: discoveries, mastery stars and category completions.
+	local profile = PlayerData.getProfile(player)
+	local dex = Progress.recordResult(profile, objectIndex, round.referenceName, round.targetName, score)
+
+	local senseEarned = senseBase + comboBonus + dex.sense
 	addSense(player, senseEarned)
+
+	-- Daily challenge: tally this answer and pay out when all are done.
+	local dailyInfo = nil
+	local dailyQuestion = playerCurrentDaily[player]
+	if dailyQuestion then
+		local state = Progress.recordDaily(profile, Progress.dayOf(os.time()), score)
+		dailyInfo = { index = dailyQuestion, total = Progress.DAILY_COUNT, score = state.score, done = state.done }
+		if state.done then
+			dailyInfo.reward = Progress.dailyReward(state.score)
+			addSense(player, dailyInfo.reward)
+		end
+	end
+	PlayerData.markDirty(player)
 
 	local timed = timedSessions[player]
 	local timedScore = nil
@@ -223,6 +341,11 @@ local function onSubmitGuess(player, guessedTargetHeight)
 		guessedTargetHeight = guessedTargetHeight,
 		score = score,
 		senseEarned = senseEarned,
+		senseBase = senseBase,
+		comboBonus = comboBonus,
+		combo = combo,
+		dex = dex,
+		daily = dailyInfo,
 		timedScore = timedScore,
 		fact = round.fact,
 		referenceName = round.referenceName,
@@ -230,6 +353,7 @@ local function onSubmitGuess(player, guessedTargetHeight)
 	})
 
 	playerCurrentRound[player] = nil
+	playerCurrentDaily[player] = nil
 end
 
 RequestRound.OnServerEvent:Connect(onRequestRound)
@@ -242,10 +366,21 @@ local function finishTimed(player, session)
 	if isNewBest then
 		player:SetAttribute("TimedBest", session.score)
 	end
+
+	-- The records board is weekly.
+	local profile = PlayerData.getProfile(player)
+	local isWeekBest = Progress.recordWeekly(profile, currentWeek(), session.score)
+	if isWeekBest then
+		player:SetAttribute("TimedWeek", session.score)
+	end
+	PlayerData.markDirty(player)
+
 	TimedEnd:FireClient(player, {
 		score = session.score,
 		best = math.max(previousBest, session.score),
 		isNewBest = isNewBest,
+		weekBest = Progress.weeklyBest(profile, currentWeek()),
+		isWeekBest = isWeekBest,
 	})
 end
 
@@ -266,7 +401,7 @@ TimedStop.OnServerEvent:Connect(function(player)
 	timedSessions[player] = nil
 end)
 
--- Floating tag over the player's head showing their Sense.
+-- Floating tag over the player's head: their rank and Sense.
 local function attachSenseTag(player, character)
 	local head = character:WaitForChild("Head", 10)
 	if not head then
@@ -276,8 +411,8 @@ local function attachSenseTag(player, character)
 	local tag = Instance.new("BillboardGui")
 	tag.Name = "SenseTag"
 	tag.Adornee = head
-	tag.Size = UDim2.new(0, 150, 0, 34)
-	tag.StudsOffsetWorldSpace = Vector3.new(0, 2.6, 0)
+	tag.Size = UDim2.new(0, 170, 0, 56)
+	tag.StudsOffsetWorldSpace = Vector3.new(0, 2.8, 0)
 	tag.MaxDistance = 80
 	tag.LightInfluence = 0
 	tag.Parent = head
@@ -288,27 +423,34 @@ local function attachSenseTag(player, character)
 	pill.BackgroundTransparency = 0.15
 	pill.Parent = tag
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(1, 0)
+	corner.CornerRadius = UDim.new(0, 16)
 	corner.Parent = pill
 	local stroke = Instance.new("UIStroke")
 	stroke.Color = Color3.fromRGB(255, 195, 40)
 	stroke.Thickness = 2.5
 	stroke.Parent = pill
 
-	local text = Instance.new("TextLabel")
-	text.Size = UDim2.fromScale(1, 1)
-	text.BackgroundTransparency = 1
-	text.Font = Enum.Font.GothamBlack
-	text.TextScaled = true
-	text.TextColor3 = Color3.fromRGB(255, 255, 255)
-	text.Parent = pill
-	local padding = Instance.new("UIPadding")
-	padding.PaddingTop = UDim.new(0, 5)
-	padding.PaddingBottom = UDim.new(0, 5)
-	padding.Parent = text
+	local function line(position, height, font)
+		local text = Instance.new("TextLabel")
+		text.Position = UDim2.fromScale(0.04, position)
+		text.Size = UDim2.fromScale(0.92, height)
+		text.BackgroundTransparency = 1
+		text.Font = font
+		text.TextScaled = true
+		text.TextColor3 = Color3.fromRGB(255, 255, 255)
+		text.Parent = pill
+		return text
+	end
+	local rankText = line(0.06, 0.42, Enum.Font.GothamBold)
+	local senseText = line(0.5, 0.44, Enum.Font.GothamBlack)
 
 	local function refresh()
-		text.Text = string.format("📏 %d SENSE", player:GetAttribute("Sense") or 0)
+		local sense = player:GetAttribute("Sense") or 0
+		local info = Ranks.forSense(sense)
+		rankText.Text = info.rank.icon .. " " .. string.upper(info.rank.name)
+		rankText.TextColor3 = info.rank.color
+		stroke.Color = info.rank.color
+		senseText.Text = string.format("📏 %d SENSE", sense)
 	end
 	refresh()
 	player:GetAttributeChangedSignal("Sense"):Connect(function()
@@ -318,11 +460,89 @@ local function attachSenseTag(player, character)
 	end)
 end
 
+--==========================================================================
+-- Progress snapshot, login streak and weekly rewards
+--==========================================================================
+
+local function buildSnapshot(player)
+	local profile = PlayerData.getProfile(player)
+	local now = os.time()
+	local today = Progress.dayOf(now)
+	local daily = Progress.dailyState(profile, today)
+	return {
+		dex = profile.dex,
+		cats = profile.cats,
+		streak = { count = profile.streak.count, best = profile.streak.best, lastDay = profile.streak.lastDay },
+		daily = {
+			done = daily.done,
+			answered = daily.answered,
+			score = daily.score,
+			total = Progress.DAILY_COUNT,
+			secondsLeft = Progress.secondsUntilNextDay(now),
+		},
+		weekly = { best = Progress.weeklyBest(profile, currentWeek()), secondsLeft = Progress.secondsUntilNextWeek(now) },
+		today = today,
+		serverTime = now,
+	}
+end
+
+-- The client asks for this once on startup (which also releases any
+-- messages queued for it) and again whenever it opens the Sizedex.
+GetProgress.OnServerInvoke = function(player)
+	local snapshot = buildSnapshot(player)
+	if not progressReady[player] then
+		progressReady[player] = true
+		task.delay(0.6, function()
+			local queue = progressQueue[player]
+			progressQueue[player] = nil
+			for _, message in ipairs(queue or {}) do
+				ProgressEvent:FireClient(player, message[1], message[2])
+			end
+		end)
+	end
+	return snapshot
+end
+
+-- Runs once the player's saved data is in: counts today's login for the
+-- streak and pays out last week's records podium.
+local function onDataLoaded(player)
+	local profile = PlayerData.getProfile(player)
+	local today = Progress.dayOf(os.time())
+	local week = currentWeek()
+
+	local streak = Progress.updateStreak(profile, today)
+	if streak.isNew then
+		addSense(player, streak.reward)
+		PlayerData.markDirty(player)
+		sendProgress(player, "login", streak)
+	end
+
+	if profile.weekly.rewardWeek < week then
+		local place = PlayerData.getLastWeekPlace(player)
+		profile.weekly.rewardWeek = week
+		PlayerData.markDirty(player)
+		if place and Progress.WEEKLY_SENSE[place] then
+			local reward = Progress.WEEKLY_SENSE[place]
+			addSense(player, reward)
+			sendProgress(player, "weekly", { place = place, reward = reward })
+		end
+	end
+	player:SetAttribute("TimedWeek", Progress.weeklyBest(profile, week))
+end
+
 local function onPlayerAdded(player)
 	-- Start at 0 so the tag shows immediately; the saved totals are added
 	-- on top as soon as they load.
 	player:SetAttribute("Sense", 0)
-	task.spawn(PlayerData.load, player)
+	PlayerData.init(player)
+	task.spawn(function()
+		local loaded = PlayerData.load(player)
+		-- If saving exists but loading failed, don't hand out streak or
+		-- weekly rewards against an empty profile that can't be saved.
+		if loaded or not PlayerData.available() then
+			onDataLoaded(player)
+		end
+	end)
 
 	player.CharacterAdded:Connect(function(character)
 		attachSenseTag(player, character)
@@ -350,6 +570,11 @@ end
 local function onPlayerRemoving(player)
 	playerHistory[player] = nil
 	playerCurrentRound[player] = nil
+	playerCurrentDaily[player] = nil
+	dailySessions[player] = nil
+	combos[player] = nil
+	progressReady[player] = nil
+	progressQueue[player] = nil
 	timedSessions[player] = nil
 	task.spawn(PlayerData.release, player)
 end

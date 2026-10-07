@@ -18,6 +18,12 @@
       },
       "RoundGenerator": {
         "$path": "ReplicatedStorage/RoundGenerator.lua"
+      },
+      "Progress": {
+        "$path": "ReplicatedStorage/Progress.lua"
+      },
+      "Ranks": {
+        "$path": "ReplicatedStorage/Ranks.lua"
       }
     },
     "ServerScriptService": {
