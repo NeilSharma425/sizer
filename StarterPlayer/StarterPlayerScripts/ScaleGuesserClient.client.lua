@@ -18,6 +18,12 @@ local Lighting = game:GetService("Lighting")
 
 local player = Players.LocalPlayer
 
+-- The top-right Roblox player list duplicates our counters and the lobby
+-- leaderboard, and covers the counters, so hide it.
+pcall(function()
+	game:GetService("StarterGui"):SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
+end)
+
 local remotesFolder = ReplicatedStorage:WaitForChild("ScaleGameRemotes")
 local RequestRound = remotesFolder:WaitForChild("RequestRound")
 local SubmitGuess = remotesFolder:WaitForChild("SubmitGuess")
@@ -163,46 +169,53 @@ local function updateHudScale()
 	end
 end
 
-local function counterPill(position, color, icon, iconColor)
-	local pill = frame(hud, {
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = position,
-		Size = UDim2.new(0, 230, 0, 52),
+-- Compact labeled counters stacked in the top-right corner, e.g.
+-- [🪙 COINS 120]. Scale about their top-right anchor on small screens.
+local function counter(order, title, icon, color)
+	local card = frame(hud, {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -14, 0, 12 + (order - 1) * 54),
+		Size = UDim2.new(0, 190, 0, 46),
+		BackgroundColor3 = Color3.fromRGB(30, 32, 48),
+		BackgroundTransparency = 0.15,
+	})
+	corner(card, UDim.new(0, 12))
+	stroke(card, 2.5, color:Lerp(INK, 0.3))
+
+	local badge = frame(card, {
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, 6, 0.5, 0),
+		Size = UDim2.new(0, 36, 0, 36),
 		BackgroundColor3 = color,
 	})
-	corner(pill, UDim.new(1, 0))
-	stroke(pill, 3.5)
-	gloss(pill, color)
-
-	local badge = frame(pill, {
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(0, 8, 0.5, 0),
-		Size = UDim2.new(0, 66, 0, 66),
-		BackgroundColor3 = iconColor,
-		ZIndex = 2,
-	})
 	corner(badge, UDim.new(1, 0))
-	stroke(badge, 3.5)
-	gloss(badge, iconColor)
+	gloss(badge, color)
 	label(badge, {
-		Size = UDim2.fromScale(0.7, 0.7),
-		Position = UDim2.fromScale(0.15, 0.15),
+		Size = UDim2.fromScale(0.72, 0.72),
+		Position = UDim2.fromScale(0.14, 0.14),
 		Text = icon,
-		ZIndex = 3,
 	})
 
-	local value = label(pill, {
-		Size = UDim2.new(1, -60, 0.8, 0),
-		Position = UDim2.new(0, 44, 0.1, 0),
+	label(card, {
+		Size = UDim2.new(0, 70, 0, 16),
+		Position = UDim2.new(0, 50, 0, 5),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextColor3 = color:Lerp(WHITE, 0.35),
+		Text = title,
+	})
+	local value = label(card, {
+		Size = UDim2.new(1, -60, 0, 22),
+		Position = UDim2.new(0, 50, 0, 20),
+		TextXAlignment = Enum.TextXAlignment.Left,
 		Text = "0",
 	})
-	textStroke(value, 3)
-	responsive(pill)
-	return pill, value
+	textStroke(value, 2)
+	responsive(card)
+	return value
 end
 
-local _, coinsText = counterPill(UDim2.new(0.5, -135, 0, 14), GREEN, "⭐", Color3.fromRGB(255, 200, 40))
-local _, trophyText = counterPill(UDim2.new(0.5, 135, 0, 14), ORANGE, "🏆", Color3.fromRGB(255, 120, 40))
+local coinsText = counter(1, "COINS", "🪙", Color3.fromRGB(255, 195, 40))
+local trophyText = counter(2, "SCORE", "🏆", Color3.fromRGB(255, 130, 50))
 
 -- Playtime reward card (bottom-left).
 local rewardCard = frame(hud, {
