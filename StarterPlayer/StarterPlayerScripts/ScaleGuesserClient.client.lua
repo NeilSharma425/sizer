@@ -28,6 +28,9 @@ local remotesFolder = ReplicatedStorage:WaitForChild("ScaleGameRemotes")
 local RequestRound = remotesFolder:WaitForChild("RequestRound")
 local SubmitGuess = remotesFolder:WaitForChild("SubmitGuess")
 local RoundResult = remotesFolder:WaitForChild("RoundResult")
+local TimedStart = remotesFolder:WaitForChild("TimedStart")
+local TimedStop = remotesFolder:WaitForChild("TimedStop")
+local TimedEnd = remotesFolder:WaitForChild("TimedEnd")
 
 local ObjectModels = require(ReplicatedStorage:WaitForChild("ObjectModels"))
 
@@ -39,6 +42,9 @@ local LOG_MIN = math.log(MIN_RATIO)
 local LOG_MAX = math.log(MAX_RATIO)
 
 local RESULT_DELAY_SECONDS = 4
+-- Rounds move faster in the 60-second challenge.
+local TIMED_RESULT_DELAY_SECONDS = 1.3
+local GOLD = Color3.fromRGB(255, 185, 30)
 
 local FONT = Enum.Font.FredokaOne
 local INK = Color3.fromRGB(25, 20, 35)
@@ -264,14 +270,54 @@ local rewardBarFill = frame(rewardBarBack, {
 })
 corner(rewardBarFill, UDim.new(1, 0))
 
+local challengeButton = button(hud, "⏱️ 60s CHALLENGE", GOLD, {
+	AnchorPoint = Vector2.new(1, 1),
+	Position = UDim2.new(0.5, -8, 1, -20),
+	Size = UDim2.new(0, 300, 0, 68),
+})
+
 local quickPlayButton = button(hud, "QUICK PLAY", GREEN, {
-	AnchorPoint = Vector2.new(0.5, 1),
-	Position = UDim2.new(0.5, 0, 1, -20),
-	Size = UDim2.new(0, 260, 0, 64),
+	AnchorPoint = Vector2.new(0, 1),
+	Position = UDim2.new(0.5, 8, 1, -24),
+	Size = UDim2.new(0, 220, 0, 60),
 })
 
 responsive(rewardCard)
+responsive(challengeButton)
 responsive(quickPlayButton)
+
+local function setLobbyHudVisible(visible)
+	challengeButton.Visible = visible
+	quickPlayButton.Visible = visible
+	rewardCard.Visible = visible
+end
+
+-- Challenge timer (top center, only during the 60-second challenge).
+local timerCard = frame(hud, {
+	AnchorPoint = Vector2.new(0.5, 0),
+	Position = UDim2.new(0.5, 0, 0, 10),
+	Size = UDim2.new(0, 260, 0, 84),
+	BackgroundColor3 = Color3.fromRGB(30, 32, 48),
+	BackgroundTransparency = 0.1,
+	Visible = false,
+})
+corner(timerCard, UDim.new(0, 16))
+stroke(timerCard, 3, GOLD)
+local timerText = label(timerCard, {
+	Size = UDim2.new(1, -20, 0, 50),
+	Position = UDim2.new(0, 10, 0, 4),
+	Text = "⏱️ 1:00",
+	TextColor3 = WHITE,
+})
+textStroke(timerText, 3)
+local timedScoreText = label(timerCard, {
+	Size = UDim2.new(1, -20, 0, 24),
+	Position = UDim2.new(0, 10, 0, 54),
+	Text = "CHALLENGE SCORE: 0",
+	TextColor3 = GOLD,
+})
+textStroke(timedScoreText, 2)
+responsive(timerCard)
 
 -- Floating score popup.
 local popup = label(hud, {
@@ -318,14 +364,14 @@ local categoryText = label(categoryTag, {
 })
 textStroke(categoryText)
 
-local leaveButton = button(panel, "X", RED, {
+local leaveButton = button(panel, "STOP", RED, {
 	AnchorPoint = Vector2.new(1, 0),
-	Position = UDim2.new(1, -12, 0, 12),
-	Size = UDim2.new(0, 44, 0, 44),
+	Position = UDim2.new(1, -14, 0, 16),
+	Size = UDim2.new(0, 100, 0, 44),
 })
 
 local questionText = label(panel, {
-	Size = UDim2.new(1, -90, 0, 52),
+	Size = UDim2.new(1, -150, 0, 52),
 	Position = UDim2.new(0, 22, 0, 28),
 	TextXAlignment = Enum.TextXAlignment.Left,
 	TextWrapped = true,
@@ -383,6 +429,54 @@ local resultText = label(panel, {
 })
 
 responsive(panel)
+
+-- End-of-challenge card.
+local endCard = frame(hud, {
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.fromScale(0.5, 0.5),
+	Size = UDim2.new(0, 420, 0, 300),
+	BackgroundColor3 = Color3.fromRGB(40, 45, 75),
+	Visible = false,
+	ZIndex = 5,
+})
+corner(endCard, UDim.new(0, 22))
+stroke(endCard, 4, GOLD)
+gloss(endCard, Color3.fromRGB(40, 45, 75))
+textStroke(label(endCard, {
+	Size = UDim2.new(1, -40, 0, 64),
+	Position = UDim2.new(0, 20, 0, 16),
+	Text = "TIME'S UP!",
+	TextColor3 = GOLD,
+	ZIndex = 6,
+}), 4)
+local endScoreText = label(endCard, {
+	Size = UDim2.new(1, -40, 0, 50),
+	Position = UDim2.new(0, 20, 0, 86),
+	Text = "SCORE: 0",
+	ZIndex = 6,
+})
+textStroke(endScoreText, 3)
+local endBestText = label(endCard, {
+	Size = UDim2.new(1, -40, 0, 32),
+	Position = UDim2.new(0, 20, 0, 140),
+	Text = "BEST: 0",
+	TextColor3 = Color3.fromRGB(200, 210, 235),
+	ZIndex = 6,
+})
+textStroke(endBestText, 2)
+local playAgainButton = button(endCard, "PLAY AGAIN", GREEN, {
+	AnchorPoint = Vector2.new(1, 1),
+	Position = UDim2.new(0.5, -8, 1, -22),
+	Size = UDim2.new(0, 180, 0, 58),
+	ZIndex = 6,
+})
+local endStopButton = button(endCard, "STOP", RED, {
+	AnchorPoint = Vector2.new(0, 1),
+	Position = UDim2.new(0.5, 8, 1, -22),
+	Size = UDim2.new(0, 150, 0, 58),
+	ZIndex = 6,
+})
+responsive(endCard)
 updateHudScale()
 workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(updateHudScale)
 if workspace.CurrentCamera then
@@ -704,6 +798,9 @@ local currentRatio = 1
 local isDragging = false
 local guessLocked = false
 local transitioning = false
+local sessionMode = "normal" -- "normal" or "timed"
+local timedEndsAt = nil -- server clock time the challenge ends
+local timedEnded = false
 
 local function withCommas(n)
 	local s = tostring(math.floor(n + 0.5))
@@ -815,17 +912,35 @@ local function stopSession()
 		return
 	end
 	transitioning = true
+	if sessionMode == "timed" and not timedEnded then
+		TimedStop:FireServer()
+	end
 	activeStation = nil
+	sessionMode = "normal"
+	timedEndsAt = nil
 	sessionId += 1
 	currentRound = nil
 	isDragging = false
 	fadeThrough(function()
 		exitViewer()
 		panel.Visible = false
-		quickPlayButton.Visible = true
-		rewardCard.Visible = true
+		timerCard.Visible = false
+		endCard.Visible = false
+		setLobbyHudVisible(true)
 	end)
 	transitioning = false
+end
+
+-- Start (or restart) a 60-second run; the server replies with the end time.
+local function beginTimedRun()
+	timedEnded = false
+	timedEndsAt = nil
+	timedScoreText.Text = "CHALLENGE SCORE: 0"
+	timerText.Text = "⏱️ 1:00"
+	timerCard.Visible = true
+	endCard.Visible = false
+	panel.Visible = true
+	TimedStart:FireServer()
 end
 
 local function startSession(station)
@@ -833,9 +948,15 @@ local function startSession(station)
 		return
 	end
 	transitioning = true
+	if sessionMode == "timed" and not timedEnded then
+		TimedStop:FireServer()
+	end
 	activeStation = station
+	sessionMode = station:GetAttribute("Mode") == "timed" and "timed" or "normal"
+	timedEnded = false
+	timedEndsAt = nil
 	sessionId += 1
-	print("[Sizer] Starting game at", station.Name, station:GetAttribute("DisplayName"))
+	print("[Sizer] Starting game at", station.Name, station:GetAttribute("DisplayName"), sessionMode)
 
 	local color = station:GetAttribute("Color") or ORANGE
 	categoryTag.BackgroundColor3 = color
@@ -865,21 +986,77 @@ local function startSession(station)
 			tostring(target.model and target.model:GetExtentsSize())
 		))
 		panel.Visible = true
-		quickPlayButton.Visible = false
-		rewardCard.Visible = false
+		timerCard.Visible = false
+		endCard.Visible = false
+		setLobbyHudVisible(false)
 	end)
 	transitioning = false
 	if not ok then
 		warn("[Sizer] Could not start the game:", err)
 		activeStation = nil
+		sessionMode = "normal"
 		exitViewer()
 		panel.Visible = false
-		quickPlayButton.Visible = true
-		rewardCard.Visible = true
+		setLobbyHudVisible(true)
 		return
+	end
+	if sessionMode == "timed" then
+		beginTimedRun()
 	end
 	requestRound()
 end
+
+TimedStart.OnClientEvent:Connect(function(endsAt)
+	if activeStation and sessionMode == "timed" then
+		timedEndsAt = endsAt
+	end
+end)
+
+TimedEnd.OnClientEvent:Connect(function(data)
+	if not activeStation or sessionMode ~= "timed" then
+		return
+	end
+	timedEnded = true
+	sessionId += 1 -- cancel any pending next round
+	currentRound = nil
+	isDragging = false
+	panel.Visible = false
+	timerCard.Visible = false
+	endScoreText.Text = "SCORE: " .. data.score
+	endBestText.Text = data.isNewBest and ("NEW BEST! " .. data.best) or ("BEST: " .. data.best)
+	endBestText.TextColor3 = data.isNewBest and Color3.fromRGB(120, 255, 120) or Color3.fromRGB(200, 210, 235)
+	endCard.Visible = true
+	bump(endCard)
+end)
+
+playAgainButton.MouseButton1Click:Connect(function()
+	if activeStation and sessionMode == "timed" then
+		sessionId += 1
+		beginTimedRun()
+		requestRound()
+	end
+end)
+
+endStopButton.MouseButton1Click:Connect(function()
+	stopSession()
+end)
+
+-- Countdown display; once time is up, no more guesses until the result.
+RunService.Heartbeat:Connect(function()
+	if sessionMode ~= "timed" or not timedEndsAt or timedEnded then
+		return
+	end
+	local remaining = math.max(0, timedEndsAt - workspace:GetServerTimeNow())
+	local whole = math.ceil(remaining)
+	timerText.Text = string.format("⏱️ %d:%02d", math.floor(whole / 60), whole % 60)
+	timerText.TextColor3 = remaining <= 10 and Color3.fromRGB(255, 110, 110) or WHITE
+	if remaining <= 0 and not guessLocked then
+		guessLocked = true
+		isDragging = false
+		setLockEnabled(false)
+		questionText.Text = "Time's up!"
+	end
+end)
 
 RequestRound.OnClientEvent:Connect(function(roundInfo)
 	if not activeStation then
@@ -900,7 +1077,12 @@ RequestRound.OnClientEvent:Connect(function(roundInfo)
 	end
 	print("[Sizer] Round loaded:", roundInfo.referenceName, "vs", roundInfo.targetName)
 	currentRound = roundInfo
-	setLockEnabled(true)
+	local timeUp = sessionMode == "timed" and timedEndsAt and workspace:GetServerTimeNow() >= timedEndsAt
+	if timeUp then
+		guessLocked = true
+	else
+		setLockEnabled(true)
+	end
 end)
 
 lockInButton.MouseButton1Click:Connect(function()
@@ -952,10 +1134,16 @@ RoundResult.OnClientEvent:Connect(function(result)
 		result.fact
 	)
 	showPopup(result.score)
+	if result.timedScore then
+		timedScoreText.Text = "CHALLENGE SCORE: " .. result.timedScore
+		bump(timedScoreText)
+	end
 
 	local mySession = sessionId
-	task.delay(RESULT_DELAY_SECONDS, function()
-		if sessionId == mySession and activeStation then
+	local delaySeconds = sessionMode == "timed" and TIMED_RESULT_DELAY_SECONDS or RESULT_DELAY_SECONDS
+	task.delay(delaySeconds, function()
+		local timeLeft = not timedEndsAt or workspace:GetServerTimeNow() < timedEndsAt
+		if sessionId == mySession and activeStation and (sessionMode ~= "timed" or timeLeft) then
 			requestRound()
 		end
 	end)
@@ -983,9 +1171,23 @@ end
 stationsFolder.ChildAdded:Connect(hookStation)
 
 quickPlayButton.MouseButton1Click:Connect(function()
-	local stations = stationsFolder:GetChildren()
+	local stations = {}
+	for _, station in ipairs(stationsFolder:GetChildren()) do
+		if station:GetAttribute("Mode") ~= "timed" then
+			table.insert(stations, station)
+		end
+	end
 	if #stations > 0 then
 		startSession(stations[math.random(1, #stations)])
+	end
+end)
+
+challengeButton.MouseButton1Click:Connect(function()
+	for _, station in ipairs(stationsFolder:GetChildren()) do
+		if station:GetAttribute("Mode") == "timed" then
+			startSession(station)
+			return
+		end
 	end
 end)
 

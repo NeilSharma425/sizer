@@ -658,7 +658,7 @@ local STATIONS = {
 	{ category = "Landmarks", label = "LANDMARKS", icon = "🗽", color = Color3.fromRGB(60, 150, 255), pos = Vector3.new(15, 0, 32) },
 	{ category = "Everyday Objects", label = "EVERYDAY", icon = "☕", color = Color3.fromRGB(255, 85, 155), pos = Vector3.new(-15, 0, 2) },
 	{ category = "Space", label = "SPACE", icon = "🪐", color = Color3.fromRGB(150, 95, 255), pos = Vector3.new(15, 0, 2) },
-	{ category = "", label = "MIXED", icon = "🎲", color = Color3.fromRGB(255, 200, 40), pos = Vector3.new(-15, 0, -28) },
+	{ category = "", label = "60s CHALLENGE", icon = "⏱️", color = Color3.fromRGB(255, 200, 40), pos = Vector3.new(-15, 0, -28), mode = "timed", subtitle = "BEAT THE CLOCK" },
 	{ category = "", label = "MIXED", icon = "🎲", color = Color3.fromRGB(30, 200, 200), pos = Vector3.new(15, 0, -28) },
 }
 
@@ -667,6 +667,7 @@ local function buildStation(def, index, parent)
 	station:SetAttribute("Category", def.category)
 	station:SetAttribute("DisplayName", def.label)
 	station:SetAttribute("Color", def.color)
+	station:SetAttribute("Mode", def.mode or "normal")
 
 	local center = def.pos
 	-- Station faces the main path (x = 0).
@@ -781,7 +782,7 @@ local function buildStation(def, index, parent)
 	local sub = textLabel(billboard, {
 		Size = UDim2.fromScale(1, 0.32),
 		Position = UDim2.fromScale(0, 0.66),
-		Text = "SOLO",
+		Text = def.subtitle or "SOLO",
 	})
 	stroke(sub, 3)
 
@@ -821,7 +822,17 @@ local function darkBoard(name, position, facingTarget, size, parent)
 	})
 end
 
-local function refreshLeaderboard(list)
+local function totalScore(plr)
+	local stats = plr:FindFirstChild("leaderstats")
+	local score = stats and stats:FindFirstChild("Score")
+	return score and score.Value or 0
+end
+
+local function timedBest(plr)
+	return plr:GetAttribute("TimedBest") or 0
+end
+
+local function refreshLeaderboard(list, getValue)
 	for _, child in ipairs(list:GetChildren()) do
 		if child:IsA("TextLabel") then
 			child:Destroy()
@@ -829,9 +840,7 @@ local function refreshLeaderboard(list)
 	end
 	local entries = {}
 	for _, plr in ipairs(Players:GetPlayers()) do
-		local stats = plr:FindFirstChild("leaderstats")
-		local score = stats and stats:FindFirstChild("Score")
-		table.insert(entries, { name = plr.DisplayName, score = score and score.Value or 0 })
+		table.insert(entries, { name = plr.DisplayName, score = getValue(plr) })
 	end
 	table.sort(entries, function(a, b)
 		return a.score > b.score
@@ -870,29 +879,41 @@ local function buildBoards()
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Padding = UDim.new(0.008, 0)
 	layout.Parent = list
-	refreshLeaderboard(list)
-	task.spawn(function()
-		while true do
-			task.wait(3)
-			refreshLeaderboard(list)
-		end
-	end)
+	refreshLeaderboard(list, totalScore)
 
 	local howTo = darkBoard("HowTo", Vector3.new(-19, TILE_TOP, 71), lookTarget, Vector3.new(13, 9, 0.2), boards)
 	stroke(textLabel(surfaceGui(howTo, 40), {
 		Size = UDim2.fromScale(0.9, 0.9),
 		Position = UDim2.fromScale(0.05, 0.05),
-		Text = "HOW TO PLAY\n\nWalk up to a station & press E.\nDrag the slider to guess the size.\nLock in to score up to 100!",
+		Text = "HOW TO PLAY\n\nWalk up to a station & press E.\nDrag the slider to guess the size.\nLock in to score up to 100!\nTry the 60s CHALLENGE by spawn!",
 		TextColor3 = Color3.fromRGB(120, 220, 255),
 	}), 2)
 
-	local tips = darkBoard("Tips", Vector3.new(19, TILE_TOP, 71), lookTarget, Vector3.new(13, 9, 0.2), boards)
-	stroke(textLabel(surfaceGui(tips, 40), {
-		Size = UDim2.fromScale(0.9, 0.9),
-		Position = UDim2.fromScale(0.05, 0.05),
-		Text = "TIPS\n\nThe white lines behind the objects mark 1x, 2x, 3x... the reference.\nEarn coins for every guess!",
-		TextColor3 = Color3.fromRGB(255, 170, 90),
-	}), 2)
+	local records = darkBoard("TimedRecords", Vector3.new(19, TILE_TOP, 71), lookTarget, Vector3.new(13, 9, 0.2), boards)
+	local recordsGui = surfaceGui(records, 40)
+	stroke(textLabel(recordsGui, {
+		Size = UDim2.fromScale(1, 0.18),
+		Text = "⏱️ 60s RECORDS",
+		TextColor3 = Color3.fromRGB(255, 200, 40),
+	}), 3)
+	local recordsList = Instance.new("Frame")
+	recordsList.Size = UDim2.fromScale(0.86, 0.76)
+	recordsList.Position = UDim2.fromScale(0.07, 0.21)
+	recordsList.BackgroundTransparency = 1
+	recordsList.Parent = recordsGui
+	local recordsLayout = Instance.new("UIListLayout")
+	recordsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	recordsLayout.Padding = UDim.new(0.008, 0)
+	recordsLayout.Parent = recordsList
+	refreshLeaderboard(recordsList, timedBest)
+
+	task.spawn(function()
+		while true do
+			task.wait(3)
+			refreshLeaderboard(list, totalScore)
+			refreshLeaderboard(recordsList, timedBest)
+		end
+	end)
 end
 
 --==========================================================================

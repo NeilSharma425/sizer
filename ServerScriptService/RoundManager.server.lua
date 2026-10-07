@@ -22,6 +22,11 @@ local SCORE_SCALE = 140
 local PLAYTIME_REWARD_INTERVAL = 120
 local PLAYTIME_REWARD_COINS = 25
 
+-- 60-second challenge. Guesses submitted up to this long after the buzzer
+-- still count, to absorb network latency.
+local TIMED_DURATION = 60
+local TIMED_GRACE = 1
+
 local remotesFolder = Instance.new("Folder")
 remotesFolder.Name = "ScaleGameRemotes"
 remotesFolder.Parent = ReplicatedStorage
@@ -38,10 +43,26 @@ local RoundResult = Instance.new("RemoteEvent")
 RoundResult.Name = "RoundResult"
 RoundResult.Parent = remotesFolder
 
+-- Client -> server to begin a challenge; server replies on the same event
+-- with the server-clock end time.
+local TimedStart = Instance.new("RemoteEvent")
+TimedStart.Name = "TimedStart"
+TimedStart.Parent = remotesFolder
+
+local TimedStop = Instance.new("RemoteEvent")
+TimedStop.Name = "TimedStop"
+TimedStop.Parent = remotesFolder
+
+local TimedEnd = Instance.new("RemoteEvent")
+TimedEnd.Name = "TimedEnd"
+TimedEnd.Parent = remotesFolder
+
 -- Per-player state: recent round indices (for repeat avoidance) and the
 -- currently active round (so SubmitGuess can look up the true height).
 local playerHistory = {} -- [player] = { roundIndex, roundIndex, ... }
 local playerCurrentRound = {} -- [player] = roundIndex
+local timedSessions = {} -- [player] = { id, endsAt, score }
+local nextTimedId = 0
 
 -- Optional hook point for a future category filter: pass a categoryFilter
 -- string (or nil for "any category") and only matching rounds are eligible.
@@ -148,11 +169,19 @@ local function onSubmitGuess(player, guessedTargetHeight)
 		coinsValue.Value += coinsEarned
 	end
 
+	local timed = timedSessions[player]
+	local timedScore = nil
+	if timed and workspace:GetServerTimeNow() <= timed.endsAt + TIMED_GRACE then
+		timed.score += score
+		timedScore = timed.score
+	end
+
 	RoundResult:FireClient(player, {
 		trueTargetHeight = round.targetHeight,
 		guessedTargetHeight = guessedTargetHeight,
 		score = score,
 		coinsEarned = coinsEarned,
+		timedScore = timedScore,
 		fact = round.fact,
 		referenceName = round.referenceName,
 		targetName = round.targetName,
@@ -163,6 +192,37 @@ end
 
 RequestRound.OnServerEvent:Connect(onRequestRound)
 SubmitGuess.OnServerEvent:Connect(onSubmitGuess)
+
+local function finishTimed(player, session)
+	timedSessions[player] = nil
+	local previousBest = player:GetAttribute("TimedBest") or 0
+	local isNewBest = session.score > previousBest
+	if isNewBest then
+		player:SetAttribute("TimedBest", session.score)
+	end
+	TimedEnd:FireClient(player, {
+		score = session.score,
+		best = math.max(previousBest, session.score),
+		isNewBest = isNewBest,
+	})
+end
+
+TimedStart.OnServerEvent:Connect(function(player)
+	nextTimedId += 1
+	local session = { id = nextTimedId, endsAt = workspace:GetServerTimeNow() + TIMED_DURATION, score = 0 }
+	timedSessions[player] = session
+	TimedStart:FireClient(player, session.endsAt, TIMED_DURATION)
+	task.delay(TIMED_DURATION + TIMED_GRACE, function()
+		if timedSessions[player] == session then
+			finishTimed(player, session)
+		end
+	end)
+end)
+
+-- Stopping early abandons the run without recording a best.
+TimedStop.OnServerEvent:Connect(function(player)
+	timedSessions[player] = nil
+end)
 
 local function onPlayerAdded(player)
 	local leaderstats = Instance.new("Folder")
@@ -198,6 +258,7 @@ end
 local function onPlayerRemoving(player)
 	playerHistory[player] = nil
 	playerCurrentRound[player] = nil
+	timedSessions[player] = nil
 end
 
 Players.PlayerAdded:Connect(onPlayerAdded)
