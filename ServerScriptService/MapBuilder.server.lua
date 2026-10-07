@@ -12,9 +12,9 @@
 	(built by the client), so stations don't host the objects themselves.
 ]]
 
-local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
 local TweenService = game:GetService("TweenService")
+local PlayerData = require(script.Parent:WaitForChild("PlayerData"))
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CollectionService = game:GetService("CollectionService")
 
@@ -863,30 +863,21 @@ local function darkBoard(name, position, facingTarget, size, parent)
 	})
 end
 
-local function totalScore(plr)
-	local stats = plr:FindFirstChild("leaderstats")
-	local score = stats and stats:FindFirstChild("Score")
-	return score and score.Value or 0
+local function withCommas(n)
+	local formatted = tostring(math.floor(n)):reverse():gsub("(%d%d%d)", "%1,"):reverse()
+	return (formatted:gsub("^,", ""))
 end
 
-local function timedBest(plr)
-	return plr:GetAttribute("TimedBest") or 0
-end
-
-local function refreshLeaderboard(list, getValue)
+-- kind is "Sense" or "TimedBest"; entries come from PlayerData (saved
+-- global top list merged with the players currently online).
+local function refreshLeaderboard(list, kind)
 	for _, child in ipairs(list:GetChildren()) do
 		if child:IsA("TextLabel") then
 			child:Destroy()
 		end
 	end
-	local entries = {}
-	for _, plr in ipairs(Players:GetPlayers()) do
-		table.insert(entries, { name = plr.DisplayName, score = getValue(plr) })
-	end
-	table.sort(entries, function(a, b)
-		return a.score > b.score
-	end)
-	for i = 1, math.min(8, #entries) do
+	local entries = PlayerData.getTop(kind, 8)
+	for i, entry in ipairs(entries) do
 		textLabel(list, {
 			LayoutOrder = i,
 			Size = UDim2.fromScale(1, 0.115),
@@ -895,7 +886,14 @@ local function refreshLeaderboard(list, getValue)
 				or (i == 2 and Color3.fromRGB(210, 220, 235))
 				or (i == 3 and Color3.fromRGB(230, 150, 90))
 				or C.white,
-			Text = string.format("%d.  %s  -  %d", i, entries[i].name, entries[i].score),
+			Text = string.format("%d.  %s  -  %s", i, entry.name, withCommas(entry.value)),
+		})
+	end
+	if #entries == 0 then
+		textLabel(list, {
+			Size = UDim2.fromScale(1, 0.14),
+			TextColor3 = Color3.fromRGB(150, 155, 175),
+			Text = "No scores yet - be the first!",
 		})
 	end
 end
@@ -913,16 +911,22 @@ local function buildBoards()
 		Text = "🏆 TOP GUESSERS",
 		TextColor3 = Color3.fromRGB(255, 210, 70),
 	}), 3)
+	textLabel(gui, {
+		Size = UDim2.fromScale(0.5, 0.06),
+		Position = UDim2.fromScale(0.25, 0.165),
+		Text = "ranked by SENSE",
+		TextColor3 = Color3.fromRGB(150, 160, 190),
+	})
 	local list = Instance.new("Frame")
-	list.Size = UDim2.fromScale(0.86, 0.78)
-	list.Position = UDim2.fromScale(0.07, 0.19)
+	list.Size = UDim2.fromScale(0.86, 0.72)
+	list.Position = UDim2.fromScale(0.07, 0.24)
 	list.BackgroundTransparency = 1
 	list.Parent = gui
 	local layout = Instance.new("UIListLayout")
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Padding = UDim.new(0.008, 0)
 	layout.Parent = list
-	refreshLeaderboard(list, totalScore)
+	refreshLeaderboard(list, "Sense")
 
 	local howTo = darkBoard("HowTo", Vector3.new(-21, TILE_TOP, -67), lookTarget, Vector3.new(13, 9, 0.2), boards)
 	stroke(textLabel(surfaceGui(howTo, 40), {
@@ -948,13 +952,13 @@ local function buildBoards()
 	recordsLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	recordsLayout.Padding = UDim.new(0.008, 0)
 	recordsLayout.Parent = recordsList
-	refreshLeaderboard(recordsList, timedBest)
+	refreshLeaderboard(recordsList, "TimedBest")
 
 	task.spawn(function()
 		while true do
 			task.wait(3)
-			refreshLeaderboard(list, totalScore)
-			refreshLeaderboard(recordsList, timedBest)
+			refreshLeaderboard(list, "Sense")
+			refreshLeaderboard(recordsList, "TimedBest")
 		end
 	end)
 end

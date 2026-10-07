@@ -2,7 +2,8 @@
 	RoundManager.server.lua
 	Script: ServerScriptService.RoundManager
 
-	Owns round selection, scoring, and the Sense tag over each player. The client never receives
+	Owns round selection, scoring, and the Sense tag over each player
+	(saved across sessions by PlayerData). The client never receives
 	targetHeight until after it submits a guess, preventing trivial cheating
 	via network inspection (client-side scale is still trusted for now --
 	no anti-cheat needed per current scope).
@@ -12,6 +13,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
 local ScaleData = require(ReplicatedStorage:WaitForChild("ScaleData"))
+local PlayerData = require(script.Parent:WaitForChild("PlayerData"))
 
 -- How many previous rounds (per player) to avoid repeating.
 local HISTORY_LENGTH = 4
@@ -273,7 +275,10 @@ local function attachSenseTag(player, character)
 end
 
 local function onPlayerAdded(player)
+	-- Start at 0 so the tag shows immediately; the saved totals are added
+	-- on top as soon as they load.
 	player:SetAttribute("Sense", 0)
+	task.spawn(PlayerData.load, player)
 
 	player.CharacterAdded:Connect(function(character)
 		attachSenseTag(player, character)
@@ -302,6 +307,7 @@ local function onPlayerRemoving(player)
 	playerHistory[player] = nil
 	playerCurrentRound[player] = nil
 	timedSessions[player] = nil
+	task.spawn(PlayerData.release, player)
 end
 
 Players.PlayerAdded:Connect(onPlayerAdded)
