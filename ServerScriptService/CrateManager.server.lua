@@ -47,7 +47,7 @@ local COPIES = 3 -- how many players get the pet from one crate
 local FALL_SECONDS = 7
 local LIFETIME = 90 -- seconds a landed crate waits before vanishing
 local FIRST_DROP = RunService:IsStudio() and { 20, 30 } or { 90, 180 }
-local GAP = { 240, 480 } -- random seconds between drops
+local GAP = { 1800, 3600 } -- 30-60 minutes between drops: 1-2 crates an hour
 local MAP_HALF_X, MAP_HALF_Z = 85, 80 -- keep drops on the platform
 local DROP_HEIGHT = 170
 
