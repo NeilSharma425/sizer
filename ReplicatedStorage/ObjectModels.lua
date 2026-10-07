@@ -566,6 +566,294 @@ builders["The Sun"] = function(m)
 end
 
 --==========================================================================
+-- Brainrot (meme characters; front faces -Z, animals side-on)
+--==========================================================================
+
+-- White eyes with black pupils, facing -Z.
+local function eyePair(m, cx, y, z, gap, size)
+	for _, s in ipairs({ -1, 1 }) do
+		box(m, Vector3.new(size, size * 1.2, 0.12), Vector3.new(cx + s * gap / 2, y, z), WHITE)
+		box(m, Vector3.new(size * 0.45, size * 0.6, 0.12), Vector3.new(cx + s * gap / 2, y - size * 0.05, z - 0.08), BLACK)
+	end
+end
+
+local function tilted(m, size, pos, rx, ry, rz, color, material)
+	return box(m, size, CFrame.new(pos) * CFrame.Angles(math.rad(rx), math.rad(ry), math.rad(rz)), color, material)
+end
+
+builders["Tung Tung Tung Sahur"] = function(m)
+	local wood, dark, tan = rgb(160, 105, 55), rgb(110, 70, 35), rgb(225, 190, 140)
+	for _, x in ipairs({ -0.7, 0.7 }) do
+		box(m, Vector3.new(0.9, 2.4, 0.9), Vector3.new(x, 1.2, 0), tan)
+		box(m, Vector3.new(1.1, 0.4, 1.4), Vector3.new(x, 0.2, -0.2), dark)
+	end
+	vcyl(m, 6.4, 1.6, Vector3.new(0, 5.6, 0), wood, Enum.Material.Wood)
+	for _, y in ipairs({ 3.6, 5.4, 7.2 }) do
+		vcyl(m, 0.22, 1.66, Vector3.new(0, y, 0), dark)
+	end
+	vcyl(m, 0.35, 1.45, Vector3.new(0, 8.95, 0), rgb(130, 85, 45))
+	eyePair(m, 0, 6.8, -1.55, 0.75, 0.75)
+	tilted(m, Vector3.new(0.9, 0.2, 0.12), Vector3.new(-0.75, 7.55, -1.58), 0, 0, -15, dark)
+	tilted(m, Vector3.new(0.9, 0.2, 0.12), Vector3.new(0.75, 7.55, -1.58), 0, 0, 15, dark)
+	box(m, Vector3.new(1.6, 0.7, 0.15), Vector3.new(0, 5.2, -1.58), BLACK)
+	box(m, Vector3.new(1.2, 0.25, 0.1), Vector3.new(0, 5.45, -1.66), WHITE)
+	beam(m, Vector3.new(-1.7, 6.4, 0), Vector3.new(-2.3, 3.8, -0.2), 0.7, wood)
+	ball(m, 1, Vector3.new(-2.3, 3.5, -0.2), tan)
+	beam(m, Vector3.new(1.7, 6.4, 0), Vector3.new(2.6, 5, -0.8), 0.7, wood)
+	ball(m, 1, Vector3.new(2.7, 4.9, -0.8), tan)
+	beam(m, Vector3.new(2.7, 3, -0.8), Vector3.new(3.7, 9.6, -0.8), 0.55, rgb(200, 160, 100))
+	ball(m, 1.1, Vector3.new(3.75, 9.7, -0.8), rgb(200, 160, 100))
+end
+
+builders["Tralalero Tralala"] = function(m)
+	local blue, light, dark, skin = rgb(70, 120, 190), rgb(200, 225, 245), rgb(40, 80, 140), rgb(235, 180, 140)
+	box(m, Vector3.new(9, 3.6, 3), Vector3.new(0, 7, 0), blue)
+	box(m, Vector3.new(8.6, 1.4, 3.05), Vector3.new(0, 5.9, 0), light)
+	box(m, Vector3.new(2.6, 3, 2.6), Vector3.new(-5.5, 7.2, 0), blue)
+	box(m, Vector3.new(1.8, 1.6, 2.2), Vector3.new(-7.1, 6.8, 0), blue)
+	box(m, Vector3.new(1.9, 0.25, 2), Vector3.new(-7.1, 6, 0), WHITE)
+	box(m, Vector3.new(0.6, 0.6, 0.14), Vector3.new(-6, 8.1, -1.36), WHITE)
+	box(m, Vector3.new(0.28, 0.28, 0.14), Vector3.new(-6.1, 8.05, -1.44), BLACK)
+	tilted(m, Vector3.new(0.4, 2.4, 1.8), Vector3.new(0.5, 9.4, 0), 0, 0, -20, dark)
+	tilted(m, Vector3.new(1.2, 3.2, 0.5), Vector3.new(5.2, 7.8, 0), 0, 0, 25, dark)
+	tilted(m, Vector3.new(1.0, 2.4, 0.5), Vector3.new(5.6, 6.2, 0), 0, 0, -30, dark)
+	for _, x in ipairs({ -2.5, 0.5, 3.5 }) do
+		box(m, Vector3.new(0.7, 4.4, 0.7), Vector3.new(x, 2.9, 0), skin)
+		box(m, Vector3.new(1.8, 0.9, 1.4), Vector3.new(x - 0.3, 0.45, -0.2), WHITE)
+		box(m, Vector3.new(0.9, 0.2, 0.1), Vector3.new(x - 0.3, 0.55, -0.92), BLACK)
+	end
+end
+
+builders["Bombardiro Crocodilo"] = function(m)
+	local green, dark, belly = rgb(80, 150, 70), rgb(55, 105, 50), rgb(220, 205, 140)
+	box(m, Vector3.new(11, 2.6, 2.6), Vector3.new(0, 5.5, 0), green)
+	box(m, Vector3.new(10.6, 0.9, 2.65), Vector3.new(0, 4.6, 0), belly)
+	box(m, Vector3.new(3.8, 2, 2.4), Vector3.new(-6.8, 5.6, 0), green)
+	box(m, Vector3.new(3.6, 0.8, 2.2), Vector3.new(-8.6, 6.1, 0), green)
+	box(m, Vector3.new(3.4, 0.6, 2), Vector3.new(-8.5, 4.7, 0), green)
+	for i = 0, 4 do
+		box(m, Vector3.new(0.35, 0.4, 0.35), Vector3.new(-7.1 - i * 0.7, 5.5, 0.6), WHITE)
+		box(m, Vector3.new(0.35, 0.4, 0.35), Vector3.new(-7.1 - i * 0.7, 5.5, -0.6), WHITE)
+	end
+	ball(m, 0.9, Vector3.new(-6.6, 6.4, -1.2), WHITE)
+	ball(m, 0.45, Vector3.new(-6.65, 6.4, -1.55), BLACK)
+	box(m, Vector3.new(3.2, 0.3, 7.5), Vector3.new(-0.5, 5.9, 0), dark)
+	box(m, Vector3.new(0.4, 3, 1.6), Vector3.new(6, 7.2, 0), dark)
+	box(m, Vector3.new(4, 1.6, 1.6), Vector3.new(7, 5.5, 0), green)
+	for _, x in ipairs({ -1.6, 1.6 }) do
+		ball(m, 1.7, Vector3.new(x, 3.4, 0), rgb(60, 60, 70))
+		box(m, Vector3.new(0.9, 0.2, 0.2), Vector3.new(x, 4.3, 0), dark)
+	end
+	for _, x in ipairs({ -3.4, 3.4 }) do
+		box(m, Vector3.new(0.5, 4.2, 0.5), Vector3.new(x, 2.1, 0), dark)
+		ball(m, 1.1, Vector3.new(x, 0.55, 0), rgb(40, 40, 45))
+	end
+end
+
+builders["Cappuccino Assassino"] = function(m)
+	local cream, coffee, foam, steel = rgb(245, 240, 230), rgb(95, 60, 35), rgb(240, 225, 200), rgb(205, 210, 220)
+	vcyl(m, 0.3, 3, Vector3.new(0, 0.15, 0), rgb(225, 225, 232))
+	vcyl(m, 4, 2.2, Vector3.new(0, 2.3, 0), cream)
+	vcyl(m, 0.3, 2, Vector3.new(0, 4.35, 0), coffee)
+	vcyl(m, 0.2, 1.6, Vector3.new(0, 4.55, 0), foam)
+	box(m, Vector3.new(1.2, 0.5, 0.5), Vector3.new(2.6, 3.4, 0), cream)
+	box(m, Vector3.new(1.2, 0.5, 0.5), Vector3.new(2.6, 1.5, 0), cream)
+	box(m, Vector3.new(0.5, 2.4, 0.5), Vector3.new(3.1, 2.45, 0), cream)
+	eyePair(m, 0, 3.1, -2.22, 1.1, 0.55)
+	tilted(m, Vector3.new(0.9, 0.2, 0.12), Vector3.new(-0.55, 3.65, -2.24), 0, 0, -18, BLACK)
+	tilted(m, Vector3.new(0.9, 0.2, 0.12), Vector3.new(0.55, 3.65, -2.24), 0, 0, 18, BLACK)
+	vcyl(m, 0.7, 2.25, Vector3.new(0, 3.85, 0), rgb(40, 40, 50))
+	beam(m, Vector3.new(2.2, 3.85, 0.3), Vector3.new(3.7, 2.9, 0.6), 0.35, rgb(40, 40, 50))
+	beam(m, Vector3.new(-2.2, 2.6, 0), Vector3.new(-3.4, 2, -0.8), 0.5, cream)
+	beam(m, Vector3.new(-3.4, 2, -0.8), Vector3.new(-4.7, 6.4, -0.8), 0.28, steel, Enum.Material.Metal)
+	box(m, Vector3.new(0.9, 0.25, 0.5), Vector3.new(-3.5, 2.2, -0.8), BLACK)
+	beam(m, Vector3.new(2.2, 2.6, -0.5), Vector3.new(3.8, 2.4, -1.2), 0.5, cream)
+	beam(m, Vector3.new(3.8, 2.4, -1.2), Vector3.new(5.4, 7.4, -1.2), 0.28, steel, Enum.Material.Metal)
+	box(m, Vector3.new(0.9, 0.25, 0.5), Vector3.new(3.9, 2.55, -1.2), BLACK)
+end
+
+builders["Ballerina Cappuccina"] = function(m)
+	local pink, skin, cream = rgb(255, 170, 200), rgb(255, 215, 190), rgb(245, 235, 220)
+	for _, x in ipairs({ -0.5, 0.5 }) do
+		box(m, Vector3.new(0.5, 3, 0.5), Vector3.new(x, 1.5, 0), skin)
+		box(m, Vector3.new(0.6, 0.5, 0.9), Vector3.new(x, 0.25, -0.1), rgb(255, 205, 225))
+	end
+	vcyl(m, 0.35, 2.2, Vector3.new(0, 3.1, 0), rgb(255, 205, 225))
+	vcyl(m, 0.5, 2.6, Vector3.new(0, 3.5, 0), pink)
+	box(m, Vector3.new(1.6, 2.2, 1), Vector3.new(0, 4.9, 0), rgb(250, 140, 180))
+	beam(m, Vector3.new(-0.9, 5.6, 0), Vector3.new(-1.9, 7.4, 0), 0.4, skin)
+	beam(m, Vector3.new(0.9, 5.6, 0), Vector3.new(1.9, 7.4, 0), 0.4, skin)
+	vcyl(m, 3.2, 1.8, Vector3.new(0, 7.6, 0), cream)
+	vcyl(m, 0.25, 1.6, Vector3.new(0, 9.35, 0), rgb(95, 60, 35))
+	vcyl(m, 0.2, 1.2, Vector3.new(0, 9.55, 0), rgb(240, 225, 200))
+	ball(m, 1.2, Vector3.new(0, 10.1, 0.6), rgb(250, 140, 180))
+	eyePair(m, 0, 7.9, -1.82, 0.9, 0.5)
+	for _, s in ipairs({ -1, 1 }) do
+		box(m, Vector3.new(0.5, 0.3, 0.1), Vector3.new(s * 1.1, 7.3, -1.84), rgb(255, 150, 170))
+	end
+	box(m, Vector3.new(0.5, 0.12, 0.1), Vector3.new(0, 7.2, -1.84), BLACK)
+end
+
+builders["Brr Brr Patapim"] = function(m)
+	local trunk, fur, nose, leaf = rgb(120, 85, 50), rgb(190, 145, 95), rgb(210, 140, 120), rgb(70, 160, 70)
+	for _, x in ipairs({ -1, 1 }) do
+		vcyl(m, 5.2, 0.9, Vector3.new(x, 2.6, 0), trunk, Enum.Material.Wood)
+		box(m, Vector3.new(2, 0.4, 2), Vector3.new(x, 0.2, 0), rgb(90, 62, 36))
+	end
+	box(m, Vector3.new(3.6, 3.4, 2.2), Vector3.new(0, 6.9, 0), fur)
+	box(m, Vector3.new(2.2, 2.4, 0.1), Vector3.new(0, 6.7, -1.12), rgb(225, 190, 140))
+	for _, s in ipairs({ -1, 1 }) do
+		beam(m, Vector3.new(s * 1.9, 7.8, 0), Vector3.new(s * 2.6, 5.2, -0.3), 0.7, fur)
+		ball(m, 1, Vector3.new(s * 2.6, 5, -0.3), trunk)
+		ball(m, 1.1, Vector3.new(s * 1.8, 9.9, 0), fur)
+	end
+	ball(m, 3.4, Vector3.new(0, 9.6, 0), fur)
+	box(m, Vector3.new(1.2, 1.6, 1.4), Vector3.new(0, 9.3, -1.9), nose)
+	box(m, Vector3.new(0.3, 0.3, 0.1), Vector3.new(-0.3, 9.1, -2.62), BLACK)
+	box(m, Vector3.new(0.3, 0.3, 0.1), Vector3.new(0.3, 9.1, -2.62), BLACK)
+	eyePair(m, 0, 10.3, -1.6, 1.6, 0.6)
+	for _, p in ipairs({ { -0.9, 11.6 }, { 0.8, 11.8 }, { 0, 12.4 } }) do
+		ball(m, 2.2, Vector3.new(p[1], p[2], 0), leaf, Enum.Material.LeafyGrass)
+	end
+end
+
+builders["Chimpanzini Bananini"] = function(m)
+	local yellow, brown, face = rgb(255, 225, 70), rgb(105, 70, 45), rgb(225, 185, 140)
+	box(m, Vector3.new(2.6, 3, 2.2), Vector3.new(0, 1.7, 0), yellow)
+	tilted(m, Vector3.new(2.6, 3, 2.2), Vector3.new(0.3, 4.6, 0), 0, 0, -8, yellow)
+	tilted(m, Vector3.new(2.4, 2.6, 2), Vector3.new(0.9, 7.2, 0), 0, 0, -16, yellow)
+	for _, x in ipairs({ -0.7, 0.7 }) do
+		box(m, Vector3.new(0.8, 1, 0.8), Vector3.new(x, 0.5, 0), brown)
+	end
+	for _, s in ipairs({ -1, 1 }) do
+		beam(m, Vector3.new(s * 1.3 + 0.3, 5, 0), Vector3.new(s * 2.6 + 0.3, 3.6, -0.8), 0.7, brown)
+		ball(m, 1.1, Vector3.new(s * 2.6 + 0.3, 3.4, -0.8), face)
+	end
+	ball(m, 3.2, Vector3.new(1.3, 9.4, 0), brown)
+	ball(m, 2.2, Vector3.new(1.3, 9.0, -0.9), face)
+	for _, s in ipairs({ -1, 1 }) do
+		ball(m, 1.2, Vector3.new(1.3 + s * 1.7, 9.8, 0), face)
+	end
+	eyePair(m, 1.3, 9.7, -1.95, 0.9, 0.45)
+	box(m, Vector3.new(0.7, 0.15, 0.1), Vector3.new(1.3, 8.7, -1.98), BLACK)
+	tilted(m, Vector3.new(0.5, 1.2, 0.5), Vector3.new(0.2, 8.6, 0), 0, 0, -16, rgb(210, 170, 60))
+end
+
+builders["Lirili Larila"] = function(m)
+	local green, lightGreen, brown = rgb(95, 160, 85), rgb(130, 190, 115), rgb(150, 100, 60)
+	for _, x in ipairs({ -1, 1 }) do
+		vcyl(m, 2.2, 0.7, Vector3.new(x, 1.5, 0), green)
+		box(m, Vector3.new(1.4, 0.4, 2.2), Vector3.new(x, 0.2, -0.2), brown)
+		box(m, Vector3.new(1.2, 0.15, 0.4), Vector3.new(x, 0.5, -0.5), rgb(220, 190, 120))
+	end
+	vcyl(m, 5, 2, Vector3.new(0, 5.1, 0), green)
+	for _, s in ipairs({ -1, 1 }) do
+		beam(m, Vector3.new(s * 2, 5.5, 0), Vector3.new(s * 3.2, 7.5, 0), 0.8, green)
+		ball(m, 1.5, Vector3.new(s * 3.2, 7.8, 0), green)
+	end
+	for _, p in ipairs({ { -1, 4.2 }, { 0.8, 5.2 }, { -0.5, 6.4 }, { 1.1, 3.6 }, { -1.3, 5.6 } }) do
+		box(m, Vector3.new(0.12, 0.45, 0.12), Vector3.new(p[1], p[2], -1.95), WHITE)
+	end
+	ball(m, 4, Vector3.new(0, 8.8, -0.2), lightGreen)
+	for _, s in ipairs({ -1, 1 }) do
+		box(m, Vector3.new(0.4, 3.2, 2.8), Vector3.new(s * 2.4, 9, 0.3), lightGreen)
+		box(m, Vector3.new(0.45, 2.4, 2.0), Vector3.new(s * 2.4, 9, 0.3), rgb(240, 170, 180))
+	end
+	beam(m, Vector3.new(0, 8.2, -1.8), Vector3.new(0, 5.6, -2.7), 1, lightGreen)
+	ball(m, 1.3, Vector3.new(0, 5.4, -2.8), lightGreen)
+	eyePair(m, 0, 9.3, -1.98, 1.4, 0.5)
+	ball(m, 1.4, Vector3.new(0, 10.9, -0.2), rgb(255, 120, 170))
+end
+
+builders["Trippi Troppi"] = function(m)
+	local orange, light, catFace = rgb(240, 130, 60), rgb(255, 175, 110), rgb(250, 205, 150)
+	tilted(m, Vector3.new(3, 2.4, 2.4), Vector3.new(1.2, 1.2, 0), 0, 0, 0, orange)
+	tilted(m, Vector3.new(2.8, 2.2, 2.2), Vector3.new(0.6, 3.4, 0), 0, 0, -10, light)
+	tilted(m, Vector3.new(2.6, 2, 2), Vector3.new(0.1, 5.4, 0), 0, 0, -16, orange)
+	tilted(m, Vector3.new(2.4, 1.8, 1.8), Vector3.new(-0.4, 7.2, 0), 0, 0, -20, light)
+	for i, a in ipairs({ -35, 0, 35 }) do
+		tilted(m, Vector3.new(2.2, 0.35, 0.5), Vector3.new(2.6, 0.6 + i * 0.1, a * 0.03), 0, a, 0, rgb(225, 100, 50))
+	end
+	for _, s in ipairs({ -1, 1 }) do
+		beam(m, Vector3.new(0.3, 5.5, s * 1), Vector3.new(-0.9, 4.4, s * 1.8), 0.45, orange)
+		box(m, Vector3.new(0.7, 0.7, 0.5), Vector3.new(-1, 4.2, s * 1.9), light)
+	end
+	ball(m, 3.6, Vector3.new(-0.8, 9.2, 0), catFace)
+	for _, s in ipairs({ -1, 1 }) do
+		tilted(m, Vector3.new(1.1, 1.1, 0.5), Vector3.new(-0.8 + s * 1.3, 10.8, 0), 0, 0, 45, orange)
+		box(m, Vector3.new(1.3, 0.1, 0.1), Vector3.new(-0.8 + s * 1.7, 8.7, -1.8), rgb(70, 60, 60))
+	end
+	eyePair(m, -0.8, 9.5, -1.74, 1.4, 0.55)
+	box(m, Vector3.new(0.4, 0.3, 0.1), Vector3.new(-0.8, 8.9, -1.82), rgb(255, 130, 150))
+end
+
+builders["La Vaca Saturno Saturnita"] = function(m)
+	local white, spot, saturn = rgb(250, 250, 250), rgb(40, 40, 45), rgb(230, 200, 140)
+	box(m, Vector3.new(7, 4, 3), Vector3.new(0, 4.6, 0), white)
+	for _, p in ipairs({ { -1.5, 5.2, 1.2, 1.4 }, { 1.4, 4.2, 1, 1.2 }, { 2.4, 5.6, 1.1, 1 } }) do
+		box(m, Vector3.new(p[3], p[4], 0.1), Vector3.new(p[1], p[2], -1.55), spot)
+	end
+	for _, x in ipairs({ -2.5, 2.5 }) do
+		for _, z in ipairs({ -1, 1 }) do
+			box(m, Vector3.new(0.9, 2.6, 0.9), Vector3.new(x, 1.3, z), white)
+			box(m, Vector3.new(1, 0.4, 1), Vector3.new(x, 0.2, z), spot)
+		end
+	end
+	box(m, Vector3.new(1.4, 0.8, 1.2), Vector3.new(1, 2.9, 0), rgb(255, 170, 190))
+	beam(m, Vector3.new(3.4, 5.8, 0), Vector3.new(4.2, 3, 0), 0.25, spot)
+	ball(m, 4, Vector3.new(-4.6, 6.9, 0), saturn)
+	cylinder(m, 0.3, 3.7, CFrame.new(-4.6, 6.9, 0) * CFrame.Angles(math.rad(22), 0, math.rad(90)), rgb(210, 175, 120))
+	box(m, Vector3.new(0.45, 0.45, 0.15), Vector3.new(-5.3, 7.5, -1.85), WHITE)
+	box(m, Vector3.new(0.2, 0.2, 0.15), Vector3.new(-5.35, 7.45, -1.95), BLACK)
+	box(m, Vector3.new(0.45, 0.45, 0.15), Vector3.new(-3.9, 7.5, -1.85), WHITE)
+	box(m, Vector3.new(0.2, 0.2, 0.15), Vector3.new(-3.95, 7.45, -1.95), BLACK)
+	for _, s in ipairs({ -1, 1 }) do
+		box(m, Vector3.new(0.4, 0.9, 0.4), Vector3.new(-4.6 + s * 1.5, 9.1, 0), rgb(245, 235, 200))
+	end
+end
+
+builders["Skibidi Toilet"] = function(m)
+	local white, seat = rgb(248, 248, 250), rgb(225, 225, 232)
+	vcyl(m, 2.6, 2, Vector3.new(0, 1.3, 0), white)
+	vcyl(m, 1.2, 2.5, Vector3.new(0, 3.2, 0), white)
+	vcyl(m, 0.35, 2.6, Vector3.new(0, 3.95, 0), seat)
+	box(m, Vector3.new(4, 4.4, 1.6), Vector3.new(0, 4.3, 2.4), white)
+	box(m, Vector3.new(4.3, 0.4, 1.9), Vector3.new(0, 6.7, 2.4), seat)
+	box(m, Vector3.new(0.8, 0.4, 0.5), Vector3.new(1.6, 6.1, 1.4), rgb(190, 195, 205), Enum.Material.Metal)
+	ball(m, 2.8, Vector3.new(0, 4.6, -0.1), rgb(255, 210, 170))
+	eyePair(m, 0, 4.9, -1.4, 1, 0.5)
+	box(m, Vector3.new(1.1, 0.5, 0.1), Vector3.new(0, 3.95, -1.38), BLACK)
+	box(m, Vector3.new(0.7, 0.2, 0.1), Vector3.new(0, 4.15, -1.42), WHITE)
+	vcyl(m, 0.15, 1.9, Vector3.new(0, 3.1, -0.2), rgb(120, 190, 240), Enum.Material.Glass)
+end
+
+builders["Verity"] = function(m)
+	local body, light, dark = rgb(235, 170, 245), rgb(250, 215, 255), rgb(200, 130, 220)
+	for _, x in ipairs({ -1.2, 1.2 }) do
+		ball(m, 1.5, Vector3.new(x, 0.75, -0.6), dark)
+	end
+	ball(m, 6, Vector3.new(0, 3.5, 0), body)
+	ball(m, 3.6, Vector3.new(0, 2.7, -1.5), light)
+	for _, s in ipairs({ -1, 1 }) do
+		tilted(m, Vector3.new(1.3, 1.3, 0.6), Vector3.new(s * 2, 6.5, 0), 0, 0, 45, body)
+		ball(m, 1.1, Vector3.new(s * 3.1, 3.2, -0.2), dark)
+		box(m, Vector3.new(0.6, 0.35, 0.1), Vector3.new(s * 1.6, 3.5, -2.8), rgb(255, 150, 190))
+	end
+	eyePair(m, 0, 4.4, -2.75, 1.9, 0.95)
+	box(m, Vector3.new(0.9, 0.2, 0.1), Vector3.new(0, 3.4, -2.95), BLACK)
+	local gold = rgb(255, 205, 60)
+	box(m, Vector3.new(2.6, 0.5, 1.4), Vector3.new(0, 6.55, 0), gold, Enum.Material.Metal)
+	for _, x in ipairs({ -0.9, 0, 0.9 }) do
+		box(m, Vector3.new(0.5, 0.8, 0.5), Vector3.new(x, 7.2, 0), gold, Enum.Material.Metal)
+	end
+	tilted(m, Vector3.new(0.35, 1.6, 0.15), Vector3.new(-0.4, 2.4, -3.0), 0, 0, 20, WHITE)
+	tilted(m, Vector3.new(0.35, 1.6, 0.15), Vector3.new(0.4, 2.4, -3.0), 0, 0, -20, WHITE)
+	for _, p in ipairs({ { -3.6, 6.2 }, { 3.7, 5.4 }, { -3.9, 2 }, { 3.4, 7.3 } }) do
+		ball(m, 0.5, Vector3.new(p[1], p[2], -0.5), rgb(255, 235, 120), Enum.Material.Neon)
+	end
+end
+
+--==========================================================================
 -- Fallback & public API
 --==========================================================================
 
