@@ -288,6 +288,7 @@ textStroke(popup, 5)
 --==========================================================================
 
 local panel = frame(hud, {
+	Name = "GamePanel",
 	AnchorPoint = Vector2.new(0.5, 1),
 	Position = UDim2.new(0.5, 0, 1, -16),
 	Size = UDim2.new(0, 600, 0, 250),
@@ -360,6 +361,7 @@ local leaveButton = button(panel, "STOP", RED, {
 })
 
 local questionText = label(panel, {
+	Name = "QuestionText",
 	Size = UDim2.new(1, -150, 0, 52),
 	Position = UDim2.new(0, 22, 0, 28),
 	TextXAlignment = Enum.TextXAlignment.Left,
@@ -378,6 +380,7 @@ local guessText = label(panel, {
 textStroke(guessText)
 
 local sliderTrack = frame(panel, {
+	Name = "SliderTrack",
 	Position = UDim2.new(0, 22, 0, 128),
 	Size = UDim2.new(1, -44, 0, 18),
 	BackgroundColor3 = Color3.fromRGB(20, 22, 40),
@@ -393,6 +396,7 @@ corner(sliderFill, UDim.new(1, 0))
 gloss(sliderFill, ORANGE)
 
 local sliderHandle = frame(sliderTrack, {
+	Name = "SliderHandle",
 	AnchorPoint = Vector2.new(0.5, 0.5),
 	Position = UDim2.fromScale(0, 0.5),
 	Size = UDim2.new(0, 34, 0, 34),
@@ -403,11 +407,13 @@ corner(sliderHandle, UDim.new(1, 0))
 stroke(sliderHandle, 3)
 
 local lockInButton = button(panel, "LOCK IN", GREEN, {
+	Name = "LockInButton",
 	Position = UDim2.new(0, 22, 1, -78),
 	Size = UDim2.new(0, 170, 0, 58),
 })
 
 local resultText = label(panel, {
+	Name = "ResultText",
 	Size = UDim2.new(1, -230, 0, 64),
 	Position = UDim2.new(0, 208, 1, -82),
 	TextXAlignment = Enum.TextXAlignment.Left,

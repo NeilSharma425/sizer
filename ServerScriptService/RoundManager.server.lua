@@ -22,8 +22,12 @@ end)
 if not okPlayerData then
 	warn("[Sizer] PlayerData failed to load; running without saving:", PlayerData)
 	PlayerData = {
-		load = function()
+		load = function(player)
+			player:SetAttribute("DataLoaded", true)
 			return false
+		end,
+		markTutorialDone = function(player)
+			player:SetAttribute("TutorialDone", true)
 		end,
 		release = function() end,
 		save = function()
@@ -78,6 +82,14 @@ TimedStop.Parent = remotesFolder
 local TimedEnd = Instance.new("RemoteEvent")
 TimedEnd.Name = "TimedEnd"
 TimedEnd.Parent = remotesFolder
+
+-- Client -> server: the player finished or skipped the tutorial.
+local TutorialDone = Instance.new("RemoteEvent")
+TutorialDone.Name = "TutorialDone"
+TutorialDone.Parent = remotesFolder
+TutorialDone.OnServerEvent:Connect(function(player)
+	PlayerData.markTutorialDone(player)
+end)
 
 -- Per-player state: recent round indices (for repeat avoidance) and the
 -- currently active round (so SubmitGuess can look up the true height).

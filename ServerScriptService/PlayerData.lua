@@ -73,8 +73,8 @@ local function withRetry(fn)
 	return false, lastError
 end
 
-function PlayerData.load(player)
-	local state = { loaded = false, saving = false, savedSense = 0, savedTimed = 0 }
+local function loadInternal(player)
+	local state = { loaded = false, saving = false, savedSense = 0, savedTimed = 0, savedTutorial = false }
 	states[player] = state
 	if not store then
 		return false
@@ -99,11 +99,30 @@ function PlayerData.load(player)
 	state.loaded = true
 	state.savedSense = storedSense
 	state.savedTimed = storedTimed
+	state.savedTutorial = data.tutorialDone == true
+	if state.savedTutorial then
+		player:SetAttribute("TutorialDone", true)
+	end
 
 	-- Anything earned while loading is added on top of the saved totals.
 	player:SetAttribute("Sense", storedSense + (player:GetAttribute("Sense") or 0))
 	player:SetAttribute("TimedBest", math.max(storedTimed, player:GetAttribute("TimedBest") or 0))
 	return true
+end
+
+-- Loads saved data. The "DataLoaded" attribute is set once the attempt is
+-- over (success or not) so the client knows when saved flags such as
+-- TutorialDone can be trusted.
+function PlayerData.load(player)
+	local ok = loadInternal(player)
+	player:SetAttribute("DataLoaded", true)
+	return ok
+end
+
+-- Remember that the player has seen (or skipped) the tutorial.
+function PlayerData.markTutorialDone(player)
+	player:SetAttribute("TutorialDone", true)
+	task.spawn(PlayerData.save, player)
 end
 
 function PlayerData.save(player)
@@ -117,8 +136,9 @@ function PlayerData.save(player)
 
 	local sense = math.floor(player:GetAttribute("Sense") or 0)
 	local timed = math.floor(player:GetAttribute("TimedBest") or 0)
+	local tutorial = player:GetAttribute("TutorialDone") == true
 	local deltaSense = sense - state.savedSense
-	if deltaSense == 0 and timed <= state.savedTimed then
+	if deltaSense == 0 and timed <= state.savedTimed and (state.savedTutorial or not tutorial) then
 		return true
 	end
 
@@ -129,6 +149,9 @@ function PlayerData.save(player)
 			old = type(old) == "table" and old or {}
 			old.sense = math.max(0, (tonumber(old.sense) or 0) + deltaSense)
 			old.timedBest = math.max(tonumber(old.timedBest) or 0, timed)
+			if tutorial then
+				old.tutorialDone = true
+			end
 			return old
 		end)
 	end)
@@ -136,6 +159,7 @@ function PlayerData.save(player)
 	if ok and type(merged) == "table" then
 		state.savedSense = sense
 		state.savedTimed = math.max(state.savedTimed, timed)
+		state.savedTutorial = state.savedTutorial or tutorial
 		pcall(function()
 			orderedBoards.Sense:SetAsync(key, math.floor(merged.sense or 0))
 			if (merged.timedBest or 0) > 0 then

@@ -41,6 +41,9 @@
         },
         "MapEffects": {
           "$path": "StarterPlayer/StarterPlayerScripts/MapEffects.client.lua"
+        },
+        "TutorialClient": {
+          "$path": "StarterPlayer/StarterPlayerScripts/TutorialClient.client.lua"
         }
       }
     }
