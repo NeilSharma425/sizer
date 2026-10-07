@@ -3,10 +3,11 @@
 	LocalScript: StarterPlayer.StarterPlayerScripts.CrateClient
 
 	Shows the pet-crate announcements from CrateManager: a banner when a
-	crate starts falling ("RARE PET CRATE - Neon Mouse x3") and when it vanishes
-	unclaimed. Claims don't get a banner; the crate's own label shows the
-	copies left. The crate itself (with its light beam and
-	billboard) is a real part in the world.
+	crate starts falling (only the rarity, e.g. "LEGENDARY PET CRATE
+	FALLING!" - the pet is a surprise), one when it lands and breaks open
+	(now the pet is revealed), and one if the leftover pets vanish. Claims
+	don't get a banner. The crate, its light beam and the spilled pets are
+	real parts in the world.
 ]]
 
 local Players = game:GetService("Players")
@@ -119,9 +120,16 @@ CrateEvent.OnClientEvent:Connect(function(kind, data)
 		sfx("crate")
 		show(
 			string.upper(data.rarity) .. " PET CRATE FALLING!",
-			string.format("Contains: %s  -  only %d copies. Find the light beam!", data.name, data.copies),
+			string.format("A mystery %s pet  -  only %d copies. Find the light beam!", data.rarity, data.copies),
 			color,
 			8
+		)
+	elseif kind == "opened" then
+		show(
+			"THE CRATE BROKE OPEN!",
+			string.format("%d %s %s pets spilled out - touch one to claim it!", 3, string.upper(data.rarity), string.upper(data.name)),
+			color,
+			5
 		)
 	elseif kind == "expired" then
 		sfx("crateGone")
@@ -129,6 +137,6 @@ CrateEvent.OnClientEvent:Connect(function(kind, data)
 	elseif kind == "done" then
 		sfx("crateGone")
 	elseif kind == "owned" then
-		show("YOU ALREADY HAVE THIS PET", string.format("Leave the %s for someone else!", data.name), Color3.fromRGB(200, 205, 225), 3)
+		show("YOU ALREADY HAVE THIS PET", "Leave it for someone else!", Color3.fromRGB(200, 205, 225), 3)
 	end
 end)

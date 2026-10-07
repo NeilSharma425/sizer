@@ -3,11 +3,11 @@
 	Script: ServerScriptService.CrateManager
 
 	Pet airdrops. Every few minutes a crate falls from the sky at a random
-	spot on the map, announced to everyone (CrateEvent). It holds 3 copies
-	of one random crate-only pet (see Pets: rarity Rare / Epic / Legendary).
-	The first 3 different players to touch it each unlock the pet; players
-	who already own it can't take a copy. The crate vanishes when it's empty
-	or after LIFETIME seconds.
+	spot on the map, announced to everyone by rarity only (CrateEvent; the
+	pet itself is a surprise). When it lands it breaks open and 3 copies of
+	one random crate-only pet spill out around it. Each copy is unlocked by
+	the first player to touch it (one per player; players who already own
+	the pet can't take one). Leftover copies vanish after LIFETIME seconds.
 
 	In Studio the first drop comes after ~20 seconds so it's easy to test.
 ]]
@@ -205,6 +205,68 @@ local function grant(player, pet)
 	ProgressEvent:FireClient(player, "pet", { id = pet.id, name = pet.name })
 end
 
+local function groundAt(x, z, ignore)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = ignore
+	local hit = workspace:Raycast(Vector3.new(x, 250, z), Vector3.new(0, -500, 0), params)
+	return hit and hit.Position.Y or nil
+end
+
+-- One pet copy lying on the ground next to the landing spot: the pet's own
+-- model (bobbing and spinning), a big invisible touch zone, sparkles and a
+-- name tag. Returns { model, hitbox, animate, base }.
+local function spawnCopy(pet, rarity, position, parent)
+	local holder = Instance.new("Model")
+	holder.Name = "PetCopy"
+	local model, animate = Pets.build(pet.id)
+	if model then
+		model:ScaleTo(1.6)
+		model.Parent = holder
+	end
+	local hitbox = part(holder, {
+		Name = "Hitbox",
+		Size = Vector3.new(6, 6, 6),
+		CFrame = CFrame.new(position + Vector3.new(0, 2.5, 0)),
+		Transparency = 1,
+		CanTouch = true,
+	})
+	local sparkles = Instance.new("ParticleEmitter")
+	sparkles.Color = ColorSequence.new(rarity.color)
+	sparkles.LightEmission = 1
+	sparkles.Rate = 12
+	sparkles.Lifetime = NumberRange.new(0.6, 1.2)
+	sparkles.Speed = NumberRange.new(1, 3)
+	sparkles.SpreadAngle = Vector2.new(180, 180)
+	sparkles.Size = NumberSequence.new(0.35, 0)
+	sparkles.Parent = hitbox
+
+	local billboard = Instance.new("BillboardGui")
+	billboard.Size = UDim2.new(0, 200, 0, 56)
+	billboard.StudsOffset = Vector3.new(0, 4.5, 0)
+	billboard.AlwaysOnTop = true
+	billboard.MaxDistance = 250
+	billboard.LightInfluence = 0
+	billboard.Parent = hitbox
+	for i, info in ipairs({ { string.upper(pet.name), rarity.color }, { "TOUCH TO CLAIM!", Color3.new(1, 1, 1) } }) do
+		local label = Instance.new("TextLabel")
+		label.BackgroundTransparency = 1
+		label.Position = UDim2.new(0, 0, (i - 1) * 0.55, 0)
+		label.Size = UDim2.new(1, 0, i == 1 and 0.55 or 0.45, 0)
+		label.Font = Enum.Font.FredokaOne
+		label.TextScaled = true
+		label.Text = info[1]
+		label.TextColor3 = info[2]
+		label.Parent = billboard
+		local stroke = Instance.new("UIStroke")
+		stroke.Thickness = 2.5
+		stroke.Color = Color3.fromRGB(25, 20, 35)
+		stroke.Parent = label
+	end
+	holder.Parent = parent
+	return { holder = holder, model = model, hitbox = hitbox, animate = animate, base = position + Vector3.new(0, 2.5, 0), taken = false }
+end
+
 local function drop()
 	local pet = Pets.rollCratePet(rng)
 	local rarity = Pets.Rarities[pet.rarity]
@@ -215,18 +277,21 @@ local function drop()
 		crateFolder.Name = "PetCrates"
 		crateFolder.Parent = workspace
 	end
+	local dropFolder = Instance.new("Folder")
+	dropFolder.Name = "PetDrop"
+	dropFolder.Parent = crateFolder
 
-	local model, hitbox, leftLabel = buildCrate(rarity.color, string.format("%s x%d", pet.name, COPIES), pet.rarity)
-	model.Parent = crateFolder
+	local model = buildCrate(rarity.color, string.format("MYSTERY PET x%d", COPIES), pet.rarity)
+	model.Parent = dropFolder
 	model:PivotTo(CFrame.new(landing + Vector3.new(0, DROP_HEIGHT, 0)))
 
 	local rules = CrateLogic.new(COPIES)
-	local open = false
 	local finished = false
+	local copies = {}
 
+	-- Only the rarity is announced; which pet is inside is a surprise until
+	-- the crate lands and breaks open.
 	CrateEvent:FireAllClients("incoming", {
-		id = pet.id,
-		name = pet.name,
 		rarity = pet.rarity,
 		color = rarity.color,
 		copies = COPIES,
@@ -238,32 +303,11 @@ local function drop()
 			return
 		end
 		finished = true
-		CrateEvent:FireAllClients(kind, { name = pet.name, rarity = pet.rarity })
-		task.delay(kind == "done" and 1.5 or 0, function()
-			model:Destroy()
+		CrateEvent:FireAllClients(kind, { rarity = pet.rarity })
+		task.delay(kind == "done" and 1 or 0, function()
+			dropFolder:Destroy()
 		end)
 	end
-
-	hitbox.Touched:Connect(function(hit)
-		if not open or finished then
-			return
-		end
-		local player = playerFromHit(hit)
-		if not player then
-			return
-		end
-		local profile = PlayerData.getProfile(player)
-		local result = rules:claim(player.UserId, profile.pets[pet.id] == true)
-		if result == "owned" then
-			CrateEvent:FireClient(player, "owned", { name = pet.name })
-		elseif result == "granted" then
-			grant(player, pet)
-			leftLabel.Text = rules.left > 0 and string.format("%d LEFT!", rules.left) or "ALL CLAIMED"
-			if rules:isEmpty() then
-				finish("done")
-			end
-		end
-	end)
 
 	-- Fall from the sky.
 	local steps = FALL_SECONDS * 30
@@ -272,13 +316,68 @@ local function drop()
 		local eased = 1 - (1 - t) ^ 2
 		model:PivotTo(CFrame.new(landing + Vector3.new(0, DROP_HEIGHT * (1 - eased), 0)))
 		task.wait(1 / 30)
-		if finished then
-			return
-		end
 	end
-	model:PivotTo(CFrame.new(landing))
-	open = true
-	leftLabel.Text = string.format("%s x%d", pet.name, COPIES)
+
+	-- Landed: the crate breaks open (keeping its light beam so people can
+	-- still find the spot) and the pet copies spill out around it.
+	local beam = model:FindFirstChild("Beam")
+	if beam then
+		beam.Parent = dropFolder
+		beam.CFrame = CFrame.new(landing + Vector3.new(0, 150, 0)) * CFrame.Angles(0, 0, math.pi / 2)
+	end
+	model:Destroy()
+	CrateEvent:FireAllClients("opened", { rarity = pet.rarity, name = pet.name, color = rarity.color })
+
+	local spin = rng:NextNumber(0, math.pi * 2)
+	for i = 1, COPIES do
+		local angle = spin + (i - 1) * (math.pi * 2 / COPIES)
+		local x, z = landing.X + math.cos(angle) * 6, landing.Z + math.sin(angle) * 6
+		local y = groundAt(x, z, { dropFolder }) or landing.Y
+		if math.abs(y - landing.Y) > 6 then
+			y = landing.Y -- don't put a copy on a roof or down a hole
+		end
+		local copy = spawnCopy(pet, rarity, Vector3.new(x, y, z), dropFolder)
+		table.insert(copies, copy)
+
+		copy.hitbox.Touched:Connect(function(hit)
+			if finished or copy.taken then
+				return
+			end
+			local player = playerFromHit(hit)
+			if not player then
+				return
+			end
+			local profile = PlayerData.getProfile(player)
+			local result = rules:claim(player.UserId, profile.pets[pet.id] == true)
+			if result == "owned" then
+				CrateEvent:FireClient(player, "owned", { rarity = pet.rarity })
+			elseif result == "granted" then
+				copy.taken = true
+				copy.holder:Destroy()
+				grant(player, pet)
+				if rules:isEmpty() then
+					finish("done")
+				end
+			end
+		end)
+	end
+
+	-- Bob and spin the copies until they're all taken or time runs out.
+	task.spawn(function()
+		local started = os.clock()
+		while not finished do
+			local t = os.clock() - started
+			for i, copy in ipairs(copies) do
+				if not copy.taken and copy.model then
+					copy.model:PivotTo(CFrame.new(copy.base + Vector3.new(0, math.sin(t * 2 + i) * 0.4, 0)) * CFrame.Angles(0, t * 1.2 + i, 0))
+					if copy.animate then
+						copy.animate(t)
+					end
+				end
+			end
+			task.wait(1 / 20)
+		end
+	end)
 
 	task.delay(LIFETIME, function()
 		if not finished and not rules:isEmpty() then
