@@ -46,6 +46,8 @@ SoundFX.Library = {
 	pet = { id = FANFARE, volume = 0.6, speed = 1.3 }, -- new pet unlocked
 	equip = { id = SWITCH, volume = 0.5, speed = 1.25 },
 	daily = { id = FANFARE, volume = 0.55, speed = 1.1 }, -- daily complete
+	crate = { id = FANFARE, volume = 0.55, speed = 0.85 }, -- a pet crate is falling
+	crateGone = { id = PING, volume = 0.4, speed = 0.6 },
 	boing = { id = JUMP, volume = 0.6, speed = 1.7 }, -- trampolines
 }
 

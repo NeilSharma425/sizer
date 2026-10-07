@@ -2,8 +2,9 @@
 	Pets.lua
 	ModuleScript: ReplicatedStorage.Pets
 
-	Pets that can only be unlocked from login-streak rewards (the day each
-	one unlocks is set by Progress.STREAK_REWARDS). build(id) returns a small
+	Every pet in the game: earned ones (rank, category, 60s score, login
+	streak) and crate-only ones dropped by airdrops (rule kind "crate", with
+	a rarity). build(id) returns a small
 	anchored Model made of Parts, plus an animate(t) function for the parts
 	that move or change colour. Used by the world pets (PetClient) and by the
 	streak window previews.
@@ -27,7 +28,61 @@ Pets.List = {
 	{ id = "ghost", name = "Halo Ghost", color = Color3.fromRGB(235, 240, 255), rule = { kind = "rank", rank = 8 }, how = "Reach the Master rank", blurb = "Friendly, and a little holy." },
 	{ id = "cosmiccube", name = "Cosmic Cube", color = Color3.fromRGB(130, 110, 255), rule = { kind = "streak", day = 7 }, how = "Reach a 7 day login streak", blurb = "A tiny galaxy that orbits you." },
 	{ id = "rainbowslime", name = "Rainbow Slime", color = Color3.fromRGB(255, 120, 200), rule = { kind = "streak", day = 14 }, how = "Reach a 14 day login streak", blurb = "The rarest pet. Shifts through every colour." },
+	-- Crate-only pets: dropped from airdrop crates, never earned any other way.
+	{ id = "neonmouse", name = "Neon Mouse", color = Color3.fromRGB(80, 240, 150), rule = { kind = "crate" }, rarity = "Rare", variantOf = "mouse", hue = 0.38, shift = 0.38, minSat = 0.7, how = "Airdrop crates only", blurb = "Glows in the dark. Squeaks in color." },
+	{ id = "skyduck", name = "Sky Duck", color = Color3.fromRGB(90, 170, 255), rule = { kind = "crate" }, rarity = "Rare", variantOf = "duck", hue = 0.6, shift = 0.5, minSat = 0.5, how = "Airdrop crates only", blurb = "Fell from the clouds. Landed fine." },
+	{ id = "rubybot", name = "Ruby Bot", color = Color3.fromRGB(255, 80, 90), rule = { kind = "crate" }, rarity = "Rare", variantOf = "robot", hue = 0.98, shift = 0.4, minSat = 0.5, how = "Airdrop crates only", blurb = "Overclocked and a little dramatic." },
+	{ id = "crystalowl", name = "Crystal Owl", color = Color3.fromRGB(110, 230, 240), rule = { kind = "crate" }, rarity = "Epic", variantOf = "owl", hue = 0.5, shift = 0.5, minSat = 0.6, how = "Airdrop crates only", blurb = "Sees through every guess." },
+	{ id = "stormbee", name = "Storm Bee", color = Color3.fromRGB(120, 140, 255), rule = { kind = "crate" }, rarity = "Epic", variantOf = "bee", hue = 0.6, shift = 0.5, minSat = 0.6, how = "Airdrop crates only", blurb = "Brings its own weather." },
+	{ id = "voidghost", name = "Void Ghost", color = Color3.fromRGB(180, 110, 255), rule = { kind = "crate" }, rarity = "Epic", variantOf = "ghost", hue = 0.75, minSat = 0.55, how = "Airdrop crates only", blurb = "Haunts the spaces between sizes." },
+	{ id = "babydragon", name = "Baby Dragon", color = Color3.fromRGB(255, 120, 70), rule = { kind = "crate" }, rarity = "Legendary", how = "Airdrop crates only", blurb = "Tiny, fierce, and very fond of you." },
+	{ id = "solarverity", name = "Solar Verity", color = Color3.fromRGB(255, 210, 40), rule = { kind = "crate" }, rarity = "Legendary", variantOf = "verity", hue = 0.12, shift = 0, neon = true, how = "Airdrop crates only", blurb = "A star-powered smile." },
+	{ id = "galaxymoon", name = "Galaxy Moon", color = Color3.fromRGB(150, 90, 255), rule = { kind = "crate" }, rarity = "Legendary", variantOf = "moon", hue = 0.72, shift = 0.72, minSat = 0.7, neon = true, how = "Airdrop crates only", blurb = "Carries a whole night sky." },
 }
+
+-- Crate rarities: the color shown in the UI and the chance a drop is that rarity.
+Pets.Rarities = {
+	Rare = { color = Color3.fromRGB(80, 160, 255), weight = 60 },
+	Epic = { color = Color3.fromRGB(190, 100, 255), weight = 30 },
+	Legendary = { color = Color3.fromRGB(255, 200, 50), weight = 10 },
+}
+Pets.RarityOrder = { "Rare", "Epic", "Legendary" }
+
+-- All crate pets (in list order).
+function Pets.cratePets()
+	local out = {}
+	for _, pet in ipairs(Pets.List) do
+		if pet.rule.kind == "crate" then
+			table.insert(out, pet)
+		end
+	end
+	return out
+end
+
+-- Picks a crate pet for a drop: a rarity by weight, then a random pet of
+-- that rarity. `rng` needs NextNumber(min, max) and NextInteger(min, max).
+function Pets.rollCratePet(rng)
+	local total = 0
+	for _, name in ipairs(Pets.RarityOrder) do
+		total += Pets.Rarities[name].weight
+	end
+	local roll = rng:NextNumber(0, total)
+	local rarity = Pets.RarityOrder[#Pets.RarityOrder]
+	for _, name in ipairs(Pets.RarityOrder) do
+		roll -= Pets.Rarities[name].weight
+		if roll <= 0 then
+			rarity = name
+			break
+		end
+	end
+	local pool = {}
+	for _, pet in ipairs(Pets.cratePets()) do
+		if pet.rarity == rarity then
+			table.insert(pool, pet)
+		end
+	end
+	return pool[rng:NextInteger(1, #pool)]
+end
 
 -- True when a non-streak rule is met. state = { rank (number), cats (table),
 -- timedBest (number) }. Streak pets are granted by the login streak.
@@ -342,10 +397,59 @@ function builders.ghost(model)
 end
 
 
+function builders.babydragon(model)
+	local scale, belly, horn = Color3.fromRGB(255, 120, 70), Color3.fromRGB(255, 220, 150), Color3.fromRGB(250, 235, 200)
+	ball(model, Vector3.new(1.7, 1.6, 2.4), scale, Vector3.new(0, 0, 0))
+	ball(model, Vector3.new(1.3, 1.1, 1.9), belly, Vector3.new(0, -0.25, -0.2))
+	ball(model, Vector3.new(1.5, 1.4, 1.5), scale, Vector3.new(0, 0.8, -1.4))
+	ball(model, Vector3.new(0.9, 0.6, 0.7), belly, Vector3.new(0, 0.6, -2.05))
+	for _, x in ipairs({ -0.3, 0.3 }) do
+		ball(model, Vector3.new(0.3, 0.38, 0.2), Color3.fromRGB(30, 25, 40), Vector3.new(x, 1.05, -2.0))
+		part(model, { Size = Vector3.new(0.18, 0.7, 0.18), Color = horn, CFrame = CFrame.new(x * 1.4, 1.75, -1.2) * CFrame.Angles(math.rad(-20), 0, x * 0.6) })
+	end
+	for _, x in ipairs({ -0.5, 0.5 }) do
+		part(model, { Size = Vector3.new(0.4, 0.5, 0.5), Color = scale, CFrame = CFrame.new(x, -0.95, -0.6) })
+		part(model, { Size = Vector3.new(0.4, 0.5, 0.5), Color = scale, CFrame = CFrame.new(x, -0.95, 0.6) })
+	end
+	for i = 0, 4 do -- tail
+		ball(model, Vector3.new(0.8 - i * 0.13, 0.8 - i * 0.13, 0.8), scale, Vector3.new(0, 0.1 - i * 0.05, 1.3 + i * 0.55))
+	end
+	local flame = part(model, { Shape = Enum.PartType.Ball, Size = Vector3.new(0.45, 0.45, 0.45), Color = Color3.fromRGB(255, 190, 60), Material = Enum.Material.Neon, CFrame = CFrame.new(0, 0.6, -2.5) })
+	local wings = {}
+	for i, side in ipairs({ -1, 1 }) do
+		wings[i] = { part = part(model, { Size = Vector3.new(1.5, 0.9, 0.12), Color = Color3.fromRGB(255, 160, 110), CFrame = CFrame.new(side * 1.3, 0.9, 0.2) }), side = side }
+	end
+	return function(t, o)
+		for _, w in ipairs(wings) do
+			w.part.CFrame = o * CFrame.new(w.side * 0.7, 0.8, 0.5) * CFrame.Angles(0, 0, w.side * (0.2 + 0.4 * math.sin(t * 6))) * CFrame.new(w.side * 0.8, 0.3, 0)
+		end
+		flame.CFrame = o * CFrame.new(0, 0.6, -2.5 - 0.1 * math.sin(t * 9))
+		flame.Transparency = 0.2 + 0.3 * math.sin(t * 9) ^ 2
+	end
+end
+
+
 -- Returns model, animate (may be nil). The model's PrimaryPart is set to
 -- a hidden anchor at its centre so it can be moved with PivotTo.
+-- Variants recolor another pet's model: the hue is shifted, and minSat
+-- lifts grey parts into color (dark features like eyes are left alone).
+local function recolor(color, info)
+	local h, sat, v = color:ToHSV()
+	if info.minSat and v < 0.2 then
+		return color -- keep dark features (eyes, nose) as they are
+	end
+	if sat < 0.35 then
+		h = info.hue or h -- greys and whites take the new color outright
+	else
+		h = (h + (info.shift or info.hue or 0)) % 1 -- colored parts shift around the wheel
+	end
+	return Color3.fromHSV(h, math.max(sat, info.minSat or 0), v)
+end
+
 function Pets.build(id)
-	local builder = builders[id]
+	local info = Pets.get(id)
+	local variant = info and info.variantOf
+	local builder = builders[variant or id]
 	if not builder then
 		return nil, nil
 	end
@@ -359,6 +463,19 @@ function Pets.build(id)
 		CFrame = CFrame.new(0, 0, 0),
 	})
 	model.PrimaryPart = root
+	if variant then
+		for _, d in ipairs(model:GetDescendants()) do
+			if d:IsA("BasePart") and d ~= root then
+				d.Color = recolor(d.Color, info)
+				if info.neon and d.Transparency == 0 and d.Color:ToHSV() == d.Color:ToHSV() then
+					local _, _, v = d.Color:ToHSV()
+					if v >= 0.2 then
+						d.Material = Enum.Material.Neon
+					end
+				end
+			end
+		end
+	end
 	if not animate then
 		return model, nil
 	end

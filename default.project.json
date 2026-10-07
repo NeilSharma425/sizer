@@ -33,6 +33,9 @@
       },
       "SoundFX": {
         "$path": "ReplicatedStorage/SoundFX.lua"
+      },
+      "CrateLogic": {
+        "$path": "ReplicatedStorage/CrateLogic.lua"
       }
     },
     "ServerScriptService": {
@@ -45,6 +48,9 @@
       },
       "PlayerData": {
         "$path": "ServerScriptService/PlayerData.lua"
+      },
+      "CrateManager": {
+        "$path": "ServerScriptService/CrateManager.server.lua"
       }
     },
     "StarterPlayer": {
@@ -71,6 +77,9 @@
         },
         "PetMenuClient": {
           "$path": "StarterPlayer/StarterPlayerScripts/PetMenuClient.client.lua"
+        },
+        "CrateClient": {
+          "$path": "StarterPlayer/StarterPlayerScripts/CrateClient.client.lua"
         }
       }
     }

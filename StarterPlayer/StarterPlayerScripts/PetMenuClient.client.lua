@@ -130,7 +130,16 @@ end
 --==========================================================================
 
 local COLUMNS, CARD_W, CARD_H, GAP = 4, 152, 186, 10
-local ROWS = math.ceil(#Pets.List / COLUMNS)
+local function sectionList(section)
+	local out = {}
+	for _, pet in ipairs(Pets.List) do
+		if (pet.rule.kind == "crate") == (section == "crate") then
+			table.insert(out, pet)
+		end
+	end
+	return out
+end
+local ROWS = math.ceil(math.max(#sectionList("earned"), #sectionList("crate")) / COLUMNS)
 local WIDTH = COLUMNS * CARD_W + (COLUMNS - 1) * GAP + 40
 local HEIGHT = 84 + ROWS * (CARD_H + GAP) + 14
 
@@ -195,6 +204,22 @@ local closeButton = textButton(window, "X", Color3.fromRGB(235, 80, 80), {
 	ZIndex = 4,
 })
 
+local section = "earned"
+local tabButtons = {}
+local function makeTab(key, text, x)
+	local b = textButton(window, text, Color3.fromRGB(95, 105, 140), {
+		Name = "Tab_" .. key,
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, x, 0, 12),
+		Size = UDim2.new(0, 150, 0, 34),
+		ZIndex = 4,
+	})
+	tabButtons[key] = b
+	return b
+end
+local earnedTab = makeTab("earned", "MY PETS", -272)
+local crateTab = makeTab("crate", "CRATE PETS", -112)
+
 local grid = frame(window, {
 	Name = "Pets",
 	Position = UDim2.new(0, 20, 0, 84),
@@ -211,7 +236,11 @@ local function render()
 	end
 	animations = {}
 	local count = 0
-	for i, pet in ipairs(Pets.List) do
+	local shown = sectionList(section)
+	for key, tab in pairs(tabButtons) do
+		tab.BackgroundColor3 = key == section and (key == "crate" and Color3.fromRGB(190, 100, 255) or PINK) or Color3.fromRGB(95, 105, 140)
+	end
+	for i, pet in ipairs(shown) do
 		local has = owned[pet.id] == true
 		if has then
 			count += 1
@@ -227,7 +256,8 @@ local function render()
 			ZIndex = 3,
 		})
 		corner(card, UDim.new(0, 14))
-		stroke(card, isOn and 4 or 3, isOn and GOLD or (has and pet.color or INK))
+		local rarity = pet.rarity and Pets.Rarities[pet.rarity]
+		stroke(card, isOn and 4 or 3, isOn and GOLD or (rarity and rarity.color) or (has and pet.color or INK))
 
 		local viewport, animate = petPreview(card, pet.id, {
 			Position = UDim2.new(0, 6, 0, 6),
@@ -247,8 +277,8 @@ local function render()
 		label(card, {
 			Position = UDim2.new(0, 4, 0, 92),
 			Size = UDim2.new(1, -8, 0, 22),
-			Text = has and string.upper(pet.name) or "???",
-			TextColor3 = has and pet.color:Lerp(WHITE, 0.3) or Color3.fromRGB(150, 155, 185),
+			Text = has and string.upper(pet.name) or (pet.rarity and (string.upper(pet.rarity) .. " ???") or "???"),
+			TextColor3 = has and pet.color:Lerp(WHITE, 0.3) or (rarity and rarity.color) or Color3.fromRGB(150, 155, 185),
 			ZIndex = 4,
 		})
 		if has then
@@ -277,7 +307,7 @@ local function render()
 			})
 		end
 	end
-	countLabel.Text = string.format("%d / %d UNLOCKED", count, #Pets.List)
+	countLabel.Text = string.format("%d / %d UNLOCKED", count, #shown)
 end
 
 local loading = false
@@ -307,6 +337,21 @@ closeButton.MouseButton1Click:Connect(function()
 end)
 dim.MouseButton1Click:Connect(function()
 	gui.Enabled = false
+end)
+
+earnedTab.MouseButton1Click:Connect(function()
+	if section ~= "earned" then
+		section = "earned"
+		sfx("click")
+		render()
+	end
+end)
+crateTab.MouseButton1Click:Connect(function()
+	if section ~= "crate" then
+		section = "crate"
+		sfx("click")
+		render()
+	end
 end)
 
 RunService.RenderStepped:Connect(function()
