@@ -85,14 +85,25 @@ local playerCurrentRound = {} -- [player] = roundIndex
 local timedSessions = {} -- [player] = { id, endsAt, score }
 local nextTimedId = 0
 
--- Optional hook point for a future category filter: pass a categoryFilter
--- string (or nil for "any category") and only matching rounds are eligible.
+-- Categories left out of "any category" rounds (MIXED, 60s challenge); they
+-- are still playable from their own station.
+local EXCLUDED_FROM_MIXED = { Brainrot = true }
+
+local function isEligible(round, categoryFilter)
+	if categoryFilter == nil then
+		return not EXCLUDED_FROM_MIXED[round.category]
+	end
+	return round.category == categoryFilter
+end
+
+-- Pass a categoryFilter string (or nil for "any category") and only
+-- matching rounds are eligible.
 local function pickRoundIndex(player, categoryFilter)
 	local history = playerHistory[player] or {}
 	local candidates = {}
 
 	for index, round in ipairs(ScaleData.Rounds) do
-		if categoryFilter == nil or round.category == categoryFilter then
+		if isEligible(round, categoryFilter) then
 			local recentlyUsed = false
 			for _, historyIndex in ipairs(history) do
 				if historyIndex == index then
@@ -110,7 +121,7 @@ local function pickRoundIndex(player, categoryFilter)
 	-- to the full eligible set rather than failing to produce a round.
 	if #candidates == 0 then
 		for index, round in ipairs(ScaleData.Rounds) do
-			if categoryFilter == nil or round.category == categoryFilter then
+			if isEligible(round, categoryFilter) then
 				table.insert(candidates, index)
 			end
 		end
