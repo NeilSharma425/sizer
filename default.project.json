@@ -1,0 +1,27 @@
+{
+  "name": "sizer",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "ScaleData": {
+        "$path": "ReplicatedStorage/ScaleData.lua"
+      }
+    },
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "RoundManager": {
+        "$path": "ServerScriptService/RoundManager.server.lua"
+      }
+    },
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "ScaleGuesserClient": {
+          "$path": "StarterPlayer/StarterPlayerScripts/ScaleGuesserClient.client.lua"
+        }
+      }
+    }
+  }
+}
