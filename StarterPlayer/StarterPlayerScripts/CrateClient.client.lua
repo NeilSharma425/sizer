@@ -3,8 +3,9 @@
 	LocalScript: StarterPlayer.StarterPlayerScripts.CrateClient
 
 	Shows the pet-crate announcements from CrateManager: a banner when a
-	crate starts falling ("RARE PET CRATE - Neon Mouse x3"), who grabbed a
-	copy, and when it's gone. The crate itself (with its light beam and
+	crate starts falling ("RARE PET CRATE - Neon Mouse x3") and when it vanishes
+	unclaimed. Claims don't get a banner; the crate's own label shows the
+	copies left. The crate itself (with its light beam and
 	billboard) is a real part in the world.
 ]]
 
@@ -121,13 +122,6 @@ CrateEvent.OnClientEvent:Connect(function(kind, data)
 			string.format("Contains: %s  -  only %d copies. Find the light beam!", data.name, data.copies),
 			color,
 			8
-		)
-	elseif kind == "claimed" then
-		show(
-			string.format("%s GOT THE %s!", string.upper(data.player), string.upper(data.name)),
-			data.left > 0 and string.format("%d copies left - hurry!", data.left) or "That was the last one.",
-			Color3.fromRGB(120, 255, 130),
-			4
 		)
 	elseif kind == "expired" then
 		sfx("crateGone")

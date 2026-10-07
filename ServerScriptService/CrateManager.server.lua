@@ -259,12 +259,6 @@ local function drop()
 		elseif result == "granted" then
 			grant(player, pet)
 			leftLabel.Text = rules.left > 0 and string.format("%d LEFT!", rules.left) or "ALL CLAIMED"
-			CrateEvent:FireAllClients("claimed", {
-				player = player.DisplayName,
-				name = pet.name,
-				rarity = pet.rarity,
-				left = rules.left,
-			})
 			if rules:isEmpty() then
 				finish("done")
 			end
