@@ -41,9 +41,9 @@ local MAX_RATIO = 50
 local LOG_MIN = math.log(MIN_RATIO)
 local LOG_MAX = math.log(MAX_RATIO)
 
-local RESULT_DELAY_SECONDS = 4
+local RESULT_DELAY_SECONDS = 2.2
 -- Rounds move faster in the 60-second challenge.
-local TIMED_RESULT_DELAY_SECONDS = 1.3
+local TIMED_RESULT_DELAY_SECONDS = 0.7
 local GOLD = Color3.fromRGB(255, 185, 30)
 
 local FONT = Enum.Font.FredokaOne
@@ -848,9 +848,18 @@ local function setLockEnabled(enabled)
 	)
 end
 
+-- After a result, the lock-in button becomes NEXT; the round also advances
+-- on its own after a short delay. `advanceToken` makes sure only one of
+-- those two triggers fires per result.
+local resultPending = false
+local advanceToken = 0
+
 local function requestRound()
 	currentRound = nil
 	guessLocked = false
+	resultPending = false
+	advanceToken += 1
+	lockInButton.Text = "LOCK IN"
 	resultText.Text = ""
 	questionText.Text = "Loading round..."
 	guessText.Text = "Guess: --"
@@ -1038,6 +1047,10 @@ RequestRound.OnClientEvent:Connect(function(roundInfo)
 end)
 
 lockInButton.MouseButton1Click:Connect(function()
+	if resultPending and activeStation then
+		requestRound()
+		return
+	end
 	if guessLocked or not currentRound then
 		return
 	end
@@ -1092,10 +1105,17 @@ RoundResult.OnClientEvent:Connect(function(result)
 	end
 
 	local mySession = sessionId
+	advanceToken += 1
+	local myToken = advanceToken
+	if sessionMode ~= "timed" then
+		resultPending = true
+		lockInButton.Text = "NEXT"
+		setLockEnabled(true)
+	end
 	local delaySeconds = sessionMode == "timed" and TIMED_RESULT_DELAY_SECONDS or RESULT_DELAY_SECONDS
 	task.delay(delaySeconds, function()
 		local timeLeft = not timedEndsAt or workspace:GetServerTimeNow() < timedEndsAt
-		if sessionId == mySession and activeStation and (sessionMode ~= "timed" or timeLeft) then
+		if advanceToken == myToken and sessionId == mySession and activeStation and (sessionMode ~= "timed" or timeLeft) then
 			requestRound()
 		end
 	end)
