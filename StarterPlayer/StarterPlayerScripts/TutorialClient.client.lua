@@ -2,19 +2,21 @@
 	TutorialClient.client.lua
 	LocalScript: StarterPlayer.StarterPlayerScripts.TutorialClient
 
-	A "show, don't tell" tutorial. New players get a short prompt on join.
-	If they accept, there are no instructions to read -- the tutorial guides
-	them with visuals through one real round:
+	A short "show, don't tell" tutorial. New players get a prompt on join.
+	If they accept, there are no instructions to read:
 
 	  1. a glowing trail, arrow and key cap lead to a station podium
-	  2. a ghost hand demonstrates dragging the slider
-	  3. a pulse points at LOCK IN
-	  4. the real result plays out, with a celebration
+	  2. round 1: a ghost hand demonstrates the slider, a pulse points at
+	     LOCK IN
+	  3. round 2: just the LOCK IN pulse
+	  4. the game screen closes and a quick spotlight tour points out the
+	     reasons to come back (DAILY, 60s challenge, Sizedex, rank)
 
 	It reads the game's UI by name (SizerHUD > GamePanel, SliderTrack,
-	LockInButton, ResultText) and never changes the game's behavior. When
-	done or skipped, it tells the server (TutorialDone) so it isn't offered
-	again; a "?" button replays it any time.
+	LockInButton, ResultText, SideMenu) and only ever asks the game to leave
+	the game screen (SizerBus.RequestExit). When done or skipped, it tells
+	the server (TutorialDone) so it isn't offered again; the HELP tile in the
+	side menu replays it any time.
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -125,14 +127,17 @@ gui.DisplayOrder = 5
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.Parent = playerGui
 
--- Small "?" button to replay the tutorial any time.
-local replayButton = button(gui, "?", PURPLE, {
-	AnchorPoint = Vector2.new(0, 0.5),
-	Position = UDim2.new(0, 14, 0.5, 0),
-	Size = UDim2.new(0, 50, 0, 50),
-	Visible = false,
-})
-corner(replayButton, UDim.new(1, 0))
+-- The HELP tile (built into the side menu by the main HUD script) replays
+-- the tutorial any time.
+local replayButton
+do
+	local hud = playerGui:WaitForChild("SizerHUD", 30)
+	local menu = hud and hud:WaitForChild("SideMenu", 10)
+	replayButton = menu and menu:WaitForChild("HelpButton", 10)
+	if not replayButton then
+		replayButton = Instance.new("TextButton") -- detached stand-in
+	end
+end
 
 -- Skip pill and progress dots (shown only during the tutorial).
 local skipButton = button(gui, "SKIP", GRAY, {
@@ -516,7 +521,6 @@ end
 local function hideChrome()
 	skipButton.Visible = false
 	dotsRow.Visible = false
-	replayButton.Visible = true
 end
 
 local function finish(myToken, completed)
@@ -532,8 +536,113 @@ local function finish(myToken, completed)
 	end
 end
 
+--==========================================================================
+-- Feature tour: spotlight on each reason to come back
+--==========================================================================
+
+local function findProgressGui()
+	local g = playerGui:FindFirstChild("SizerProgress")
+	return g and g:FindFirstChild("RankCard")
+end
+
+local function findMenuTile(name)
+	local hud = playerGui:FindFirstChild("SizerHUD")
+	local menu = hud and hud:FindFirstChild("SideMenu")
+	return menu and menu:FindFirstChild(name)
+end
+
+local TOUR = {
+	{ find = function() return findMenuTile("DailyButton") end, icon = "📅", text = "5 new questions every day", color = Color3.fromRGB(70, 150, 255) },
+	{ find = function() return findMenuTile("ChallengeButton") end, icon = "⏱️", text = "60 seconds. Beat the clock!", color = GOLD },
+	{ find = function() return findMenuTile("SizedexButton") end, icon = "📖", text = "Collect every object", color = Color3.fromRGB(150, 120, 255) },
+	{ find = findProgressGui, icon = "🔥", text = "Earn Sense, rank up, keep your streak", color = Color3.fromRGB(255, 140, 40) },
+}
+local TOUR_STEP_SECONDS = 2.1
+
+local function runTour(myToken)
+	local dim = Color3.new(0, 0, 0)
+	local blockers = {}
+	for i = 1, 4 do
+		blockers[i] = frame(gui, { BackgroundColor3 = dim, BackgroundTransparency = 0.45, ZIndex = 10 })
+	end
+	local ring = frame(gui, { BackgroundTransparency = 1, ZIndex = 12 })
+	corner(ring, UDim.new(0, 18))
+	local ringStroke = stroke(ring, 5, GOLD)
+
+	local card = frame(gui, { Size = UDim2.new(0, 270, 0, 78), BackgroundColor3 = PURPLE, ZIndex = 14 })
+	corner(card, UDim.new(0, 16))
+	local cardStroke = stroke(card, 4, GOLD)
+	local cardIcon = label(card, { Position = UDim2.new(0, 8, 0.5, -26), Size = UDim2.new(0, 52, 0, 52), ZIndex = 15 })
+	local cardText = label(card, {
+		Position = UDim2.new(0, 66, 0, 8),
+		Size = UDim2.new(1, -76, 1, -16),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		ZIndex = 15,
+	})
+	textStroke(cardText, 2)
+	addCleanup(function()
+		for _, b in ipairs(blockers) do
+			b:Destroy()
+		end
+		ring:Destroy()
+		card:Destroy()
+	end)
+
+	local current = nil
+	everyFrame(function(_, t)
+		local target = current
+		if not target or not target.Parent then
+			return
+		end
+		local screen = gui.AbsoluteSize
+		local pad = 8
+		local x, y = target.AbsolutePosition.X - pad, target.AbsolutePosition.Y - pad
+		local w, h = target.AbsoluteSize.X + pad * 2, target.AbsoluteSize.Y + pad * 2
+		blockers[1].Position, blockers[1].Size = UDim2.fromOffset(0, 0), UDim2.fromOffset(screen.X, math.max(0, y))
+		blockers[2].Position, blockers[2].Size = UDim2.fromOffset(0, y + h), UDim2.fromOffset(screen.X, math.max(0, screen.Y - y - h))
+		blockers[3].Position, blockers[3].Size = UDim2.fromOffset(0, y), UDim2.fromOffset(math.max(0, x), h)
+		blockers[4].Position, blockers[4].Size = UDim2.fromOffset(x + w, y), UDim2.fromOffset(math.max(0, screen.X - x - w), h)
+		local grow = 3 + 3 * (0.5 + 0.5 * math.sin(t * 6))
+		ring.Position = UDim2.fromOffset(x - grow, y - grow)
+		ring.Size = UDim2.fromOffset(w + grow * 2, h + grow * 2)
+		ringStroke.Transparency = 0.1 + 0.4 * (0.5 + 0.5 * math.sin(t * 6))
+
+		-- Caption beside the target, on whichever side has room.
+		local cy = y + h / 2
+		if x + w / 2 < screen.X / 2 then
+			card.AnchorPoint = Vector2.new(0, 0.5)
+			card.Position = UDim2.fromOffset(x + w + 16, cy)
+		else
+			card.AnchorPoint = Vector2.new(1, 0.5)
+			card.Position = UDim2.fromOffset(x - 16, cy)
+		end
+	end)
+
+	for i, step in ipairs(TOUR) do
+		local target = step.find()
+		if target and target.Visible and target.AbsoluteSize.X > 0 then
+			current = target
+			cardIcon.Text = step.icon
+			cardText.Text = step.text
+			cardStroke.Color = step.color
+			ringStroke.Color = step.color
+			card.Visible = true
+			if not waitUntil(myToken, function() return false end, TOUR_STEP_SECONDS) and token ~= myToken then
+				return false
+			end
+		end
+	end
+	return token == myToken
+end
+
+local bus = playerGui:WaitForChild("SizerBus", 20)
+
+local function questionLoaded(ui)
+	return ui.question == nil or ui.question.Text ~= "Loading round..."
+end
+
 -- Returns "done" on completion, "restart" if the player left the game
--- screen mid-way, or "cancel" if the tutorial was cancelled.
+-- screen during round 1, or "cancel" if the tutorial was cancelled.
 local function runOnce(myToken)
 	local ui = findHud()
 	if not ui or not ui.sliderTrack or not ui.lockIn or not ui.result then
@@ -552,11 +661,10 @@ local function runOnce(myToken)
 	end
 	runCleanups()
 
-	-- 2: ghost hand shows the slider drag, until the player tries it.
+	-- 2: round 1. Ghost hand shows the slider drag, until the player tries it.
 	setProgress(2)
-	-- Wait for the first question to load before demonstrating.
 	waitUntil(myToken, function()
-		return ui.question == nil or ui.question.Text ~= "Loading round..."
+		return questionLoaded(ui)
 	end, 8)
 	showSliderDemo(ui)
 	local touched = false
@@ -584,8 +692,7 @@ local function runOnce(myToken)
 		return "restart"
 	end
 
-	-- 3: pulse on LOCK IN until the player presses it.
-	setProgress(3)
+	-- Pulse on LOCK IN until the player presses it.
 	showLockHint(ui)
 	local locked = false
 	local c3 = ui.lockIn.MouseButton1Click:Connect(function()
@@ -605,8 +712,7 @@ local function runOnce(myToken)
 		return "restart"
 	end
 
-	-- 4: the result plays out; celebrate.
-	setProgress(4)
+	-- The result plays out with a little celebration.
 	waitUntil(myToken, function()
 		return ui.result.Text ~= ""
 	end, 10)
@@ -614,7 +720,60 @@ local function runOnce(myToken)
 		return "cancel"
 	end
 	celebrate()
-	task.wait(2.4)
+
+	-- 3: round 2. Only the LOCK IN pulse; the player already knows the slider.
+	setProgress(3)
+	waitUntil(myToken, function()
+		return not ui.panel.Visible or (ui.result.Text == "" and questionLoaded(ui))
+	end, 8)
+	if token ~= myToken then
+		return "cancel"
+	end
+	if ui.panel.Visible then
+		showLockHint(ui)
+		locked = false
+		local c4 = ui.lockIn.MouseButton1Click:Connect(function()
+			locked = true
+		end)
+		addCleanup(function()
+			c4:Disconnect()
+		end)
+		reached = waitUntil(myToken, function()
+			return locked or not ui.panel.Visible
+		end)
+		if not reached then
+			return "cancel"
+		end
+		runCleanups()
+		if ui.panel.Visible then
+			waitUntil(myToken, function()
+				return ui.result.Text ~= "" or not ui.panel.Visible
+			end, 10)
+			task.wait(1.8)
+		end
+	end
+	if token ~= myToken then
+		return "cancel"
+	end
+
+	-- 4: back to the lobby for the feature tour.
+	setProgress(4)
+	if ui.panel.Visible and bus then
+		bus:SetAttribute("RequestExit", os.clock())
+		waitUntil(myToken, function()
+			return not ui.panel.Visible
+		end, 4)
+		task.wait(0.4)
+	end
+	if token ~= myToken then
+		return "cancel"
+	end
+	if not runTour(myToken) then
+		return "cancel"
+	end
+	runCleanups()
+	celebrate()
+	task.wait(1.2)
 	return token == myToken and "done" or "cancel"
 end
 
@@ -625,7 +784,6 @@ local function startTutorial()
 	running = true
 	token += 1
 	local myToken = token
-	replayButton.Visible = false
 	skipButton.Visible = true
 	dotsRow.Visible = true
 
@@ -716,7 +874,6 @@ local function showPrompt()
 	end)
 	skip.MouseButton1Click:Connect(function()
 		close(function()
-			replayButton.Visible = true
 			TutorialDoneRemote:FireServer()
 		end)
 	end)
@@ -739,7 +896,6 @@ task.spawn(function()
 	end
 	task.wait(1.5)
 	if player:GetAttribute("TutorialDone") then
-		replayButton.Visible = true
 		return
 	end
 	showPrompt()

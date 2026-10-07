@@ -248,7 +248,7 @@ local senseText = label(rankCard, {
 	Text = "0 / 50 SENSE",
 })
 
--- Streak and Sizedex row -------------------------------------------------------
+-- Streak row -------------------------------------------------------
 
 local row = frame(gui, {
 	Name = "ProgressRow",
@@ -272,12 +272,20 @@ local streakText = label(streakPill, {
 })
 textStroke(streakText, 2)
 
-local dexButton = button(row, "📖 SIZEDEX", Color3.fromRGB(110, 90, 220), {
-	Name = "SizedexButton",
-	AnchorPoint = Vector2.new(1, 0),
-	Position = UDim2.new(1, 0, 0, 0),
-	Size = UDim2.new(0, 168, 1, 0),
-})
+-- The Sizedex button is a tile in the left-hand side menu (built by the
+-- main HUD script).
+local dexButton
+do
+	local hud = playerGui:WaitForChild("SizerHUD", 30)
+	local menu = hud and hud:WaitForChild("SideMenu", 10)
+	dexButton = menu and menu:WaitForChild("SizedexButton", 10)
+	if not dexButton then
+		dexButton = Instance.new("TextButton") -- detached stand-in so nothing errors
+		local cap = Instance.new("TextLabel")
+		cap.Name = "Caption"
+		cap.Parent = dexButton
+	end
+end
 
 -- Responsive scaling (about the top-right corner).
 local cardScale = Instance.new("UIScale")
@@ -496,7 +504,7 @@ local function applySnapshot()
 	end
 	streakText.Text = "🔥 " .. snapshot.streak.count
 	local summary = Progress.summary({ dex = snapshot.dex }, objectIndex)
-	dexButton.Text = string.format("📖 %d/%d", summary.discovered, summary.total)
+	dexButton.Caption.Text = string.format("%d/%d", summary.discovered, summary.total)
 	if bus then
 		bus:SetAttribute("DailyDone", snapshot.daily.done)
 		bus:SetAttribute("DailyAnswered", snapshot.daily.answered)

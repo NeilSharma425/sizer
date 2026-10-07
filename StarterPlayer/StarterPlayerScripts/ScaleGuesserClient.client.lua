@@ -184,21 +184,22 @@ local function updateHudScale()
 	end
 end
 
--- Playtime reward card (bottom-left).
+-- Playtime reward card (right column, under the rank card and streak).
 local rewardCard = frame(hud, {
-	AnchorPoint = Vector2.new(0, 1),
-	Position = UDim2.new(0, 16, 1, -16),
-	Size = UDim2.new(0, 330, 0, 92),
+	Name = "RewardCard",
+	AnchorPoint = Vector2.new(1, 0),
+	Position = UDim2.new(1, -14, 0, 146),
+	Size = UDim2.new(0, 290, 0, 78),
 	BackgroundColor3 = RED,
 })
-corner(rewardCard, UDim.new(0, 18))
+corner(rewardCard, UDim.new(0, 16))
 stroke(rewardCard, 3.5)
 gloss(rewardCard, RED)
 
 local giftBadge = frame(rewardCard, {
 	AnchorPoint = Vector2.new(0, 0.5),
-	Position = UDim2.new(0, 10, 0.5, 0),
-	Size = UDim2.new(0, 70, 0, 70),
+	Position = UDim2.new(0, 8, 0.5, 0),
+	Size = UDim2.new(0, 56, 0, 56),
 	BackgroundColor3 = Color3.fromRGB(255, 195, 50),
 })
 corner(giftBadge, UDim.new(1, 0))
@@ -207,21 +208,21 @@ gloss(giftBadge, Color3.fromRGB(255, 195, 50))
 label(giftBadge, { Size = UDim2.fromScale(0.66, 0.66), Position = UDim2.fromScale(0.17, 0.17), Text = "🎁" })
 
 textStroke(label(rewardCard, {
-	Size = UDim2.new(1, -100, 0, 26),
-	Position = UDim2.new(0, 90, 0, 10),
+	Size = UDim2.new(1, -84, 0, 22),
+	Position = UDim2.new(0, 74, 0, 8),
 	TextXAlignment = Enum.TextXAlignment.Left,
 	Text = "PLAYTIME REWARD",
 }))
 local rewardText = label(rewardCard, {
-	Size = UDim2.new(1, -100, 0, 24),
-	Position = UDim2.new(0, 90, 0, 38),
+	Size = UDim2.new(1, -84, 0, 20),
+	Position = UDim2.new(0, 74, 0, 32),
 	TextXAlignment = Enum.TextXAlignment.Left,
 	Text = "NEXT: 25 SENSE",
 })
 textStroke(rewardText)
 local rewardBarBack = frame(rewardCard, {
-	Position = UDim2.new(0, 90, 0, 68),
-	Size = UDim2.new(1, -108, 0, 10),
+	Position = UDim2.new(0, 74, 0, 58),
+	Size = UDim2.new(1, -90, 0, 9),
 	BackgroundColor3 = Color3.fromRGB(120, 25, 30),
 })
 corner(rewardBarBack, UDim.new(1, 0))
@@ -231,30 +232,69 @@ local rewardBarFill = frame(rewardBarBack, {
 })
 corner(rewardBarFill, UDim.new(1, 0))
 
-local challengeButton = button(hud, "⏱️ 60s CHALLENGE", GOLD, {
-	AnchorPoint = Vector2.new(0.5, 1),
-	Position = UDim2.new(0.5, 0, 1, -20),
-	Size = UDim2.new(0, 300, 0, 68),
-})
-
+-- QUICK PLAY is the only button along the bottom.
 local quickPlayButton = button(hud, "QUICK PLAY", GREEN, {
-	AnchorPoint = Vector2.new(0, 1),
-	Position = UDim2.new(0.5, 164, 1, -24),
-	Size = UDim2.new(0, 220, 0, 60),
+	Name = "QuickPlayButton",
+	AnchorPoint = Vector2.new(0.5, 1),
+	Position = UDim2.new(0.5, 0, 1, -22),
+	Size = UDim2.new(0, 260, 0, 68),
 })
 
+-- Everything else lives in a compact column down the left side.
 local DAILY_BLUE = Color3.fromRGB(70, 150, 255)
-local dailyButton = button(hud, "📅 DAILY", DAILY_BLUE, {
-	Name = "DailyButton",
-	AnchorPoint = Vector2.new(1, 1),
-	Position = UDim2.new(0.5, -164, 1, -24),
-	Size = UDim2.new(0, 220, 0, 60),
+local sideMenu = frame(hud, {
+	Name = "SideMenu",
+	AnchorPoint = Vector2.new(0, 0.5),
+	Position = UDim2.new(0, 14, 0.5, 0),
+	Size = UDim2.new(0, 92, 0, 4 * 84 + 3 * 8),
+	BackgroundTransparency = 1,
 })
+local sideLayout = Instance.new("UIListLayout")
+sideLayout.FillDirection = Enum.FillDirection.Vertical
+sideLayout.Padding = UDim.new(0, 8)
+sideLayout.SortOrder = Enum.SortOrder.LayoutOrder
+sideLayout.Parent = sideMenu
+
+-- A tile is a button with an emoji on top and a short caption underneath
+-- (the caption label is named "Caption" so other scripts can change it).
+local function menuTile(name, order, icon, caption, color)
+	local tile = Instance.new("TextButton")
+	tile.Name = name
+	tile.LayoutOrder = order
+	tile.Size = UDim2.new(1, 0, 0, 84)
+	tile.BackgroundColor3 = color
+	tile.BorderSizePixel = 0
+	tile.Text = ""
+	tile.AutoButtonColor = true
+	tile.Parent = sideMenu
+	corner(tile, UDim.new(0, 14))
+	stroke(tile, 3)
+	gloss(tile, color)
+	label(tile, {
+		Name = "Icon",
+		Position = UDim2.new(0, 0, 0, 6),
+		Size = UDim2.new(1, 0, 0, 42),
+		Text = icon,
+	})
+	textStroke(label(tile, {
+		Name = "Caption",
+		Position = UDim2.new(0, 4, 0, 52),
+		Size = UDim2.new(1, -8, 0, 22),
+		Text = caption,
+	}), 2)
+	return tile
+end
+
+local dailyButton = menuTile("DailyButton", 1, "📅", "DAILY", DAILY_BLUE)
+local challengeButton = menuTile("ChallengeButton", 2, "⏱️", "60s", GOLD)
+menuTile("SizedexButton", 3, "📖", "SIZEDEX", Color3.fromRGB(110, 90, 220))
+menuTile("HelpButton", 4, "❓", "HELP", Color3.fromRGB(95, 110, 150))
+
 -- Red "!" badge while today's daily is waiting to be played.
 local dailyBadge = frame(dailyButton, {
 	AnchorPoint = Vector2.new(0.5, 0.5),
-	Position = UDim2.new(1, -6, 0, 6),
-	Size = UDim2.new(0, 28, 0, 28),
+	Position = UDim2.new(1, -4, 0, 4),
+	Size = UDim2.new(0, 26, 0, 26),
 	BackgroundColor3 = RED,
 	ZIndex = 3,
 })
@@ -263,14 +303,12 @@ stroke(dailyBadge, 3)
 label(dailyBadge, { Size = UDim2.fromScale(0.6, 0.7), Position = UDim2.fromScale(0.2, 0.15), Text = "!", ZIndex = 4 })
 
 responsive(rewardCard)
-responsive(challengeButton)
-responsive(dailyButton)
+responsive(sideMenu)
 responsive(quickPlayButton)
 
 local function setLobbyHudVisible(visible)
-	challengeButton.Visible = visible
+	sideMenu.Visible = visible
 	quickPlayButton.Visible = visible
-	dailyButton.Visible = visible
 	rewardCard.Visible = visible
 end
 
@@ -1346,6 +1384,13 @@ end)
 
 dailyDoneButton.MouseButton1Click:Connect(stopSession)
 
+-- Lets the tutorial send the player back to the lobby.
+bus:GetAttributeChangedSignal("RequestExit"):Connect(function()
+	if activeStation then
+		stopSession()
+	end
+end)
+
 -- If the server says today's daily is already finished, leave the screen.
 ProgressEvent.OnClientEvent:Connect(function(kind)
 	if kind == "dailyDone" and sessionMode == "daily" then
@@ -1366,15 +1411,15 @@ RunService.Heartbeat:Connect(function()
 	local text
 	if done then
 		local resetIn = (bus:GetAttribute("DailyResetIn") or 0) - (os.clock() - (bus:GetAttribute("DailyStatusAt") or os.clock()))
-		text = "✅ DAILY  " .. formatCountdown(resetIn)
+		text = "✅ " .. formatCountdown(resetIn)
 	elseif answered > 0 then
-		text = string.format("📅 DAILY %d/%d", answered, total)
+		text = string.format("%d/%d", answered, total)
 	else
-		text = "📅 DAILY"
+		text = "DAILY"
 	end
 	if text ~= dailyShownText then
 		dailyShownText = text
-		dailyButton.Text = text
+		dailyButton.Caption.Text = text
 	end
 	dailyBadge.Visible = bus:GetAttribute("DailyDone") == false
 	dailyButton.BackgroundColor3 = done and Color3.fromRGB(95, 105, 140) or DAILY_BLUE
