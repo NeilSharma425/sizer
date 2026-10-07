@@ -6,6 +6,9 @@
       "$className": "ReplicatedStorage",
       "ScaleData": {
         "$path": "ReplicatedStorage/ScaleData.lua"
+      },
+      "ObjectModels": {
+        "$path": "ReplicatedStorage/ObjectModels.lua"
       }
     },
     "ServerScriptService": {

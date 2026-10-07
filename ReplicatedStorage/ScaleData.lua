@@ -4,8 +4,8 @@
 
 	Each entry describes one "guess the scale" round. Heights are in meters
 	(real-world), used purely for computing ratios -- the client never sees
-	targetHeight until after it submits a guess. Icons are shown on the
-	objects in the viewing room; shape = "Ball" draws both as spheres.
+	targetHeight until after it submits a guess. Each name has a matching
+	low-poly model in ObjectModels; icons are used if a model is missing.
 ]]
 
 local ScaleData = {}
@@ -139,7 +139,6 @@ ScaleData.Rounds = {
 		targetIcon = "🌕",
 		targetHeight = 3474000,
 		category = "Space",
-		shape = "Ball",
 		fact = "The Moon's diameter is about 3,474 km, roughly 27% of Earth's 12,742 km diameter.",
 	},
 	{
@@ -150,7 +149,6 @@ ScaleData.Rounds = {
 		targetIcon = "🪐",
 		targetHeight = 139820000,
 		category = "Space",
-		shape = "Ball",
 		fact = "Jupiter's diameter is about 139,820 km -- around 11 times wider than Earth.",
 	},
 	{
@@ -161,7 +159,6 @@ ScaleData.Rounds = {
 		targetIcon = "☀️",
 		targetHeight = 1391000000,
 		category = "Space",
-		shape = "Ball",
 		fact = "The Sun is about 1,391,000 km across -- roughly 10 Jupiters, or 109 Earths, side by side.",
 	},
 }

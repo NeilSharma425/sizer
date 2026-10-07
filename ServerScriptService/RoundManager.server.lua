@@ -114,7 +114,6 @@ local function onRequestRound(player, categoryFilter)
 			targetName = round.targetName,
 			targetIcon = round.targetIcon,
 			category = round.category,
-			shape = round.shape,
 		}
 	)
 end

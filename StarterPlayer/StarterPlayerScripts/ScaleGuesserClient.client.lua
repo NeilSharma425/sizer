@@ -22,6 +22,8 @@ local RequestRound = remotesFolder:WaitForChild("RequestRound")
 local SubmitGuess = remotesFolder:WaitForChild("SubmitGuess")
 local RoundResult = remotesFolder:WaitForChild("RoundResult")
 
+local ObjectModels = require(ReplicatedStorage:WaitForChild("ObjectModels"))
+
 local stationsFolder = workspace:WaitForChild("Map"):WaitForChild("Stations")
 
 local MIN_RATIO = 0.02
@@ -379,8 +381,10 @@ end
 
 -- The camera is moved here while playing; the character stays in the lobby.
 local SCENE = Vector3.new(0, 400, 3000)
-local REF_H = 10
-local WIDTH_FACTOR = 0.6
+-- The larger of the two objects is always drawn this tall; the smaller one
+-- shrinks instead. This keeps model details above Roblox's minimum part
+-- size, which would otherwise distort models at extreme slider values.
+local LARGEST_SIZE = 40
 local VIEW_FOV = 50
 local MAX_RULER_LINES = 50
 local CAMERA_STEP = "ScaleViewerCamera"
@@ -429,45 +433,37 @@ local stageRing = scenePart({
 })
 local stageDisc = scenePart({ Name = "StageDisc", Shape = Enum.PartType.Cylinder, Color = WHITE })
 
+-- Each object is a low-poly model from ObjectModels plus a floating name tag.
 local function makeObject(name, color)
-	local p = scenePart({ Name = name, Color = color })
-
-	local outline = Instance.new("Highlight")
-	outline.FillTransparency = 1
-	outline.OutlineColor = INK
-	outline.DepthMode = Enum.HighlightDepthMode.Occluded
-	outline.Parent = p
-
-	-- Emoji icon on the face pointing at the camera.
-	local face = Instance.new("SurfaceGui")
-	face.Face = Enum.NormalId.Front
-	face.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize
-	face.CanvasSize = Vector2.new(400, 400)
-	face.LightInfluence = 0
-	face.Parent = p
-	local icon = label(face, {
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromScale(0.8, 0.8),
-		Text = "",
-	})
-	local square = Instance.new("UIAspectRatioConstraint")
-	square.Parent = icon
-
+	local anchor = scenePart({ Name = name .. "Tag", Size = Vector3.new(0.1, 0.1, 0.1), Transparency = 1 })
 	local billboard = Instance.new("BillboardGui")
 	billboard.Size = UDim2.new(0, 280, 0, 64)
-	billboard.SizeOffset = Vector2.new(0, 0.75)
+	billboard.SizeOffset = Vector2.new(0, 0.6)
 	billboard.LightInfluence = 0
 	billboard.AlwaysOnTop = true
-	billboard.Parent = p
+	billboard.Parent = anchor
 	local text = label(billboard, { Size = UDim2.fromScale(1, 1), Text = name })
 	textStroke(text, 3)
-
-	return { part = p, face = face, icon = icon, billboard = billboard, label = text }
+	return { color = color, anchor = anchor, label = text, model = nil, measure = 1 }
 end
 
 local reference = makeObject("Reference", Color3.fromRGB(60, 120, 230))
 local target = makeObject("Target", Color3.fromRGB(255, 150, 40))
+
+local function setModel(obj, name, icon)
+	if obj.model then
+		obj.model:Destroy()
+	end
+	local model, measure = ObjectModels.build(name, icon, obj.color)
+	local outline = Instance.new("Highlight")
+	outline.FillTransparency = 1
+	outline.OutlineColor = INK
+	outline.DepthMode = Enum.HighlightDepthMode.Occluded
+	outline.Parent = model
+	model.Parent = viewer
+	obj.model = model
+	obj.measure = measure
+end
 
 -- Horizontal lines at multiples of the reference height (1x, 2x, ...).
 local rulerLines = {}
@@ -487,24 +483,25 @@ for k = 1, MAX_RULER_LINES do
 	rulerLines[k] = { part = line, tag = tag }
 end
 
-local framing = { cx = 0, width = 20, height = REF_H, depth = REF_H * WIDTH_FACTOR }
-local currentShape = "Block"
+local framing = { cx = 0, width = LARGEST_SIZE, height = LARGEST_SIZE, depth = LARGEST_SIZE / 2 }
+local refDisplaySize = LARGEST_SIZE
 
-local function objectSize(height)
-	if currentShape == "Ball" then
-		return Vector3.new(height, height, height)
-	end
-	local width = height * WIDTH_FACTOR
-	return Vector3.new(width, height, width)
+-- Scale a model so its measured dimension equals `measuredSize` studs and
+-- return its bounding-box size.
+local function scaleObject(obj, measuredSize)
+	obj.model:ScaleTo(math.max(measuredSize / obj.measure, 1e-4))
+	local _, size = obj.model:GetBoundingBox()
+	return size
 end
 
-local function setObject(obj, size, centerX)
-	obj.part.Shape = currentShape == "Ball" and Enum.PartType.Ball or Enum.PartType.Block
-	obj.part.Size = size
-	obj.part.CFrame = CFrame.new(SCENE + Vector3.new(centerX, size.Y / 2, 0))
-	-- Match the canvas aspect to the face so the emoji isn't stretched.
-	obj.face.CanvasSize = Vector2.new(math.max(1, math.floor(400 * size.X / size.Y)), 400)
-	obj.billboard.StudsOffsetWorldSpace = Vector3.new(0, size.Y / 2, 0)
+-- Stand the model on the floor with its bounding box centered on centerX.
+local function positionObject(obj, centerX)
+	local model = obj.model
+	local boxCFrame, size = model:GetBoundingBox()
+	local offset = boxCFrame.Position - model:GetPivot().Position
+	local bottom = offset.Y - size.Y / 2
+	model:PivotTo(CFrame.new(SCENE + Vector3.new(centerX - offset.X, -bottom, -offset.Z)))
+	obj.anchor.Position = SCENE + Vector3.new(centerX, size.Y, 0)
 end
 
 -- Camera that frames both objects so the taller one fills most of the
@@ -525,7 +522,7 @@ end
 local function updateRuler(viewHeight)
 	local step = 10
 	for _, s in ipairs({ 1, 2, 5, 10 }) do
-		if REF_H * s / viewHeight >= 0.07 then
+		if refDisplaySize * s / viewHeight >= 0.07 then
 			step = s
 			break
 		end
@@ -534,7 +531,7 @@ local function updateRuler(viewHeight)
 	local thickness = math.max(viewHeight * 0.003, 0.03)
 	local z = framing.depth / 2 + 0.5
 	for k, entry in ipairs(rulerLines) do
-		local y = REF_H * k
+		local y = refDisplaySize * k
 		local visible = k % step == 0 and y <= viewHeight * 1.05
 		entry.part.Transparency = visible and 0.4 or 1
 		entry.tag.Enabled = visible
@@ -547,14 +544,18 @@ local function updateRuler(viewHeight)
 end
 
 local function placeParts(ratio)
-	local refSize = objectSize(REF_H)
-	local targetSize = objectSize(math.max(REF_H * ratio, 0.05))
+	if not reference.model or not target.model then
+		return
+	end
+	refDisplaySize = LARGEST_SIZE / math.max(1, ratio)
+	local refSize = scaleObject(reference, refDisplaySize)
+	local targetSize = scaleObject(target, refDisplaySize * ratio)
 	local tallest = math.max(refSize.Y, targetSize.Y)
-	local gap = tallest * 0.15 + 1
+	local gap = math.max(tallest, refSize.X, targetSize.X) * 0.12 + 1
 	local refX = -(gap / 2 + refSize.X / 2)
 	local targetX = gap / 2 + targetSize.X / 2
-	setObject(reference, refSize, refX)
-	setObject(target, targetSize, targetX)
+	positionObject(reference, refX)
+	positionObject(target, targetX)
 
 	local left, right = refX - refSize.X / 2, targetX + targetSize.X / 2
 	framing.cx = (left + right) / 2
@@ -800,11 +801,10 @@ local function startSession(station)
 	categoryText.Text = station:GetAttribute("DisplayName") or "MIXED"
 
 	currentRound = nil
-	currentShape = "Block"
+	setModel(reference, "Reference", "?")
+	setModel(target, "Target", "?")
 	reference.label.Text = "Reference"
 	target.label.Text = "Target"
-	reference.icon.Text = ""
-	target.icon.Text = ""
 	setRatio(1)
 
 	fadeThrough(function()
@@ -824,9 +824,8 @@ RequestRound.OnClientEvent:Connect(function(roundInfo)
 		return
 	end
 	currentRound = roundInfo
-	currentShape = roundInfo.shape == "Ball" and "Ball" or "Block"
-	reference.icon.Text = roundInfo.referenceIcon or ""
-	target.icon.Text = roundInfo.targetIcon or ""
+	setModel(reference, roundInfo.referenceName, roundInfo.referenceIcon)
+	setModel(target, roundInfo.targetName, roundInfo.targetIcon)
 	reference.label.Text = string.format("%s\n%s", roundInfo.referenceName, formatHeight(roundInfo.referenceHeight))
 	target.label.Text = roundInfo.targetName .. "\n???"
 	questionText.Text = string.format("How big is a %s next to a %s?", roundInfo.targetName, roundInfo.referenceName)
