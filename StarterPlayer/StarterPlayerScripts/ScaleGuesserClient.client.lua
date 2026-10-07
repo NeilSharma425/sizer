@@ -2,308 +2,510 @@
 	ScaleGuesserClient.client.lua
 	LocalScript: StarterPlayer.StarterPlayerScripts.ScaleGuesserClient
 
-	Renders the reference/target parts and the guess UI, and drives the
-	round loop by talking to RoundManager over ScaleGameRemotes.
+	Lobby HUD (coins/trophies, playtime reward, Quick Play) and the game
+	itself: press E at a station podium (or Quick Play) to start rounds in
+	that station's category. The reference/target parts are local to this
+	client and appear at the active station.
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
-
-local MapConfig = require(ReplicatedStorage:WaitForChild("MapConfig"))
 
 local remotesFolder = ReplicatedStorage:WaitForChild("ScaleGameRemotes")
 local RequestRound = remotesFolder:WaitForChild("RequestRound")
 local SubmitGuess = remotesFolder:WaitForChild("SubmitGuess")
 local RoundResult = remotesFolder:WaitForChild("RoundResult")
 
--- The reference part is always drawn at this constant stud height, so the
--- player's sense of "real size" comes entirely from the fact/label text,
--- not from the reference model's true dimensions.
-local REFERENCE_DISPLAY_HEIGHT = 6
+local stationsFolder = workspace:WaitForChild("Map"):WaitForChild("Stations")
 
--- Slider covers a log-scale range from 0.02x to 50x the reference height.
+-- The reference part is always drawn this tall; matches the 1x line on
+-- each station's back panel.
+local REFERENCE_DISPLAY_HEIGHT = 6
+local PART_OFFSET_X = 4
+
 local MIN_RATIO = 0.02
 local MAX_RATIO = 50
 local LOG_MIN = math.log(MIN_RATIO)
 local LOG_MAX = math.log(MAX_RATIO)
 
 local RESULT_DELAY_SECONDS = 4
+local LEAVE_DISTANCE = 35
+
+local FONT = Enum.Font.FredokaOne
+local INK = Color3.fromRGB(25, 20, 35)
+local WHITE = Color3.new(1, 1, 1)
+local GREEN = Color3.fromRGB(80, 210, 70)
+local ORANGE = Color3.fromRGB(255, 170, 40)
+local RED = Color3.fromRGB(240, 70, 70)
 
 --==========================================================================
--- Workspace parts
+-- UI helpers
 --==========================================================================
 
-local PART_GAP = 10
+local function corner(target, radius)
+	local c = Instance.new("UICorner")
+	c.CornerRadius = radius or UDim.new(0, 14)
+	c.Parent = target
+	return c
+end
 
--- The two display parts live inside the Scale Guesser arena that
--- MapBuilder constructs, centered on MapConfig.ArenaCenter.
-local ARENA_ORIGIN = MapConfig.ArenaCenter + Vector3.new(0, 0, 10)
-local GROUND_Y = MapConfig.GroundY
+local function stroke(target, thickness, color)
+	local s = Instance.new("UIStroke")
+	s.Thickness = thickness or 3
+	s.Color = color or INK
+	s.ApplyStrokeMode = target:IsA("TextLabel") and Enum.ApplyStrokeMode.Contextual or Enum.ApplyStrokeMode.Border
+	s.Parent = target
+	return s
+end
 
-local referencePart = Instance.new("Part")
-referencePart.Name = "ReferencePart"
-referencePart.Anchored = true
-referencePart.CanCollide = false
-referencePart.Material = Enum.Material.SmoothPlastic
-referencePart.Color = Color3.fromRGB(60, 120, 220)
-referencePart.Size = Vector3.new(4, REFERENCE_DISPLAY_HEIGHT, 4)
-referencePart.Position = ARENA_ORIGIN + Vector3.new(-PART_GAP / 2, GROUND_Y + REFERENCE_DISPLAY_HEIGHT / 2, 0)
-referencePart.Parent = workspace
+local function textStroke(target, thickness)
+	local s = Instance.new("UIStroke")
+	s.Thickness = thickness or 2.5
+	s.Color = INK
+	s.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+	s.Parent = target
+	return s
+end
 
-local referenceLabel = Instance.new("BillboardGui")
-referenceLabel.Name = "Label"
-referenceLabel.Size = UDim2.new(0, 200, 0, 50)
-referenceLabel.StudsOffset = Vector3.new(0, 2, 0)
-referenceLabel.AlwaysOnTop = true
-referenceLabel.Parent = referencePart
+local function gloss(target, color)
+	local g = Instance.new("UIGradient")
+	g.Color = ColorSequence.new(color:Lerp(WHITE, 0.25), color:Lerp(INK, 0.12))
+	g.Rotation = 90
+	g.Parent = target
+	return g
+end
 
-local referenceLabelText = Instance.new("TextLabel")
-referenceLabelText.Size = UDim2.fromScale(1, 1)
-referenceLabelText.BackgroundTransparency = 1
-referenceLabelText.TextColor3 = Color3.new(1, 1, 1)
-referenceLabelText.TextScaled = true
-referenceLabelText.Font = Enum.Font.GothamBold
-referenceLabelText.Text = "Reference"
-referenceLabelText.Parent = referenceLabel
+local function frame(parent, props)
+	local f = Instance.new("Frame")
+	f.BorderSizePixel = 0
+	for key, value in pairs(props) do
+		f[key] = value
+	end
+	f.Parent = parent
+	return f
+end
 
-local targetPart = Instance.new("Part")
-targetPart.Name = "TargetPart"
-targetPart.Anchored = true
-targetPart.CanCollide = false
-targetPart.Material = Enum.Material.SmoothPlastic
-targetPart.Color = Color3.fromRGB(230, 140, 40)
-targetPart.Size = Vector3.new(4, REFERENCE_DISPLAY_HEIGHT, 4)
-targetPart.Position = ARENA_ORIGIN + Vector3.new(PART_GAP / 2, GROUND_Y + REFERENCE_DISPLAY_HEIGHT / 2, 0)
-targetPart.Parent = workspace
+local function label(parent, props)
+	local l = Instance.new("TextLabel")
+	l.BackgroundTransparency = 1
+	l.Font = FONT
+	l.TextScaled = true
+	l.TextColor3 = WHITE
+	for key, value in pairs(props) do
+		l[key] = value
+	end
+	l.Parent = parent
+	return l
+end
 
-local targetLabel = Instance.new("BillboardGui")
-targetLabel.Name = "Label"
-targetLabel.Size = UDim2.new(0, 200, 0, 50)
-targetLabel.StudsOffset = Vector3.new(0, 2, 0)
-targetLabel.AlwaysOnTop = true
-targetLabel.Parent = targetPart
+local function button(parent, text, color, props)
+	local b = Instance.new("TextButton")
+	b.BackgroundColor3 = color
+	b.BorderSizePixel = 0
+	b.AutoButtonColor = true
+	b.Font = FONT
+	b.TextScaled = true
+	b.TextColor3 = WHITE
+	b.Text = text
+	for key, value in pairs(props) do
+		b[key] = value
+	end
+	b.Parent = parent
+	corner(b, UDim.new(0, 12))
+	stroke(b, 3)
+	gloss(b, color)
+	textStroke(b, 2.5)
 
-local targetLabelText = Instance.new("TextLabel")
-targetLabelText.Size = UDim2.fromScale(1, 1)
-targetLabelText.BackgroundTransparency = 1
-targetLabelText.TextColor3 = Color3.new(1, 1, 1)
-targetLabelText.TextScaled = true
-targetLabelText.Font = Enum.Font.GothamBold
-targetLabelText.Text = "Target"
-targetLabelText.Parent = targetLabel
+	local padding = Instance.new("UIPadding")
+	padding.PaddingTop = UDim.new(0.18, 0)
+	padding.PaddingBottom = UDim.new(0.18, 0)
+	padding.Parent = b
 
--- Updates the target part's size/position to reflect a given ratio
--- (targetHeight / referenceHeight) using the same fixed reference display
--- height, so the visual comparison always matches the guessed ratio.
-local function setTargetRatio(ratio)
-	local displayHeight = REFERENCE_DISPLAY_HEIGHT * ratio
-	displayHeight = math.max(displayHeight, 0.05)
-	targetPart.Size = Vector3.new(4, displayHeight, 4)
-	targetPart.Position = ARENA_ORIGIN + Vector3.new(PART_GAP / 2, GROUND_Y + displayHeight / 2, 0)
+	return b
+end
+
+local function bump(guiObject)
+	local scale = guiObject:FindFirstChildOfClass("UIScale") or Instance.new("UIScale")
+	scale.Parent = guiObject
+	scale.Scale = 1.15
+	TweenService:Create(scale, TweenInfo.new(0.3, Enum.EasingStyle.Back), { Scale = 1 }):Play()
 end
 
 --==========================================================================
--- UI
+-- HUD
 --==========================================================================
 
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "ScaleGuesserGui"
-screenGui.ResetOnSpawn = false
-screenGui.Parent = player:WaitForChild("PlayerGui")
+local hud = Instance.new("ScreenGui")
+hud.Name = "SizerHUD"
+hud.ResetOnSpawn = false
+hud.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+hud.Parent = player:WaitForChild("PlayerGui")
 
-local rootFrame = Instance.new("Frame")
-rootFrame.Name = "Root"
-rootFrame.AnchorPoint = Vector2.new(0.5, 1)
-rootFrame.Position = UDim2.new(0.5, 0, 1, -30)
-rootFrame.Size = UDim2.new(0, 560, 0, 220)
-rootFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
-rootFrame.BackgroundTransparency = 0.1
-rootFrame.BorderSizePixel = 0
-rootFrame.Visible = false
-rootFrame.Parent = screenGui
+-- Top-level HUD elements shrink on small screens (each scales about its
+-- own AnchorPoint, so corner-anchored widgets stay in their corners).
+local responsiveScales = {}
+local function responsive(guiObject)
+	local scale = Instance.new("UIScale")
+	scale.Parent = guiObject
+	table.insert(responsiveScales, scale)
+end
+local function updateHudScale()
+	local camera = workspace.CurrentCamera
+	if not camera then
+		return
+	end
+	local value = math.clamp(camera.ViewportSize.Y / 900, 0.55, 1.1)
+	for _, scale in ipairs(responsiveScales) do
+		scale.Scale = value
+	end
+end
 
-local uiCorner = Instance.new("UICorner")
-uiCorner.CornerRadius = UDim.new(0, 12)
-uiCorner.Parent = rootFrame
+local function counterPill(position, color, icon, iconColor)
+	local pill = frame(hud, {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = position,
+		Size = UDim2.new(0, 230, 0, 52),
+		BackgroundColor3 = color,
+	})
+	corner(pill, UDim.new(1, 0))
+	stroke(pill, 3.5)
+	gloss(pill, color)
 
-local promptLabel = Instance.new("TextLabel")
-promptLabel.Name = "Prompt"
-promptLabel.Size = UDim2.new(1, -40, 0, 50)
-promptLabel.Position = UDim2.new(0, 20, 0, 10)
-promptLabel.BackgroundTransparency = 1
-promptLabel.TextColor3 = Color3.new(1, 1, 1)
-promptLabel.TextScaled = true
-promptLabel.Font = Enum.Font.GothamBold
-promptLabel.TextXAlignment = Enum.TextXAlignment.Left
-promptLabel.Text = "Loading round..."
-promptLabel.Parent = rootFrame
+	local badge = frame(pill, {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0, 8, 0.5, 0),
+		Size = UDim2.new(0, 66, 0, 66),
+		BackgroundColor3 = iconColor,
+		ZIndex = 2,
+	})
+	corner(badge, UDim.new(1, 0))
+	stroke(badge, 3.5)
+	gloss(badge, iconColor)
+	label(badge, {
+		Size = UDim2.fromScale(0.7, 0.7),
+		Position = UDim2.fromScale(0.15, 0.15),
+		Text = icon,
+		ZIndex = 3,
+	})
 
-local guessLabel = Instance.new("TextLabel")
-guessLabel.Name = "GuessLabel"
-guessLabel.Size = UDim2.new(1, -40, 0, 30)
-guessLabel.Position = UDim2.new(0, 20, 0, 60)
-guessLabel.BackgroundTransparency = 1
-guessLabel.TextColor3 = Color3.fromRGB(230, 140, 40)
-guessLabel.TextScaled = true
-guessLabel.Font = Enum.Font.Gotham
-guessLabel.TextXAlignment = Enum.TextXAlignment.Left
-guessLabel.Text = "Guess: --"
-guessLabel.Parent = rootFrame
+	local value = label(pill, {
+		Size = UDim2.new(1, -60, 0.8, 0),
+		Position = UDim2.new(0, 44, 0.1, 0),
+		Text = "0",
+	})
+	textStroke(value, 3)
+	responsive(pill)
+	return pill, value
+end
 
-local sliderTrack = Instance.new("Frame")
-sliderTrack.Name = "SliderTrack"
-sliderTrack.Size = UDim2.new(1, -40, 0, 12)
-sliderTrack.Position = UDim2.new(0, 20, 0, 105)
-sliderTrack.BackgroundColor3 = Color3.fromRGB(60, 60, 68)
-sliderTrack.BorderSizePixel = 0
-sliderTrack.Parent = rootFrame
+local _, coinsText = counterPill(UDim2.new(0.5, -135, 0, 14), GREEN, "⭐", Color3.fromRGB(255, 200, 40))
+local _, trophyText = counterPill(UDim2.new(0.5, 135, 0, 14), ORANGE, "🏆", Color3.fromRGB(255, 120, 40))
 
-local sliderTrackCorner = Instance.new("UICorner")
-sliderTrackCorner.CornerRadius = UDim.new(1, 0)
-sliderTrackCorner.Parent = sliderTrack
+-- Playtime reward card (bottom-left).
+local rewardCard = frame(hud, {
+	AnchorPoint = Vector2.new(0, 1),
+	Position = UDim2.new(0, 16, 1, -16),
+	Size = UDim2.new(0, 330, 0, 92),
+	BackgroundColor3 = RED,
+})
+corner(rewardCard, UDim.new(0, 18))
+stroke(rewardCard, 3.5)
+gloss(rewardCard, RED)
 
-local sliderFill = Instance.new("Frame")
-sliderFill.Name = "SliderFill"
-sliderFill.Size = UDim2.new(0, 0, 1, 0)
-sliderFill.BackgroundColor3 = Color3.fromRGB(230, 140, 40)
-sliderFill.BorderSizePixel = 0
-sliderFill.Parent = sliderTrack
+local giftBadge = frame(rewardCard, {
+	AnchorPoint = Vector2.new(0, 0.5),
+	Position = UDim2.new(0, 10, 0.5, 0),
+	Size = UDim2.new(0, 70, 0, 70),
+	BackgroundColor3 = Color3.fromRGB(255, 195, 50),
+})
+corner(giftBadge, UDim.new(1, 0))
+stroke(giftBadge, 3)
+gloss(giftBadge, Color3.fromRGB(255, 195, 50))
+label(giftBadge, { Size = UDim2.fromScale(0.66, 0.66), Position = UDim2.fromScale(0.17, 0.17), Text = "🎁" })
 
-local sliderFillCorner = Instance.new("UICorner")
-sliderFillCorner.CornerRadius = UDim.new(1, 0)
-sliderFillCorner.Parent = sliderFill
+textStroke(label(rewardCard, {
+	Size = UDim2.new(1, -100, 0, 26),
+	Position = UDim2.new(0, 90, 0, 10),
+	TextXAlignment = Enum.TextXAlignment.Left,
+	Text = "PLAYTIME REWARD",
+}))
+local rewardText = label(rewardCard, {
+	Size = UDim2.new(1, -100, 0, 24),
+	Position = UDim2.new(0, 90, 0, 38),
+	TextXAlignment = Enum.TextXAlignment.Left,
+	Text = "NEXT: 25 COINS",
+})
+textStroke(rewardText)
+local rewardBarBack = frame(rewardCard, {
+	Position = UDim2.new(0, 90, 0, 68),
+	Size = UDim2.new(1, -108, 0, 10),
+	BackgroundColor3 = Color3.fromRGB(120, 25, 30),
+})
+corner(rewardBarBack, UDim.new(1, 0))
+local rewardBarFill = frame(rewardBarBack, {
+	Size = UDim2.fromScale(0, 1),
+	BackgroundColor3 = Color3.fromRGB(255, 200, 60),
+})
+corner(rewardBarFill, UDim.new(1, 0))
 
-local sliderHandle = Instance.new("Frame")
-sliderHandle.Name = "SliderHandle"
-sliderHandle.AnchorPoint = Vector2.new(0.5, 0.5)
-sliderHandle.Size = UDim2.new(0, 24, 0, 24)
-sliderHandle.Position = UDim2.new(0, 0, 0.5, 0)
-sliderHandle.BackgroundColor3 = Color3.new(1, 1, 1)
-sliderHandle.BorderSizePixel = 0
-sliderHandle.ZIndex = 2
-sliderHandle.Parent = sliderTrack
+local quickPlayButton = button(hud, "QUICK PLAY", GREEN, {
+	AnchorPoint = Vector2.new(0.5, 1),
+	Position = UDim2.new(0.5, 0, 1, -20),
+	Size = UDim2.new(0, 260, 0, 64),
+})
 
-local sliderHandleCorner = Instance.new("UICorner")
-sliderHandleCorner.CornerRadius = UDim.new(1, 0)
-sliderHandleCorner.Parent = sliderHandle
+responsive(rewardCard)
+responsive(quickPlayButton)
 
-local lockInButton = Instance.new("TextButton")
-lockInButton.Name = "LockInButton"
-lockInButton.Size = UDim2.new(0, 160, 0, 44)
-lockInButton.Position = UDim2.new(0, 20, 0, 150)
-lockInButton.BackgroundColor3 = Color3.fromRGB(60, 170, 90)
-lockInButton.TextColor3 = Color3.new(1, 1, 1)
-lockInButton.Font = Enum.Font.GothamBold
-lockInButton.TextScaled = true
-lockInButton.Text = "Lock In"
-lockInButton.Parent = rootFrame
-
-local lockInCorner = Instance.new("UICorner")
-lockInCorner.CornerRadius = UDim.new(0, 8)
-lockInCorner.Parent = lockInButton
-
-local resultLabel = Instance.new("TextLabel")
-resultLabel.Name = "ResultLabel"
-resultLabel.Size = UDim2.new(1, -220, 0, 60)
-resultLabel.Position = UDim2.new(0, 200, 0, 145)
-resultLabel.BackgroundTransparency = 1
-resultLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
-resultLabel.TextScaled = true
-resultLabel.TextWrapped = true
-resultLabel.Font = Enum.Font.Gotham
-resultLabel.TextXAlignment = Enum.TextXAlignment.Left
-resultLabel.Text = ""
-resultLabel.Parent = rootFrame
+-- Floating score popup.
+local popup = label(hud, {
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.fromScale(0.5, 0.35),
+	Size = UDim2.new(0, 400, 0, 110),
+	Text = "",
+	TextColor3 = Color3.fromRGB(255, 220, 60),
+	Visible = false,
+	ZIndex = 10,
+})
+textStroke(popup, 5)
 
 --==========================================================================
--- Round / slider state
+-- Game panel
 --==========================================================================
 
-local currentRound = nil -- { referenceName, referenceHeight, targetName, category }
+local panel = frame(hud, {
+	AnchorPoint = Vector2.new(0.5, 1),
+	Position = UDim2.new(0.5, 0, 1, -16),
+	Size = UDim2.new(0, 600, 0, 250),
+	BackgroundColor3 = Color3.fromRGB(40, 45, 75),
+	Visible = false,
+})
+corner(panel, UDim.new(0, 20))
+stroke(panel, 4)
+gloss(panel, Color3.fromRGB(40, 45, 75))
+
+local categoryTag = frame(panel, {
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.new(0.5, 0, 0, 0),
+	Size = UDim2.new(0, 220, 0, 42),
+	BackgroundColor3 = ORANGE,
+	ZIndex = 2,
+})
+corner(categoryTag, UDim.new(1, 0))
+stroke(categoryTag, 3.5)
+local categoryGloss = gloss(categoryTag, ORANGE)
+local categoryText = label(categoryTag, {
+	Size = UDim2.new(1, -20, 0.8, 0),
+	Position = UDim2.new(0, 10, 0.1, 0),
+	Text = "MIXED",
+	ZIndex = 3,
+})
+textStroke(categoryText)
+
+local leaveButton = button(panel, "X", RED, {
+	AnchorPoint = Vector2.new(1, 0),
+	Position = UDim2.new(1, -12, 0, 12),
+	Size = UDim2.new(0, 44, 0, 44),
+})
+
+local questionText = label(panel, {
+	Size = UDim2.new(1, -90, 0, 52),
+	Position = UDim2.new(0, 22, 0, 28),
+	TextXAlignment = Enum.TextXAlignment.Left,
+	TextWrapped = true,
+	Text = "Loading round...",
+})
+textStroke(questionText)
+
+local guessText = label(panel, {
+	Size = UDim2.new(1, -44, 0, 28),
+	Position = UDim2.new(0, 22, 0, 84),
+	TextXAlignment = Enum.TextXAlignment.Left,
+	TextColor3 = ORANGE,
+	Text = "Guess: --",
+})
+textStroke(guessText)
+
+local sliderTrack = frame(panel, {
+	Position = UDim2.new(0, 22, 0, 128),
+	Size = UDim2.new(1, -44, 0, 18),
+	BackgroundColor3 = Color3.fromRGB(20, 22, 40),
+})
+corner(sliderTrack, UDim.new(1, 0))
+stroke(sliderTrack, 2.5)
+
+local sliderFill = frame(sliderTrack, {
+	Size = UDim2.fromScale(0, 1),
+	BackgroundColor3 = ORANGE,
+})
+corner(sliderFill, UDim.new(1, 0))
+gloss(sliderFill, ORANGE)
+
+local sliderHandle = frame(sliderTrack, {
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.fromScale(0, 0.5),
+	Size = UDim2.new(0, 34, 0, 34),
+	BackgroundColor3 = WHITE,
+	ZIndex = 2,
+})
+corner(sliderHandle, UDim.new(1, 0))
+stroke(sliderHandle, 3)
+
+local lockInButton = button(panel, "LOCK IN", GREEN, {
+	Position = UDim2.new(0, 22, 1, -78),
+	Size = UDim2.new(0, 170, 0, 58),
+})
+
+local resultText = label(panel, {
+	Size = UDim2.new(1, -230, 0, 64),
+	Position = UDim2.new(0, 208, 1, -82),
+	TextXAlignment = Enum.TextXAlignment.Left,
+	TextWrapped = true,
+	TextColor3 = Color3.fromRGB(225, 230, 245),
+	Font = Enum.Font.GothamBold,
+	Text = "",
+})
+
+responsive(panel)
+updateHudScale()
+workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(updateHudScale)
+if workspace.CurrentCamera then
+	workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateHudScale)
+end
+
+--==========================================================================
+-- Display parts (local to this client)
+--==========================================================================
+
+local function makeDisplayPart(name, color)
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Anchored = true
+	p.CanCollide = false
+	p.CanQuery = false
+	p.Material = Enum.Material.SmoothPlastic
+	p.Color = color
+	p.Size = Vector3.new(4, REFERENCE_DISPLAY_HEIGHT, 4)
+
+	local billboard = Instance.new("BillboardGui")
+	billboard.Size = UDim2.new(0, 220, 0, 56)
+	billboard.StudsOffsetWorldSpace = Vector3.new(0, REFERENCE_DISPLAY_HEIGHT / 2 + 2, 0)
+	billboard.LightInfluence = 0
+	billboard.Parent = p
+
+	local text = label(billboard, { Size = UDim2.fromScale(1, 1), Text = name })
+	textStroke(text, 3)
+	return p, text, billboard
+end
+
+local referencePart, referenceLabel = makeDisplayPart("Reference", Color3.fromRGB(60, 120, 230))
+local targetPart, targetLabel, targetBillboard = makeDisplayPart("Target", Color3.fromRGB(255, 150, 40))
+
+--==========================================================================
+-- State
+--==========================================================================
+
+local activeStation = nil
+local sessionId = 0
+local currentRound = nil
 local currentRatio = 1
 local isDragging = false
 local guessLocked = false
 
+local function displayOrigin()
+	return activeStation and activeStation:FindFirstChild("DisplayOrigin")
+end
+
+local function placeParts(ratio)
+	local origin = displayOrigin()
+	if not origin then
+		return
+	end
+	local targetHeight = math.max(REFERENCE_DISPLAY_HEIGHT * ratio, 0.05)
+	referencePart.Size = Vector3.new(4, REFERENCE_DISPLAY_HEIGHT, 4)
+	referencePart.CFrame = origin.CFrame * CFrame.new(-PART_OFFSET_X, REFERENCE_DISPLAY_HEIGHT / 2, 0)
+	targetPart.Size = Vector3.new(4, targetHeight, 4)
+	targetPart.CFrame = origin.CFrame * CFrame.new(PART_OFFSET_X, targetHeight / 2, 0)
+	-- Billboards anchor at the part's center; keep the label above its top.
+	targetBillboard.StudsOffsetWorldSpace = Vector3.new(0, targetHeight / 2 + 2, 0)
+end
+
+local function withCommas(n)
+	local s = tostring(math.floor(n + 0.5))
+	local formatted = s:reverse():gsub("(%d%d%d)", "%1,"):reverse()
+	return (formatted:gsub("^,", ""))
+end
+
 local function formatHeight(meters)
-	if meters >= 1000 then
-		return string.format("%.0f m", meters)
+	if meters >= 10000 then
+		return withCommas(meters / 1000) .. " km"
+	elseif meters >= 1000 then
+		return string.format("%.1f km", meters / 1000)
 	elseif meters >= 1 then
-		return string.format("%.2f m", meters)
+		return string.format("%.1f m", meters)
+	elseif meters >= 0.01 then
+		return string.format("%.0f cm", meters * 100)
 	else
-		return string.format("%.3f m", meters)
+		return string.format("%.1f mm", meters * 1000)
 	end
 end
 
--- Converts a fraction along the slider track [0, 1] into a ratio using a
--- log scale, so both very small and very large ratios are reachable with
--- smooth, evenly distributed drag sensitivity.
 local function alphaToRatio(alpha)
-	alpha = math.clamp(alpha, 0, 1)
-	local logValue = LOG_MIN + (LOG_MAX - LOG_MIN) * alpha
-	return math.exp(logValue)
+	return math.exp(LOG_MIN + (LOG_MAX - LOG_MIN) * math.clamp(alpha, 0, 1))
 end
 
 local function ratioToAlpha(ratio)
-	ratio = math.clamp(ratio, MIN_RATIO, MAX_RATIO)
-	return (math.log(ratio) - LOG_MIN) / (LOG_MAX - LOG_MIN)
-end
-
-local function updateGuessDisplay()
-	if not currentRound then
-		return
-	end
-	local guessedHeight = currentRound.referenceHeight * currentRatio
-	guessLabel.Text = string.format("Guess: %s tall (%.2fx the reference)", formatHeight(guessedHeight), currentRatio)
+	return (math.log(math.clamp(ratio, MIN_RATIO, MAX_RATIO)) - LOG_MIN) / (LOG_MAX - LOG_MIN)
 end
 
 local function setRatio(ratio)
 	currentRatio = math.clamp(ratio, MIN_RATIO, MAX_RATIO)
 	local alpha = ratioToAlpha(currentRatio)
-	sliderFill.Size = UDim2.new(alpha, 0, 1, 0)
-	sliderHandle.Position = UDim2.new(alpha, 0, 0.5, 0)
-	setTargetRatio(currentRatio)
-	updateGuessDisplay()
+	sliderFill.Size = UDim2.fromScale(alpha, 1)
+	sliderHandle.Position = UDim2.fromScale(alpha, 0.5)
+	placeParts(currentRatio)
+	if currentRound then
+		guessText.Text = string.format(
+			"Guess: %s  (%.2fx)",
+			formatHeight(currentRound.referenceHeight * currentRatio),
+			currentRatio
+		)
+	end
 end
 
-local function alphaFromInputPosition(inputPositionX)
-	local trackAbsolutePosition = sliderTrack.AbsolutePosition.X
-	local trackAbsoluteSize = sliderTrack.AbsoluteSize.X
-	if trackAbsoluteSize <= 0 then
+--==========================================================================
+-- Slider input
+--==========================================================================
+
+local function alphaFromX(x)
+	local width = sliderTrack.AbsoluteSize.X
+	if width <= 0 then
 		return 0
 	end
-	return (inputPositionX - trackAbsolutePosition) / trackAbsoluteSize
+	return (x - sliderTrack.AbsolutePosition.X) / width
 end
 
-local function beginDrag(inputPositionX)
-	if guessLocked then
+local function beginDrag(input)
+	if guessLocked or not currentRound then
 		return
 	end
-	isDragging = true
-	setRatio(alphaToRatio(alphaFromInputPosition(inputPositionX)))
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		isDragging = true
+		setRatio(alphaToRatio(alphaFromX(input.Position.X)))
+	end
 end
 
-sliderHandle.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		beginDrag(input.Position.X)
-	end
-end)
-
-sliderTrack.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		beginDrag(input.Position.X)
-	end
-end)
+sliderTrack.InputBegan:Connect(beginDrag)
+sliderHandle.InputBegan:Connect(beginDrag)
 
 UserInputService.InputChanged:Connect(function(input)
-	if not isDragging then
-		return
-	end
-	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-		setRatio(alphaToRatio(alphaFromInputPosition(input.Position.X)))
+	if isDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		setRatio(alphaToRatio(alphaFromX(input.Position.X)))
 	end
 end)
 
@@ -314,104 +516,224 @@ UserInputService.InputEnded:Connect(function(input)
 end)
 
 --==========================================================================
--- Round flow
+-- Session flow
 --==========================================================================
 
-local isPlaying = false
-
-local function startNewRound()
-	isPlaying = true
-	rootFrame.Visible = true
-	guessLocked = false
-	resultLabel.Text = ""
-	lockInButton.Visible = true
-	lockInButton.Active = true
-	lockInButton.AutoButtonColor = true
-	lockInButton.BackgroundColor3 = Color3.fromRGB(60, 170, 90)
-	promptLabel.Text = "Loading round..."
-	RequestRound:FireServer()
+local function setLockEnabled(enabled)
+	lockInButton.Active = enabled
+	lockInButton.AutoButtonColor = enabled
+	lockInButton.BackgroundColor3 = enabled and GREEN or Color3.fromRGB(110, 110, 120)
+	lockInButton:FindFirstChildOfClass("UIGradient").Color = ColorSequence.new(
+		lockInButton.BackgroundColor3:Lerp(WHITE, 0.25),
+		lockInButton.BackgroundColor3:Lerp(INK, 0.12)
+	)
 end
+
+local function requestRound()
+	currentRound = nil
+	guessLocked = false
+	resultText.Text = ""
+	questionText.Text = "Loading round..."
+	guessText.Text = "Guess: --"
+	setLockEnabled(false)
+	local category = activeStation:GetAttribute("Category")
+	RequestRound:FireServer(category ~= "" and category or nil)
+end
+
+local function stopSession()
+	activeStation = nil
+	sessionId += 1
+	currentRound = nil
+	isDragging = false
+	panel.Visible = false
+	quickPlayButton.Visible = true
+	rewardCard.Visible = true
+	referencePart.Parent = nil
+	targetPart.Parent = nil
+end
+
+local function startSession(station)
+	if activeStation == station then
+		return
+	end
+	activeStation = station
+	sessionId += 1
+
+	local color = station:GetAttribute("Color") or ORANGE
+	categoryTag.BackgroundColor3 = color
+	categoryGloss.Color = ColorSequence.new(color:Lerp(WHITE, 0.25), color:Lerp(INK, 0.12))
+	categoryText.Text = station:GetAttribute("DisplayName") or "MIXED"
+
+	panel.Visible = true
+	quickPlayButton.Visible = false
+	rewardCard.Visible = false
+	referenceLabel.Text = "Reference"
+	targetLabel.Text = "Target"
+	referencePart.Parent = workspace
+	targetPart.Parent = workspace
+	setRatio(1)
+	requestRound()
+end
+
+RequestRound.OnClientEvent:Connect(function(roundInfo)
+	if not activeStation then
+		return
+	end
+	currentRound = roundInfo
+	referenceLabel.Text = string.format("%s\n%s", roundInfo.referenceName, formatHeight(roundInfo.referenceHeight))
+	targetLabel.Text = roundInfo.targetName .. "\n???"
+	questionText.Text = string.format("How big is a %s next to a %s?", roundInfo.targetName, roundInfo.referenceName)
+	setRatio(1)
+	setLockEnabled(true)
+end)
 
 lockInButton.MouseButton1Click:Connect(function()
 	if guessLocked or not currentRound then
 		return
 	end
 	guessLocked = true
-	lockInButton.Active = false
-	lockInButton.AutoButtonColor = false
-	lockInButton.BackgroundColor3 = Color3.fromRGB(90, 90, 90)
-
-	local guessedHeight = currentRound.referenceHeight * currentRatio
-	SubmitGuess:FireServer(guessedHeight)
+	isDragging = false
+	setLockEnabled(false)
+	SubmitGuess:FireServer(currentRound.referenceHeight * currentRatio)
 end)
 
-RequestRound.OnClientEvent:Connect(function(roundInfo)
-	currentRound = roundInfo
-	referenceLabelText.Text = string.format("%s\n(%s)", roundInfo.referenceName, formatHeight(roundInfo.referenceHeight))
-	targetLabelText.Text = roundInfo.targetName
-	promptLabel.Text = string.format("How tall is a %s compared to a %s?", roundInfo.targetName, roundInfo.referenceName)
-
-	setRatio(1)
-end)
+local function showPopup(score)
+	popup.Text = "+" .. score
+	popup.TextColor3 = score >= 80 and Color3.fromRGB(110, 255, 110)
+		or score >= 40 and Color3.fromRGB(255, 220, 60)
+		or Color3.fromRGB(255, 110, 110)
+	popup.Position = UDim2.fromScale(0.5, 0.38)
+	popup.TextTransparency = 0
+	popup.Visible = true
+	local s = popup:FindFirstChildOfClass("UIStroke")
+	if s then
+		s.Transparency = 0
+	end
+	bump(popup)
+	local info = TweenInfo.new(1.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+	TweenService:Create(popup, info, { Position = UDim2.fromScale(0.5, 0.28), TextTransparency = 1 }):Play()
+	if s then
+		TweenService:Create(s, info, { Transparency = 1 }):Play()
+	end
+end
 
 RoundResult.OnClientEvent:Connect(function(result)
-	if not currentRound then
+	if not activeStation or not currentRound then
 		return
 	end
 
-	local trueRatio = result.trueTargetHeight / currentRound.referenceHeight
-	setTargetRatio(trueRatio)
+	placeParts(result.trueTargetHeight / currentRound.referenceHeight)
+	targetLabel.Text = string.format("%s\n%s", currentRound.targetName, formatHeight(result.trueTargetHeight))
 
-	resultLabel.Text = string.format(
-		"True height: %s | Your guess: %s | Score: %d/100\n%s",
+	local verdict = result.score >= 90 and "PERFECT!" or result.score >= 70 and "GREAT!" or result.score >= 40 and "CLOSE!" or "WAY OFF!"
+	resultText.Text = string.format(
+		"%s  Real: %s  |  You: %s  |  +%d coins\n%s",
+		verdict,
 		formatHeight(result.trueTargetHeight),
 		formatHeight(result.guessedTargetHeight),
-		result.score,
+		result.coinsEarned or 0,
 		result.fact
 	)
+	showPopup(result.score)
 
-	lockInButton.Active = false
-	lockInButton.AutoButtonColor = false
-
+	local mySession = sessionId
 	task.delay(RESULT_DELAY_SECONDS, function()
-		startNewRound()
+		if sessionId == mySession and activeStation then
+			requestRound()
+		end
 	end)
 end)
 
+leaveButton.MouseButton1Click:Connect(stopSession)
+
 --==========================================================================
--- Start kiosk (walk up to it in the arena and press E)
+-- Stations & Quick Play
 --==========================================================================
 
-local arenaFolder = workspace:WaitForChild("Map"):WaitForChild("ScaleGuesserArena")
-local kiosk = arenaFolder:WaitForChild("Kiosk")
-local startPrompt = kiosk:WaitForChild("ProximityPrompt")
+local function hookStation(station)
+	local podium = station:WaitForChild("Podium")
+	local prompt = podium:WaitForChild("ProximityPrompt")
+	prompt.Triggered:Connect(function(triggeringPlayer)
+		if triggeringPlayer == player then
+			startSession(station)
+		end
+	end)
+end
 
-startPrompt.Triggered:Connect(function(triggeringPlayer)
-	if triggeringPlayer == player and not isPlaying then
-		startNewRound()
+for _, station in ipairs(stationsFolder:GetChildren()) do
+	task.spawn(hookStation, station)
+end
+stationsFolder.ChildAdded:Connect(hookStation)
+
+quickPlayButton.MouseButton1Click:Connect(function()
+	local stations = stationsFolder:GetChildren()
+	if #stations == 0 then
+		return
+	end
+	local station = stations[math.random(1, #stations)]
+	local approach = station:FindFirstChild("Approach")
+	local character = player.Character
+	if approach and character then
+		character:PivotTo(approach.CFrame)
+	end
+	startSession(station)
+end)
+
+-- End the session if the player walks away from their station.
+RunService.Heartbeat:Connect(function()
+	local origin = displayOrigin()
+	if not origin then
+		return
+	end
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if root and (root.Position - origin.Position).Magnitude > LEAVE_DISTANCE then
+		stopSession()
 	end
 end)
 
--- Once a player wanders far enough from the arena, hide the UI so it
--- doesn't follow them around the rest of the map. The round loop simply
--- stops advancing (RoundResult re-shows the UI) until they walk back and
--- trigger the kiosk again.
-local HIDE_DISTANCE = MapConfig.ArenaRadius + 20
-
-RunService.Heartbeat:Connect(function()
-	if not isPlaying then
-		return
+player.CharacterAdded:Connect(function()
+	if activeStation then
+		stopSession()
 	end
+end)
 
-	local character = player.Character
-	local rootPart = character and character:FindFirstChild("HumanoidRootPart")
-	if not rootPart then
-		return
-	end
+--==========================================================================
+-- HUD bindings
+--==========================================================================
 
-	local distance = (rootPart.Position - MapConfig.ArenaCenter).Magnitude
-	if distance > HIDE_DISTANCE then
-		isPlaying = false
-		rootFrame.Visible = false
+task.spawn(function()
+	local leaderstats = player:WaitForChild("leaderstats")
+	local coins = leaderstats:WaitForChild("Coins")
+	local score = leaderstats:WaitForChild("Score")
+
+	coinsText.Text = tostring(coins.Value)
+	trophyText.Text = tostring(score.Value)
+	coins.Changed:Connect(function(value)
+		coinsText.Text = tostring(value)
+		bump(coinsText)
+	end)
+	score.Changed:Connect(function(value)
+		trophyText.Text = tostring(value)
+		bump(trophyText)
+	end)
+end)
+
+task.spawn(function()
+	while true do
+		local nextAt = player:GetAttribute("NextRewardAt")
+		local interval = player:GetAttribute("RewardInterval") or 120
+		local amount = player:GetAttribute("RewardAmount") or 25
+		if nextAt then
+			local remaining = math.max(0, nextAt - workspace:GetServerTimeNow())
+			rewardText.Text = string.format(
+				"NEXT: %d COINS   %d:%02d",
+				amount,
+				math.floor(remaining / 60),
+				math.floor(remaining % 60)
+			)
+			rewardBarFill.Size = UDim2.fromScale(1 - remaining / interval, 1)
+		end
+		task.wait(0.25)
 	end
 end)

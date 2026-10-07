@@ -19,6 +19,9 @@ local HISTORY_LENGTH = 4
 -- Log-scale scoring constant: score = clamp(100 - logError * SCORE_SCALE, 0, 100)
 local SCORE_SCALE = 140
 
+local PLAYTIME_REWARD_INTERVAL = 120
+local PLAYTIME_REWARD_COINS = 25
+
 local remotesFolder = Instance.new("Folder")
 remotesFolder.Name = "ScaleGameRemotes"
 remotesFolder.Parent = ReplicatedStorage
@@ -87,7 +90,15 @@ local function recordHistory(player, roundIndex)
 	end
 end
 
+local validCategories = {}
+for _, round in ipairs(ScaleData.Rounds) do
+	validCategories[round.category] = true
+end
+
 local function onRequestRound(player, categoryFilter)
+	if type(categoryFilter) ~= "string" or not validCategories[categoryFilter] then
+		categoryFilter = nil
+	end
 	local roundIndex = pickRoundIndex(player, categoryFilter)
 	local round = ScaleData.Rounds[roundIndex]
 
@@ -123,16 +134,23 @@ local function onSubmitGuess(player, guessedTargetHeight)
 	local score = math.clamp(100 - logError * SCORE_SCALE, 0, 100)
 	score = math.floor(score + 0.5)
 
+	local coinsEarned = math.floor(score / 10)
+
 	local leaderstats = player:FindFirstChild("leaderstats")
 	local scoreValue = leaderstats and leaderstats:FindFirstChild("Score")
+	local coinsValue = leaderstats and leaderstats:FindFirstChild("Coins")
 	if scoreValue then
 		scoreValue.Value += score
+	end
+	if coinsValue then
+		coinsValue.Value += coinsEarned
 	end
 
 	RoundResult:FireClient(player, {
 		trueTargetHeight = round.targetHeight,
 		guessedTargetHeight = guessedTargetHeight,
 		score = score,
+		coinsEarned = coinsEarned,
 		fact = round.fact,
 		referenceName = round.referenceName,
 		targetName = round.targetName,
@@ -153,6 +171,26 @@ local function onPlayerAdded(player)
 	score.Name = "Score"
 	score.Value = 0
 	score.Parent = leaderstats
+
+	local coins = Instance.new("IntValue")
+	coins.Name = "Coins"
+	coins.Value = 0
+	coins.Parent = leaderstats
+
+	-- Playtime reward; the client renders the countdown from NextRewardAt.
+	task.spawn(function()
+		while player.Parent do
+			local nextAt = workspace:GetServerTimeNow() + PLAYTIME_REWARD_INTERVAL
+			player:SetAttribute("NextRewardAt", nextAt)
+			player:SetAttribute("RewardInterval", PLAYTIME_REWARD_INTERVAL)
+			player:SetAttribute("RewardAmount", PLAYTIME_REWARD_COINS)
+			task.wait(PLAYTIME_REWARD_INTERVAL)
+			if not player.Parent then
+				break
+			end
+			coins.Value += PLAYTIME_REWARD_COINS
+		end
+	end)
 end
 
 local function onPlayerRemoving(player)
