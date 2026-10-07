@@ -20,7 +20,7 @@ local HISTORY_LENGTH = 4
 local SCORE_SCALE = 140
 
 local PLAYTIME_REWARD_INTERVAL = 120
-local PLAYTIME_REWARD_COINS = 25
+local PLAYTIME_REWARD_SENSE = 25
 
 -- 60-second challenge. Guesses submitted up to this long after the buzzer
 -- still count, to absorb network latency.
@@ -157,16 +157,16 @@ local function onSubmitGuess(player, guessedTargetHeight)
 	local score = math.clamp(100 - logError * SCORE_SCALE, 0, 100)
 	score = math.floor(score + 0.5)
 
-	local coinsEarned = math.floor(score / 10)
+	local senseEarned = math.floor(score / 10)
 
 	local leaderstats = player:FindFirstChild("leaderstats")
 	local scoreValue = leaderstats and leaderstats:FindFirstChild("Score")
-	local coinsValue = leaderstats and leaderstats:FindFirstChild("Coins")
+	local senseValue = leaderstats and leaderstats:FindFirstChild("Sense")
 	if scoreValue then
 		scoreValue.Value += score
 	end
-	if coinsValue then
-		coinsValue.Value += coinsEarned
+	if senseValue then
+		senseValue.Value += senseEarned
 	end
 
 	local timed = timedSessions[player]
@@ -180,7 +180,7 @@ local function onSubmitGuess(player, guessedTargetHeight)
 		trueTargetHeight = round.targetHeight,
 		guessedTargetHeight = guessedTargetHeight,
 		score = score,
-		coinsEarned = coinsEarned,
+		senseEarned = senseEarned,
 		timedScore = timedScore,
 		fact = round.fact,
 		referenceName = round.referenceName,
@@ -234,10 +234,10 @@ local function onPlayerAdded(player)
 	score.Value = 0
 	score.Parent = leaderstats
 
-	local coins = Instance.new("IntValue")
-	coins.Name = "Coins"
-	coins.Value = 0
-	coins.Parent = leaderstats
+	local sense = Instance.new("IntValue")
+	sense.Name = "Sense"
+	sense.Value = 0
+	sense.Parent = leaderstats
 
 	-- Playtime reward; the client renders the countdown from NextRewardAt.
 	task.spawn(function()
@@ -245,12 +245,12 @@ local function onPlayerAdded(player)
 			local nextAt = workspace:GetServerTimeNow() + PLAYTIME_REWARD_INTERVAL
 			player:SetAttribute("NextRewardAt", nextAt)
 			player:SetAttribute("RewardInterval", PLAYTIME_REWARD_INTERVAL)
-			player:SetAttribute("RewardAmount", PLAYTIME_REWARD_COINS)
+			player:SetAttribute("RewardAmount", PLAYTIME_REWARD_SENSE)
 			task.wait(PLAYTIME_REWARD_INTERVAL)
 			if not player.Parent then
 				break
 			end
-			coins.Value += PLAYTIME_REWARD_COINS
+			sense.Value += PLAYTIME_REWARD_SENSE
 		end
 	end)
 end

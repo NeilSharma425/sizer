@@ -2,7 +2,7 @@
 	ScaleGuesserClient.client.lua
 	LocalScript: StarterPlayer.StarterPlayerScripts.ScaleGuesserClient
 
-	Lobby HUD (coins/trophies, playtime reward, Quick Play) and the game
+	Lobby HUD (sense/trophies, playtime reward, Quick Play) and the game
 	itself: press E at a station podium (or Quick Play) to start rounds in
 	that station's category. Playing moves the camera to a local viewing
 	room where the reference and target fill the screen; leaving returns
@@ -176,7 +176,7 @@ local function updateHudScale()
 end
 
 -- Compact labeled counters stacked in the top-right corner, e.g.
--- [🪙 COINS 120]. Scale about their top-right anchor on small screens.
+-- [📏 SENSE 120]. Scale about their top-right anchor on small screens.
 local function counter(order, title, icon, color)
 	local card = frame(hud, {
 		AnchorPoint = Vector2.new(1, 0),
@@ -220,7 +220,7 @@ local function counter(order, title, icon, color)
 	return value
 end
 
-local coinsText = counter(1, "COINS", "🪙", Color3.fromRGB(255, 195, 40))
+local senseText = counter(1, "SENSE", "📏", Color3.fromRGB(255, 195, 40))
 local trophyText = counter(2, "SCORE", "🏆", Color3.fromRGB(255, 130, 50))
 
 -- Playtime reward card (bottom-left).
@@ -255,7 +255,7 @@ local rewardText = label(rewardCard, {
 	Size = UDim2.new(1, -100, 0, 24),
 	Position = UDim2.new(0, 90, 0, 38),
 	TextXAlignment = Enum.TextXAlignment.Left,
-	Text = "NEXT: 25 COINS",
+	Text = "NEXT: 25 SENSE",
 })
 textStroke(rewardText)
 local rewardBarBack = frame(rewardCard, {
@@ -1126,11 +1126,11 @@ RoundResult.OnClientEvent:Connect(function(result)
 
 	local verdict = result.score >= 90 and "PERFECT!" or result.score >= 70 and "GREAT!" or result.score >= 40 and "CLOSE!" or "WAY OFF!"
 	resultText.Text = string.format(
-		"%s  Real: %s  |  You: %s  |  +%d coins\n%s",
+		"%s  Real: %s  |  You: %s  |  +%d sense\n%s",
 		verdict,
 		formatHeight(result.trueTargetHeight),
 		formatHeight(result.guessedTargetHeight),
-		result.coinsEarned or 0,
+		result.senseEarned or 0,
 		result.fact
 	)
 	showPopup(result.score)
@@ -1203,14 +1203,14 @@ end)
 
 task.spawn(function()
 	local leaderstats = player:WaitForChild("leaderstats")
-	local coins = leaderstats:WaitForChild("Coins")
+	local sense = leaderstats:WaitForChild("Sense")
 	local score = leaderstats:WaitForChild("Score")
 
-	coinsText.Text = tostring(coins.Value)
+	senseText.Text = tostring(sense.Value)
 	trophyText.Text = tostring(score.Value)
-	coins.Changed:Connect(function(value)
-		coinsText.Text = tostring(value)
-		bump(coinsText)
+	sense.Changed:Connect(function(value)
+		senseText.Text = tostring(value)
+		bump(senseText)
 	end)
 	score.Changed:Connect(function(value)
 		trophyText.Text = tostring(value)
@@ -1226,7 +1226,7 @@ task.spawn(function()
 		if nextAt then
 			local remaining = math.max(0, nextAt - workspace:GetServerTimeNow())
 			rewardText.Text = string.format(
-				"NEXT: %d COINS   %d:%02d",
+				"NEXT: %d SENSE   %d:%02d",
 				amount,
 				math.floor(remaining / 60),
 				math.floor(remaining % 60)
