@@ -24,6 +24,9 @@
       },
       "Ranks": {
         "$path": "ReplicatedStorage/Ranks.lua"
+      },
+      "Pets": {
+        "$path": "ReplicatedStorage/Pets.lua"
       }
     },
     "ServerScriptService": {
@@ -53,6 +56,12 @@
         },
         "ProgressClient": {
           "$path": "StarterPlayer/StarterPlayerScripts/ProgressClient.client.lua"
+        },
+        "PetClient": {
+          "$path": "StarterPlayer/StarterPlayerScripts/PetClient.client.lua"
+        },
+        "StreakClient": {
+          "$path": "StarterPlayer/StarterPlayerScripts/StreakClient.client.lua"
         }
       }
     }

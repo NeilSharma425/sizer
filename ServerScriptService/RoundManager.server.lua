@@ -111,6 +111,11 @@ local GetProgress = Instance.new("RemoteFunction")
 GetProgress.Name = "GetProgress"
 GetProgress.Parent = remotesFolder
 
+-- Client -> server: equip one of the pets the player has unlocked.
+local EquipPet = Instance.new("RemoteEvent")
+EquipPet.Name = "EquipPet"
+EquipPet.Parent = remotesFolder
+
 -- Client -> server: the player finished or skipped the tutorial.
 local TutorialDone = Instance.new("RemoteEvent")
 TutorialDone.Name = "TutorialDone"
@@ -304,6 +309,9 @@ local function onSubmitGuess(player, guessedTargetHeight)
 	score = math.floor(score + 0.5)
 
 	local senseBase = math.floor(score / 10)
+	-- Compounding login-streak bonus: +5% per streak day, up to +50%.
+	local streakCount = PlayerData.getProfile(player).streak.count
+	senseBase += math.floor(senseBase * Progress.streakBonus(streakCount) + 0.5)
 
 	-- Combo: back-to-back good guesses earn bonus Sense.
 	local combo, comboBonus = Progress.combo(combos[player] or 0, score)
@@ -355,6 +363,15 @@ local function onSubmitGuess(player, guessedTargetHeight)
 	playerCurrentRound[player] = nil
 	playerCurrentDaily[player] = nil
 end
+
+EquipPet.OnServerEvent:Connect(function(player, id)
+	local profile = PlayerData.getProfile(player)
+	if type(id) == "string" and profile.pets[id] and profile.pet ~= id then
+		profile.pet = id
+		player:SetAttribute("Pet", id)
+		PlayerData.markDirty(player)
+	end
+end)
 
 RequestRound.OnServerEvent:Connect(onRequestRound)
 SubmitGuess.OnServerEvent:Connect(onSubmitGuess)
@@ -473,6 +490,7 @@ local function buildSnapshot(player)
 		dex = profile.dex,
 		cats = profile.cats,
 		streak = { count = profile.streak.count, best = profile.streak.best, lastDay = profile.streak.lastDay },
+		pets = { owned = profile.pets, equipped = profile.pet },
 		daily = {
 			done = daily.done,
 			answered = daily.answered,
@@ -516,6 +534,7 @@ local function onDataLoaded(player)
 		PlayerData.markDirty(player)
 		sendProgress(player, "login", streak)
 	end
+	player:SetAttribute("Pet", profile.pet ~= "" and profile.pet or nil)
 
 	if profile.weekly.rewardWeek < week then
 		local place = PlayerData.getLastWeekPlace(player)

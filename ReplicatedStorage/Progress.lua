@@ -66,6 +66,8 @@ function Progress.newProfile()
 		dex = {}, -- [objectName] = { n = seen, t = played as target, b = best score, g = scores of 90+ }
 		cats = {}, -- [category] = true once every object in it has a star
 		streak = { count = 0, best = 0, lastDay = 0 },
+		pets = {}, -- [petId] = true, unlocked from streak rewards
+		pet = "", -- equipped pet id ("" = none)
 		daily = { day = 0, score = 0, answered = 0 }, -- today's run: score so far, questions answered
 		weekly = { week = 0, best = 0, rewardWeek = 0 },
 	}
@@ -85,6 +87,8 @@ function Progress.normalize(profile)
 		end
 		profile[key] = value
 	end
+	profile.pets = type(profile.pets) == "table" and profile.pets or {}
+	profile.pet = type(profile.pet) == "string" and profile.pet or ""
 	section("streak", { count = 0, best = 0, lastDay = 0 })
 	section("daily", { day = 0, score = 0, answered = 0 })
 	section("weekly", { week = 0, best = 0, rewardWeek = 0 })
@@ -112,6 +116,15 @@ function Progress.merge(base, extra)
 		if done then
 			base.cats[category] = true
 		end
+	end
+
+	for id, owned in pairs(extra.pets) do
+		if owned then
+			base.pets[id] = true
+		end
+	end
+	if extra.pet ~= "" then
+		base.pet = extra.pet -- the newer save's choice wins
 	end
 
 	base.streak.best = math.max(base.streak.best, extra.streak.best)
@@ -280,12 +293,45 @@ end
 -- Login streak
 --==========================================================================
 
-function Progress.loginReward(streak)
-	local reward = 10 * math.min(streak, 7)
-	if streak % 7 == 0 then
-		reward += 50
+-- Rewards for day N of a login streak. Rewards grow every day; days 3, 7
+-- and 14 unlock pets that can only be earned this way.
+Progress.STREAK_REWARDS = {
+	{ sense = 20 },
+	{ sense = 40 },
+	{ sense = 60, pet = "emberfox" },
+	{ sense = 80 },
+	{ sense = 100 },
+	{ sense = 120 },
+	{ sense = 200, pet = "cosmiccube" },
+	{ sense = 100 },
+	{ sense = 120 },
+	{ sense = 200 },
+	{ sense = 140 },
+	{ sense = 160 },
+	{ sense = 180 },
+	{ sense = 500, pet = "rainbowslime" },
+}
+
+-- Returns { sense, pet? } for streak day `streak` (days past 14 keep paying).
+function Progress.streakReward(streak)
+	local list = Progress.STREAK_REWARDS
+	if streak <= #list then
+		return list[math.max(1, streak)]
 	end
-	return reward
+	local sense = 200
+	if streak % 7 == 0 then
+		sense += 300
+	end
+	return { sense = sense }
+end
+
+function Progress.loginReward(streak)
+	return Progress.streakReward(streak).sense
+end
+
+-- Compounding bonus on every round's Sense: +5% per streak day, up to +50%.
+function Progress.streakBonus(streak)
+	return 0.05 * math.min(math.max(streak, 0), 10)
 end
 
 -- Updates the streak for a login on `today` (a day number). Returns
@@ -304,7 +350,22 @@ function Progress.updateStreak(profile, today)
 	end
 	streak.best = math.max(streak.best, streak.count)
 	streak.lastDay = today
-	return { isNew = true, count = streak.count, best = streak.best, reward = Progress.loginReward(streak.count), broken = broken }
+	local reward = Progress.streakReward(streak.count)
+	local pet = nil
+	profile.pets = profile.pets or {}
+	if reward.pet and not profile.pets[reward.pet] then
+		profile.pets[reward.pet] = true
+		pet = reward.pet
+		profile.pet = reward.pet -- newest pet is equipped right away
+	end
+	return {
+		isNew = true,
+		count = streak.count,
+		best = streak.best,
+		reward = reward.sense,
+		broken = broken,
+		pet = pet,
+	}
 end
 
 --==========================================================================

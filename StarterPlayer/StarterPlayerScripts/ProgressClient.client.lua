@@ -258,11 +258,16 @@ local row = frame(gui, {
 	BackgroundTransparency = 1,
 })
 
-local streakPill = frame(row, {
-	Size = UDim2.new(0, 112, 1, 0),
-	BackgroundColor3 = PANEL,
-	BackgroundTransparency = 0.1,
-})
+-- Tapping the streak opens the streak rewards window (StreakClient).
+local streakPill = Instance.new("TextButton")
+streakPill.Name = "StreakPill"
+streakPill.Text = ""
+streakPill.AutoButtonColor = true
+streakPill.BorderSizePixel = 0
+streakPill.Size = UDim2.new(0, 112, 1, 0)
+streakPill.BackgroundColor3 = PANEL
+streakPill.BackgroundTransparency = 0.1
+streakPill.Parent = row
 corner(streakPill, UDim.new(1, 0))
 stroke(streakPill, 3, Color3.fromRGB(255, 140, 40))
 local streakText = label(streakPill, {
@@ -982,6 +987,9 @@ ProgressEvent.OnClientEvent:Connect(function(kind, payload)
 			toast(string.format("🔥 NEW STREAK  DAY 1  +%d SENSE", payload.reward), Color3.fromRGB(255, 140, 40), 4)
 		else
 			toast(string.format("🔥 DAY %d STREAK  +%d SENSE", payload.count, payload.reward), Color3.fromRGB(255, 140, 40), 4)
+			if payload.pet then
+				toast("🐾 NEW PET UNLOCKED!", Color3.fromRGB(255, 120, 200), 5)
+			end
 		end
 		task.defer(refresh)
 	elseif kind == "weekly" then
