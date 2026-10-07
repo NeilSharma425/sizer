@@ -14,6 +14,15 @@
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local SoundFX = select(2, pcall(function()
+	return require(ReplicatedStorage:WaitForChild("SoundFX", 10))
+end))
+local function sfx(name, opts)
+	if type(SoundFX) == "table" then
+		pcall(SoundFX.play, name, opts)
+	end
+end
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -386,6 +395,7 @@ textStroke(bannerName, 3)
 local bannerToken = 0
 
 local function showRankUp(info)
+	sfx("rankUp")
 	bannerToken += 1
 	local myToken = bannerToken
 	bannerIcon.Text = info.rank.icon
@@ -429,6 +439,7 @@ local toastCount = 0
 local MAX_TOASTS = 4
 
 function toast(text, color, seconds)
+	sfx("toast")
 	toastCount += 1
 	local order = toastCount
 	local existing = {}
@@ -532,6 +543,7 @@ ProgressEvent.OnClientEvent:Connect(function(kind, payload)
 		else
 			toast(string.format("🔥 DAY %d STREAK  +%d SENSE", payload.count, payload.reward), Color3.fromRGB(255, 140, 40), 4)
 			if payload.pet then
+				sfx("pet")
 				toast("🐾 NEW PET UNLOCKED!", Color3.fromRGB(255, 120, 200), 5)
 			end
 		end
@@ -539,6 +551,7 @@ ProgressEvent.OnClientEvent:Connect(function(kind, payload)
 	elseif kind == "weekly" then
 		toast(string.format("🏆 LAST WEEK'S #%d  +%d SENSE", payload.place, payload.reward), GOLD, 5)
 	elseif kind == "pet" then
+		sfx("pet")
 		toast("🐾 NEW PET: " .. string.upper(payload.name or "PET"), Color3.fromRGB(255, 120, 200), 5)
 	elseif kind == "dailyDone" then
 		toast("📅 TODAY'S DAILY IS ALREADY DONE", Color3.fromRGB(70, 150, 255), 3)

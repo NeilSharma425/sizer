@@ -30,6 +30,9 @@
       },
       "ExtraObjects": {
         "$path": "ReplicatedStorage/ExtraObjects.lua"
+      },
+      "SoundFX": {
+        "$path": "ReplicatedStorage/SoundFX.lua"
       }
     },
     "ServerScriptService": {

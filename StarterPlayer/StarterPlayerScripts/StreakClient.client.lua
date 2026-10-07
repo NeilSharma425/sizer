@@ -10,6 +10,15 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local SoundFX = select(2, pcall(function()
+	return require(ReplicatedStorage:WaitForChild("SoundFX", 10))
+end))
+local function sfx(name, opts)
+	if type(SoundFX) == "table" then
+		pcall(SoundFX.play, name, opts)
+	end
+end
+
 local RunService = game:GetService("RunService")
 
 local Progress = require(ReplicatedStorage:WaitForChild("Progress"))
@@ -423,6 +432,7 @@ local function buildPets(owned, equipped)
 			})
 			btn.MouseButton1Click:Connect(function()
 				if equipped ~= pet.id then
+					sfx("equip")
 					EquipPet:FireServer(pet.id)
 					equipped = pet.id
 					buildPets(owned, equipped)
@@ -502,6 +512,7 @@ local function open()
 	end
 	render(snapshot)
 	updateScale()
+	sfx("window")
 	gui.Enabled = true
 end
 

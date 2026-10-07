@@ -10,6 +10,15 @@
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local SoundFX = select(2, pcall(function()
+	return require(ReplicatedStorage:WaitForChild("SoundFX", 10))
+end))
+local function sfx(name, opts)
+	if type(SoundFX) == "table" then
+		pcall(SoundFX.play, name, opts)
+	end
+end
+
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -1148,6 +1157,7 @@ local function startSession(station)
 		return
 	end
 	transitioning = true
+	sfx("start")
 	if sessionMode == "timed" and not timedEnded then
 		TimedStop:FireServer()
 	end
@@ -1219,6 +1229,7 @@ TimedEnd.OnClientEvent:Connect(function(data)
 		return
 	end
 	timedEnded = true
+	sfx("timerEnd")
 	sessionId += 1 -- cancel any pending next round
 	currentRound = nil
 	isDragging = false
@@ -1243,6 +1254,8 @@ endStopButton.MouseButton1Click:Connect(function()
 	stopSession()
 end)
 
+local lastTickSecond = nil
+
 -- Countdown display; once time is up, no more guesses until the result.
 RunService.Heartbeat:Connect(function()
 	if sessionMode ~= "timed" or not timedEndsAt or timedEnded then
@@ -1250,6 +1263,12 @@ RunService.Heartbeat:Connect(function()
 	end
 	local remaining = math.max(0, timedEndsAt - workspace:GetServerTimeNow())
 	local whole = math.ceil(remaining)
+	if whole ~= lastTickSecond then
+		lastTickSecond = whole
+		if whole > 0 and whole <= 5 then
+			sfx("tick", { speed = 1 + (5 - whole) * 0.08 })
+		end
+	end
 	timerText.Text = string.format("⏱️ %d:%02d", math.floor(whole / 60), whole % 60)
 	timerText.TextColor3 = remaining <= 10 and Color3.fromRGB(255, 110, 110) or WHITE
 	if remaining <= 0 and not guessLocked then
@@ -1298,6 +1317,7 @@ lockInButton.MouseButton1Click:Connect(function()
 	guessLocked = true
 	isDragging = false
 	setLockEnabled(false)
+	sfx("lock")
 	SubmitGuess:FireServer(currentRound.referenceHeight * currentRatio)
 end)
 
@@ -1367,6 +1387,15 @@ RoundResult.OnClientEvent:Connect(function(result)
 	)
 	showPopup(result.score)
 	showCombo(result)
+	sfx(result.score >= 90 and "perfect" or result.score >= 70 and "great" or result.score >= 40 and "close" or "bad")
+	if (result.combo or 0) >= 3 then
+		sfx("combo", { speed = 1 + math.min(result.combo - 2, 8) * 0.1 })
+	end
+	if result.daily and result.daily.done then
+		task.delay(0.6, function()
+			sfx("daily")
+		end)
+	end
 	if result.timedScore then
 		timedScoreText.Text = "CHALLENGE SCORE: " .. result.timedScore
 		bump(timedScoreText)
@@ -1416,6 +1445,14 @@ for _, station in ipairs(stationsFolder:GetChildren()) do
 	task.spawn(hookStation, station)
 end
 stationsFolder.ChildAdded:Connect(hookStation)
+
+for _, tile in ipairs(sideMenu:GetChildren()) do
+	if tile:IsA("TextButton") then
+		tile.MouseButton1Click:Connect(function()
+			sfx("click")
+		end)
+	end
+end
 
 quickPlayButton.MouseButton1Click:Connect(function()
 	local stations = {}
@@ -1509,12 +1546,17 @@ end)
 -- HUD bindings
 --==========================================================================
 
+local lastRewardAt = nil
 task.spawn(function()
 	while true do
 		local nextAt = player:GetAttribute("NextRewardAt")
 		local interval = player:GetAttribute("RewardInterval") or 120
 		local amount = player:GetAttribute("RewardAmount") or 25
 		if nextAt then
+			if lastRewardAt and nextAt ~= lastRewardAt then
+				sfx("coin")
+			end
+			lastRewardAt = nextAt
 			local remaining = math.max(0, nextAt - workspace:GetServerTimeNow())
 			rewardText.Text = string.format(
 				"NEXT: %d SENSE   %d:%02d",

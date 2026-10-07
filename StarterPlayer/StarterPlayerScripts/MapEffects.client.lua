@@ -9,8 +9,13 @@
 
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local player = Players.LocalPlayer
+
+local SoundFX = select(2, pcall(function()
+	return require(ReplicatedStorage:WaitForChild("SoundFX", 10))
+end))
 
 local BOUNCE_SPEED = 212 -- jump height grows with speed squared: 95 * sqrt(5) is 5x the old height
 local COOLDOWN = 0.35
@@ -32,6 +37,9 @@ local function hookTrampoline(mat)
 			return
 		end
 		lastBounce = now
+		if type(SoundFX) == "table" then
+			pcall(SoundFX.play, "boing")
+		end
 		local v = rootPart.AssemblyLinearVelocity
 		rootPart.AssemblyLinearVelocity = Vector3.new(v.X, BOUNCE_SPEED, v.Z)
 	end)
