@@ -39,6 +39,9 @@ local CollectionService = game:GetService("CollectionService")
 
 local rng = Random.new(425)
 
+local Progress = require(ReplicatedStorage:WaitForChild("Progress"))
+local Ranks = require(ReplicatedStorage:WaitForChild("Ranks"))
+
 -- Remove the Baseplate template's floor/spawn and any terrain.
 local templateBaseplate = workspace:FindFirstChild("Baseplate")
 if templateBaseplate then
@@ -887,8 +890,20 @@ local function withCommas(n)
 	return (formatted:gsub("^,", ""))
 end
 
--- kind is "Sense" or "TimedBest"; entries come from PlayerData (saved
--- global top list merged with the players currently online).
+-- "resets in 3d 4h" / "resets in 5h 12m".
+local function formatReset(seconds)
+	seconds = math.max(0, math.floor(seconds))
+	local days = math.floor(seconds / 86400)
+	local hours = math.floor(seconds % 86400 / 3600)
+	if days > 0 then
+		return string.format("resets in %dd %dh", days, hours)
+	end
+	return string.format("resets in %dh %02dm", hours, math.floor(seconds % 3600 / 60))
+end
+
+-- kind is "Sense" or "TimedWeek"; entries come from PlayerData (saved
+-- global top list merged with the players currently online). The Sense
+-- board shows each player's rank icon.
 local function refreshLeaderboard(list, kind)
 	for _, child in ipairs(list:GetChildren()) do
 		if child:IsA("TextLabel") then
@@ -905,7 +920,13 @@ local function refreshLeaderboard(list, kind)
 				or (i == 2 and Color3.fromRGB(210, 220, 235))
 				or (i == 3 and Color3.fromRGB(230, 150, 90))
 				or C.white,
-			Text = string.format("%d.  %s  -  %s", i, entry.name, withCommas(entry.value)),
+			Text = string.format(
+				"%d.  %s%s  -  %s",
+				i,
+				kind == "Sense" and (Ranks.forSense(entry.value).rank.icon .. " ") or "",
+				entry.name,
+				withCommas(entry.value)
+			),
 		})
 	end
 	if #entries == 0 then
@@ -933,7 +954,7 @@ local function buildBoards()
 	textLabel(gui, {
 		Size = UDim2.fromScale(0.5, 0.06),
 		Position = UDim2.fromScale(0.25, 0.165),
-		Text = "ranked by SENSE",
+		Text = "ranked by SENSE (rank shown)",
 		TextColor3 = Color3.fromRGB(150, 160, 190),
 	})
 	local list = Instance.new("Frame")
@@ -951,7 +972,7 @@ local function buildBoards()
 	stroke(textLabel(surfaceGui(howTo, 40), {
 		Size = UDim2.fromScale(0.9, 0.9),
 		Position = UDim2.fromScale(0.05, 0.05),
-		Text = "HOW TO PLAY\n\nWalk up to a station & press E.\nDrag the slider to guess the size.\nLock in to score up to 100!\nTry the 60s CHALLENGE by spawn!",
+		Text = "HOW TO PLAY\n\nWalk up to a station & press E.\nDrag the slider to guess the size.\nLock in to score up to 100!\n\nCome back daily: DAILY + streaks!",
 		TextColor3 = Color3.fromRGB(120, 220, 255),
 	}), 2)
 
@@ -962,22 +983,32 @@ local function buildBoards()
 		Text = "⏱️ 60s RECORDS",
 		TextColor3 = Color3.fromRGB(255, 200, 40),
 	}), 3)
+	local resetLabel = textLabel(recordsGui, {
+		Size = UDim2.fromScale(0.7, 0.06),
+		Position = UDim2.fromScale(0.15, 0.165),
+		Text = "THIS WEEK",
+		TextColor3 = Color3.fromRGB(150, 160, 190),
+	})
 	local recordsList = Instance.new("Frame")
-	recordsList.Size = UDim2.fromScale(0.86, 0.76)
-	recordsList.Position = UDim2.fromScale(0.07, 0.21)
+	recordsList.Size = UDim2.fromScale(0.86, 0.72)
+	recordsList.Position = UDim2.fromScale(0.07, 0.24)
 	recordsList.BackgroundTransparency = 1
 	recordsList.Parent = recordsGui
 	local recordsLayout = Instance.new("UIListLayout")
 	recordsLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	recordsLayout.Padding = UDim.new(0.008, 0)
 	recordsLayout.Parent = recordsList
-	refreshLeaderboard(recordsList, "TimedBest")
+	local function refreshRecords()
+		refreshLeaderboard(recordsList, "TimedWeek")
+		resetLabel.Text = "THIS WEEK  -  " .. formatReset(Progress.secondsUntilNextWeek(os.time()))
+	end
+	refreshRecords()
 
 	task.spawn(function()
 		while true do
 			task.wait(3)
 			refreshLeaderboard(list, "Sense")
-			refreshLeaderboard(recordsList, "TimedBest")
+			refreshRecords()
 		end
 	end)
 end
