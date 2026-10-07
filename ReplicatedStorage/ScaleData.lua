@@ -264,19 +264,4 @@ ScaleData.Rounds = {
 	},
 }
 
--- Bulk rounds live in ScaleDataExtra as compact rows.
-local Extra = require(script.Parent:WaitForChild("ScaleDataExtra"))
-for _, row in ipairs(Extra) do
-	table.insert(ScaleData.Rounds, {
-		referenceName = row[1],
-		referenceIcon = row[2],
-		referenceHeight = row[3],
-		targetName = row[4],
-		targetIcon = row[5],
-		targetHeight = row[6],
-		category = row[7],
-		fact = row[8],
-	})
-end
-
 return ScaleData

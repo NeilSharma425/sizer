@@ -7,8 +7,8 @@
       "ScaleData": {
         "$path": "ReplicatedStorage/ScaleData.lua"
       },
-      "ScaleDataExtra": {
-        "$path": "ReplicatedStorage/ScaleDataExtra.lua"
+      "Models": {
+        "$path": "ReplicatedStorage/Models"
       },
       "ObjectModels": {
         "$path": "ReplicatedStorage/ObjectModels.lua"

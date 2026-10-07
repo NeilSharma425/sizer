@@ -3,7 +3,8 @@
 	ModuleScript: ReplicatedStorage.ObjectModels
 
 	Low-poly Part models for every object in ScaleData, built on demand by
-	the client's viewing room. Each builder works in its own units with the
+	the client's viewing room. Shared Part helpers live in
+	ReplicatedStorage.Models.Kit. Each builder works in its own units with the
 	ground at y = 0, centered on x = 0, and the "front" facing -Z (toward
 	the camera). Animals and vehicles are shown side-on.
 
@@ -16,99 +17,11 @@
 
 local ObjectModels = {}
 
-local SMOOTH = Enum.Material.SmoothPlastic
+local Kit = require(script.Parent:WaitForChild("Models"):WaitForChild("Kit"))
+local box, ball, cylinder, vcyl, zcyl, beam = Kit.box, Kit.ball, Kit.cylinder, Kit.vcyl, Kit.zcyl, Kit.beam
+local peak, onSphere, rgb = Kit.peak, Kit.onSphere, Kit.rgb
+local BLACK, WHITE = Kit.BLACK, Kit.WHITE
 
---==========================================================================
--- Primitive helpers
---==========================================================================
-
-local function add(model, p, color, material)
-	p.Anchored = true
-	p.CanCollide = false
-	p.CanQuery = false
-	p.CanTouch = false
-	p.TopSurface = Enum.SurfaceType.Smooth
-	p.BottomSurface = Enum.SurfaceType.Smooth
-	p.Color = color
-	p.Material = material or SMOOTH
-	p.Parent = model
-	return p
-end
-
-local function toCFrame(pos)
-	return typeof(pos) == "CFrame" and pos or CFrame.new(pos)
-end
-
-local function box(model, size, pos, color, material)
-	local p = Instance.new("Part")
-	p.Size = size
-	p.CFrame = toCFrame(pos)
-	return add(model, p, color, material)
-end
-
-local function ball(model, diameter, pos, color, material)
-	local p = Instance.new("Part")
-	p.Shape = Enum.PartType.Ball
-	p.Size = Vector3.new(diameter, diameter, diameter)
-	p.CFrame = CFrame.new(pos)
-	return add(model, p, color, material)
-end
-
--- Cylinder whose axis follows the given CFrame's X axis.
-local function cylinder(model, length, radius, cf, color, material)
-	local p = Instance.new("Part")
-	p.Shape = Enum.PartType.Cylinder
-	p.Size = Vector3.new(length, radius * 2, radius * 2)
-	p.CFrame = cf
-	return add(model, p, color, material)
-end
-
-local function vcyl(model, height, radius, pos, color, material)
-	return cylinder(model, height, radius, CFrame.new(pos) * CFrame.Angles(0, 0, math.pi / 2), color, material)
-end
-
-local function zcyl(model, length, radius, pos, color, material)
-	return cylinder(model, length, radius, CFrame.new(pos) * CFrame.Angles(0, math.pi / 2, 0), color, material)
-end
-
--- Square beam from one point to another. CFrame.lookAt with the default up
--- vector yields NaN for vertical beams, so those use X as "up" instead.
-local function beam(model, from, to, thickness, color, material)
-	local delta = to - from
-	local length = delta.Magnitude
-	local up = math.abs(delta.Unit.Y) > 0.99 and Vector3.new(1, 0, 0) or Vector3.new(0, 1, 0)
-	return box(model, Vector3.new(thickness, thickness, length), CFrame.lookAt((from + to) / 2, to, up), color, material)
-end
-
-local function wedge(model, size, cf, color, material)
-	local p = Instance.new("WedgePart")
-	p.Size = size
-	p.CFrame = cf
-	return add(model, p, color, material)
-end
-
--- Triangular peak in the X/Y plane (faces the camera), extruded along Z.
--- Wedges rise toward their local +Z, so each half is turned to rise
--- toward the center line.
-local function peak(model, centerX, baseY, centerZ, halfWidth, height, depth, color, material)
-	local size = Vector3.new(depth, height, halfWidth)
-	local y = baseY + height / 2
-	wedge(model, size, CFrame.new(centerX - halfWidth / 2, y, centerZ) * CFrame.Angles(0, math.pi / 2, 0), color, material)
-	wedge(model, size, CFrame.new(centerX + halfWidth / 2, y, centerZ) * CFrame.Angles(0, -math.pi / 2, 0), color, material)
-end
-
--- Point on a sphere; lon = 0 faces the camera (-Z).
-local function onSphere(center, radius, latDeg, lonDeg)
-	local lat, lon = math.rad(latDeg), math.rad(lonDeg)
-	return center + Vector3.new(radius * math.cos(lat) * math.sin(lon), radius * math.sin(lat), -radius * math.cos(lat) * math.cos(lon))
-end
-
-local function rgb(r, g, b)
-	return Color3.fromRGB(r, g, b)
-end
-
-local BLACK = rgb(25, 25, 30)
-local WHITE = rgb(245, 245, 245)
 
 --==========================================================================
 -- Animals
