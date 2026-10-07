@@ -51,6 +51,15 @@
       },
       "CrateManager": {
         "$path": "ServerScriptService/CrateManager.server.lua"
+      },
+      "PetShop": {
+        "$path": "ServerScriptService/PetShop.server.lua"
+      },
+      "LiveRoundManager": {
+        "$path": "ServerScriptService/LiveRoundManager.server.lua"
+      },
+      "LiveRoundLogic": {
+        "$path": "ServerScriptService/LiveRoundLogic.lua"
       }
     },
     "StarterPlayer": {
@@ -80,6 +89,9 @@
         },
         "CrateClient": {
           "$path": "StarterPlayer/StarterPlayerScripts/CrateClient.client.lua"
+        },
+        "LiveRoundClient": {
+          "$path": "StarterPlayer/StarterPlayerScripts/LiveRoundClient.client.lua"
         }
       }
     }

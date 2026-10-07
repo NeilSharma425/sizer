@@ -48,6 +48,8 @@ SoundFX.Library = {
 	daily = { id = FANFARE, volume = 0.55, speed = 1.1 }, -- daily complete
 	crate = { id = FANFARE, volume = 0.55, speed = 0.85 }, -- a pet crate is falling
 	crateGone = { id = PING, volume = 0.4, speed = 0.6 },
+	live = { id = PING, volume = 0.6, speed = 1.2 }, -- a live lobby round is starting
+	hatch = { id = FANFARE, volume = 0.6, speed = 1.2 }, -- an egg hatches
 	boing = { id = JUMP, volume = 0.6, speed = 1.7 }, -- trampolines
 }
 

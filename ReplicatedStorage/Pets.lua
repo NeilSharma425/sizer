@@ -3,8 +3,9 @@
 	ModuleScript: ReplicatedStorage.Pets
 
 	Every pet in the game: earned ones (rank, category, 60s score, login
-	streak) and crate-only ones dropped by airdrops (rule kind "crate", with
-	a rarity). build(id) returns a small
+	streak), crate-only ones dropped by airdrops (rule kind "crate") and egg
+	pets hatched with Sense (rule kind "egg"). The equipped pet gives a Sense
+	bonus (perkFor). build(id) returns a small
 	anchored Model made of Parts, plus an animate(t) function for the parts
 	that move or change colour. Used by the world pets (PetClient) and by the
 	streak window previews.
@@ -16,18 +17,18 @@ local Pets = {}
 -- Progress.updateStreak), rank (rank number from Ranks), category (every
 -- object in the category earned a Sizedex star), timed (60s challenge best).
 Pets.List = {
-	{ id = "mouse", name = "Pocket Mouse", color = Color3.fromRGB(190, 190, 205), rule = { kind = "start" }, how = "Everyone starts with this one", blurb = "Small, but it knows its sizes." },
-	{ id = "robot", name = "Ruler Bot", color = Color3.fromRGB(120, 190, 255), rule = { kind = "rank", rank = 4 }, how = "Reach the Estimator rank", blurb = "Measures everything it sees." },
-	{ id = "duck", name = "Rubber Duck", color = Color3.fromRGB(255, 220, 60), rule = { kind = "category", name = "Everyday Objects" }, how = "Earn a star on every Everyday Objects item", blurb = "Everyday hero." },
-	{ id = "owl", name = "Wise Owl", color = Color3.fromRGB(170, 120, 80), rule = { kind = "category", name = "Animals" }, how = "Earn a star on every Animals item", blurb = "Has seen every animal there is." },
-	{ id = "pyramid", name = "Pocket Pyramid", color = Color3.fromRGB(235, 200, 120), rule = { kind = "category", name = "Landmarks" }, how = "Earn a star on every Landmarks item", blurb = "A landmark you can carry." },
-	{ id = "moon", name = "Moon Buddy", color = Color3.fromRGB(215, 220, 235), rule = { kind = "category", name = "Space" }, how = "Earn a star on every Space item", blurb = "Orbits you, politely." },
-	{ id = "verity", name = "Mini Verity", color = Color3.fromRGB(255, 225, 70), rule = { kind = "category", name = "Brainrot" }, how = "Earn a star on every Brainrot item", blurb = "Giant energy, tiny size." },
-	{ id = "bee", name = "Speed Bee", color = Color3.fromRGB(255, 205, 40), rule = { kind = "timed", score = 400 }, how = "Score 400 in the 60s challenge", blurb = "Buzzes through the clock." },
-	{ id = "emberfox", name = "Ember Fox", color = Color3.fromRGB(255, 140, 50), rule = { kind = "streak", day = 3 }, how = "Reach a 3 day login streak", blurb = "Warm, quick, and a little bit magic." },
-	{ id = "ghost", name = "Halo Ghost", color = Color3.fromRGB(235, 240, 255), rule = { kind = "rank", rank = 8 }, how = "Reach the Master rank", blurb = "Friendly, and a little holy." },
-	{ id = "cosmiccube", name = "Cosmic Cube", color = Color3.fromRGB(130, 110, 255), rule = { kind = "streak", day = 7 }, how = "Reach a 7 day login streak", blurb = "A tiny galaxy that orbits you." },
-	{ id = "rainbowslime", name = "Rainbow Slime", color = Color3.fromRGB(255, 120, 200), rule = { kind = "streak", day = 14 }, how = "Reach a 14 day login streak", blurb = "The rarest pet. Shifts through every colour." },
+	{ id = "mouse", perk = 0.02, name = "Pocket Mouse", color = Color3.fromRGB(190, 190, 205), rule = { kind = "start" }, how = "Everyone starts with this one", blurb = "Small, but it knows its sizes." },
+	{ id = "robot", perk = 0.05, name = "Ruler Bot", color = Color3.fromRGB(120, 190, 255), rule = { kind = "rank", rank = 4 }, how = "Reach the Estimator rank", blurb = "Measures everything it sees." },
+	{ id = "duck", perk = 0.08, name = "Rubber Duck", color = Color3.fromRGB(255, 220, 60), rule = { kind = "category", name = "Everyday Objects" }, how = "Earn a star on every Everyday Objects item", blurb = "Everyday hero." },
+	{ id = "owl", perk = 0.08, name = "Wise Owl", color = Color3.fromRGB(170, 120, 80), rule = { kind = "category", name = "Animals" }, how = "Earn a star on every Animals item", blurb = "Has seen every animal there is." },
+	{ id = "pyramid", perk = 0.08, name = "Pocket Pyramid", color = Color3.fromRGB(235, 200, 120), rule = { kind = "category", name = "Landmarks" }, how = "Earn a star on every Landmarks item", blurb = "A landmark you can carry." },
+	{ id = "moon", perk = 0.08, name = "Moon Buddy", color = Color3.fromRGB(215, 220, 235), rule = { kind = "category", name = "Space" }, how = "Earn a star on every Space item", blurb = "Orbits you, politely." },
+	{ id = "verity", perk = 0.1, name = "Mini Verity", color = Color3.fromRGB(255, 225, 70), rule = { kind = "category", name = "Brainrot" }, how = "Earn a star on every Brainrot item", blurb = "Giant energy, tiny size." },
+	{ id = "bee", perk = 0.1, name = "Speed Bee", color = Color3.fromRGB(255, 205, 40), rule = { kind = "timed", score = 400 }, how = "Score 400 in the 60s challenge", blurb = "Buzzes through the clock." },
+	{ id = "emberfox", perk = 0.1, name = "Ember Fox", color = Color3.fromRGB(255, 140, 50), rule = { kind = "streak", day = 3 }, how = "Reach a 3 day login streak", blurb = "Warm, quick, and a little bit magic." },
+	{ id = "ghost", perk = 0.15, name = "Halo Ghost", color = Color3.fromRGB(235, 240, 255), rule = { kind = "rank", rank = 8 }, how = "Reach the Master rank", blurb = "Friendly, and a little holy." },
+	{ id = "cosmiccube", perk = 0.15, name = "Cosmic Cube", color = Color3.fromRGB(130, 110, 255), rule = { kind = "streak", day = 7 }, how = "Reach a 7 day login streak", blurb = "A tiny galaxy that orbits you." },
+	{ id = "rainbowslime", perk = 0.25, name = "Rainbow Slime", color = Color3.fromRGB(255, 120, 200), rule = { kind = "streak", day = 14 }, how = "Reach a 14 day login streak", blurb = "The rarest pet. Shifts through every colour." },
 	-- Crate-only pets: dropped from airdrop crates, never earned any other way.
 	{ id = "neonmouse", name = "Neon Mouse", color = Color3.fromRGB(80, 240, 150), rule = { kind = "crate" }, rarity = "Rare", variantOf = "mouse", hue = 0.38, shift = 0.38, minSat = 0.7, how = "Airdrop crates only", blurb = "Glows in the dark. Squeaks in color." },
 	{ id = "skyduck", name = "Sky Duck", color = Color3.fromRGB(90, 170, 255), rule = { kind = "crate" }, rarity = "Rare", variantOf = "duck", hue = 0.6, shift = 0.5, minSat = 0.5, how = "Airdrop crates only", blurb = "Fell from the clouds. Landed fine." },
@@ -88,16 +89,96 @@ Pets.List = {
 	{ id = "celestialdragon", name = "Celestial Dragon", color = Color3.fromRGB(255, 90, 200), rule = { kind = "crate" }, rarity = "Mythic", variantOf = "babydragon", hue = 0.12, shift = 0.0, minSat = 0.2, neon = true, accessory = 'halo', rainbow = true, how = "Airdrop crates only", blurb = "A dragon made of the whole sky." },
 	{ id = "prismfox", name = "Prism Fox", color = Color3.fromRGB(255, 90, 200), rule = { kind = "crate" }, rarity = "Mythic", variantOf = "emberfox", neon = true, rainbow = true, accessory = 'crown', how = "Airdrop crates only", blurb = "Every color at once." },
 	{ id = "prismghost", name = "Prism Ghost", color = Color3.fromRGB(255, 90, 200), rule = { kind = "crate" }, rarity = "Mythic", variantOf = "ghost", hue = 0.5, minSat = 0.5, neon = true, rainbow = true, accessory = 'halo', how = "Airdrop crates only", blurb = "A rainbow you can't catch." },
+	-- Egg pets: hatched from eggs bought with Sense in the PETS window.
+	{ id = "pebblemouse", name = "Pebble Mouse", color = Color3.fromRGB(190, 195, 210), rule = { kind = "egg" }, rarity = "Common", variantOf = "mouse", hue = 0.08, satMul = 0.3, valMul = 0.8, how = "Hatch from eggs", blurb = "Fits in a pocket." },
+	{ id = "puddleduck", name = "Puddle Duck", color = Color3.fromRGB(190, 195, 210), rule = { kind = "egg" }, rarity = "Common", variantOf = "duck", hue = 0.55, shift = 0.42, satMul = 0.45, how = "Hatch from eggs", blurb = "Loves rainy days." },
+	{ id = "tabbycat", name = "Tabby Cat", color = Color3.fromRGB(190, 195, 210), rule = { kind = "egg" }, rarity = "Common", variantOf = "cat", valMul = 0.85, how = "Hatch from eggs", blurb = "A classic." },
+	{ id = "cocoabunny", name = "Cocoa Bunny", color = Color3.fromRGB(190, 195, 210), rule = { kind = "egg" }, rarity = "Common", variantOf = "bunny", hue = 0.07, minSat = 0.45, valMul = 0.6, how = "Hatch from eggs", blurb = "Sweet as chocolate." },
+	{ id = "gardenfrog", name = "Garden Frog", color = Color3.fromRGB(190, 195, 210), rule = { kind = "egg" }, rarity = "Common", variantOf = "frog", shift = -0.05, satMul = 0.7, how = "Hatch from eggs", blurb = "Lives under a leaf." },
+	{ id = "buttoncap", name = "Button Cap", color = Color3.fromRGB(190, 195, 210), rule = { kind = "egg" }, rarity = "Common", variantOf = "mushroom", hue = 0.08, shift = 0.07, satMul = 0.6, how = "Hatch from eggs", blurb = "Small but mighty." },
+	{ id = "bubblejelly", name = "Bubble Jelly", color = Color3.fromRGB(190, 195, 210), rule = { kind = "egg" }, rarity = "Common", variantOf = "jelly", hue = 0.55, shift = 0.6, satMul = 0.5, how = "Hatch from eggs", blurb = "Pop!" },
+	{ id = "mossyfrog", name = "Mossy Frog", color = Color3.fromRGB(110, 210, 110), rule = { kind = "egg" }, rarity = "Uncommon", variantOf = "frog", shift = 0.1, minSat = 0.5, valMul = 0.75, how = "Hatch from eggs", blurb = "Covered in moss." },
+	{ id = "rustybot", name = "Rusty Bot", color = Color3.fromRGB(110, 210, 110), rule = { kind = "egg" }, rarity = "Uncommon", variantOf = "robot", hue = 0.07, shift = 0.47, minSat = 0.5, valMul = 0.7, how = "Hatch from eggs", blurb = "Still works. Mostly." },
+	{ id = "lilacjelly", name = "Lilac Jelly", color = Color3.fromRGB(110, 210, 110), rule = { kind = "egg" }, rarity = "Uncommon", variantOf = "jelly", hue = 0.78, shift = 0.85, minSat = 0.4, how = "Hatch from eggs", blurb = "Smells like flowers." },
+	{ id = "cherrypenguin", name = "Cherry Penguin", color = Color3.fromRGB(110, 210, 110), rule = { kind = "egg" }, rarity = "Uncommon", variantOf = "penguin", hue = 0.97, shift = 0.97, minSat = 0.55, how = "Hatch from eggs", blurb = "Bright red waddler." },
+	{ id = "sunnyowl", name = "Sunny Owl", color = Color3.fromRGB(110, 210, 110), rule = { kind = "egg" }, rarity = "Uncommon", variantOf = "owl", shift = 0.06, minSat = 0.65, how = "Hatch from eggs", blurb = "A morning owl, somehow." },
+	{ id = "sproutcap", name = "Sprout Cap", color = Color3.fromRGB(110, 210, 110), rule = { kind = "egg" }, rarity = "Uncommon", variantOf = "mushroom", hue = 0.3, shift = 0.3, minSat = 0.5, how = "Hatch from eggs", blurb = "Fresh from the forest floor." },
+	{ id = "cloudowl", name = "Cloud Owl", color = Color3.fromRGB(80, 160, 255), rule = { kind = "egg" }, rarity = "Rare", variantOf = "owl", hue = 0.6, satMul = 0.15, valMul = 1.5, accessory = 'halo', how = "Hatch from eggs", blurb = "Soft as a cloud." },
+	{ id = "oceanpenguin", name = "Ocean Penguin", color = Color3.fromRGB(80, 160, 255), rule = { kind = "egg" }, rarity = "Rare", variantOf = "penguin", hue = 0.55, shift = 0.55, minSat = 0.6, how = "Hatch from eggs", blurb = "Born in the deep blue." },
+	{ id = "sapphirecat", name = "Sapphire Cat", color = Color3.fromRGB(80, 160, 255), rule = { kind = "egg" }, rarity = "Rare", variantOf = "cat", hue = 0.62, shift = 0.55, minSat = 0.6, how = "Hatch from eggs", blurb = "Sparkly blue fur." },
+	{ id = "seadragon", name = "Sea Dragon", color = Color3.fromRGB(190, 100, 255), rule = { kind = "egg" }, rarity = "Epic", variantOf = "babydragon", hue = 0.5, shift = 0.48, minSat = 0.5, how = "Hatch from eggs", blurb = "Swims through the sky." },
+	{ id = "sugarfox", name = "Sugar Fox", color = Color3.fromRGB(190, 100, 255), rule = { kind = "egg" }, rarity = "Epic", variantOf = "emberfox", hue = 0.9, shift = 0.85, minSat = 0.4, accessory = 'bow', how = "Hatch from eggs", blurb = "Made of candy floss." },
 }
 
--- Crate rarities: the color shown in the UI and the chance a drop is that rarity.
+-- Rarities: the color shown in the UI, the Sense perk a pet of that rarity
+-- gives while equipped, and (for crates) the chance a drop is that rarity.
 Pets.Rarities = {
-	Rare = { color = Color3.fromRGB(80, 160, 255), weight = 59 },
-	Epic = { color = Color3.fromRGB(190, 100, 255), weight = 30 },
-	Legendary = { color = Color3.fromRGB(255, 200, 50), weight = 10 },
-	Mythic = { color = Color3.fromRGB(255, 90, 200), weight = 1 }, -- 1% of drops
+	Common = { color = Color3.fromRGB(190, 195, 210), perk = 0.03 },
+	Uncommon = { color = Color3.fromRGB(110, 210, 110), perk = 0.06 },
+	Rare = { color = Color3.fromRGB(80, 160, 255), weight = 59, perk = 0.10 },
+	Epic = { color = Color3.fromRGB(190, 100, 255), weight = 30, perk = 0.15 },
+	Legendary = { color = Color3.fromRGB(255, 200, 50), weight = 10, perk = 0.22 },
+	Mythic = { color = Color3.fromRGB(255, 90, 200), weight = 1, perk = 0.35 }, -- 1% of drops
 }
-Pets.RarityOrder = { "Rare", "Epic", "Legendary", "Mythic" }
+Pets.RarityOrder = { "Rare", "Epic", "Legendary", "Mythic" } -- crate rarities, rarest last
+Pets.AllRarities = { "Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythic" }
+
+-- Eggs sold for Sense. odds are rarity weights out of 100.
+Pets.Eggs = {
+	{ id = "basic", name = "Basic Egg", price = 250, color = Color3.fromRGB(235, 225, 200), odds = { Common = 60, Uncommon = 30, Rare = 10 } },
+	{ id = "golden", name = "Golden Egg", price = 1500, color = Color3.fromRGB(255, 205, 60), odds = { Uncommon = 50, Rare = 40, Epic = 10 } },
+}
+Pets.DUPLICATE_REFUND = 0.3 -- share of the price given back for a pet you already have
+
+function Pets.getEgg(id)
+	for _, egg in ipairs(Pets.Eggs) do
+		if egg.id == id then
+			return egg
+		end
+	end
+	return nil
+end
+
+-- Sense bonus (0.1 = +10%) the pet gives while equipped.
+function Pets.perkFor(id)
+	local pet = Pets.get(id)
+	if not pet then
+		return 0
+	end
+	if pet.perk then
+		return pet.perk
+	end
+	local rarity = pet.rarity and Pets.Rarities[pet.rarity]
+	return rarity and rarity.perk or 0
+end
+
+-- Picks the pet an egg hatches: a rarity by the egg's odds, then a random
+-- egg pet of that rarity.
+function Pets.rollEgg(egg, rng)
+	local order, total = {}, 0
+	for _, name in ipairs(Pets.AllRarities) do
+		if egg.odds[name] then
+			table.insert(order, name)
+			total += egg.odds[name]
+		end
+	end
+	local roll = rng:NextNumber(0, total)
+	local rarity = order[#order]
+	for _, name in ipairs(order) do
+		roll -= egg.odds[name]
+		if roll <= 0 then
+			rarity = name
+			break
+		end
+	end
+	local pool = {}
+	for _, pet in ipairs(Pets.List) do
+		if pet.rule.kind == "egg" and pet.rarity == rarity then
+			table.insert(pool, pet)
+		end
+	end
+	return pool[rng:NextInteger(1, #pool)]
+end
 
 -- All crate pets (in list order).
 function Pets.cratePets()

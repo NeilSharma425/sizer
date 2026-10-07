@@ -3,8 +3,9 @@
 	LocalScript: StarterPlayer.StarterPlayerScripts.PetMenuClient
 
 	The PETS window (opened from the PETS tile in the side menu): every pet
-	with a live 3D preview, how to unlock the ones you don't have yet, and an
-	EQUIP button for the ones you do.
+	with a live 3D preview and its Sense perk, how to unlock the ones you
+	don't have yet, and an EQUIP button for the ones you do. Tabs: MY PETS
+	(earned), CRATES (airdrop-only) and EGGS (the egg shop plus egg pets).
 ]]
 
 local Players = game:GetService("Players")
@@ -28,6 +29,7 @@ local remotes = ReplicatedStorage:WaitForChild("ScaleGameRemotes")
 local GetProgress = remotes:WaitForChild("GetProgress")
 local ProgressEvent = remotes:WaitForChild("ProgressEvent")
 local EquipPet = remotes:WaitForChild("EquipPet")
+local HatchEgg = remotes:WaitForChild("HatchEgg", 20)
 
 local FONT = Enum.Font.FredokaOne
 local INK = Color3.fromRGB(25, 20, 35)
@@ -133,14 +135,16 @@ local COLUMNS, CARD_W, CARD_H, GAP = 4, 152, 186, 10
 local function sectionList(section)
 	local out = {}
 	for _, pet in ipairs(Pets.List) do
-		if (pet.rule.kind == "crate") == (section == "crate") then
+		local kind = pet.rule.kind
+		local key = (kind == "crate" or kind == "egg") and kind or "earned"
+		if key == section then
 			table.insert(out, pet)
 		end
 	end
-	if section == "crate" then
+	if section == "crate" or section == "egg" then
 		-- rarest first
 		local rank = {}
-		for i, name in ipairs(Pets.RarityOrder) do
+		for i, name in ipairs(Pets.AllRarities) do
 			rank[name] = i
 		end
 		local indexOf = {}
@@ -200,9 +204,9 @@ updateScale()
 
 label(window, {
 	Position = UDim2.new(0, 24, 0, 12),
-	Size = UDim2.new(0, 260, 0, 40),
+	Size = UDim2.new(0, 190, 0, 40),
 	TextXAlignment = Enum.TextXAlignment.Left,
-	Text = "MY PETS",
+	Text = "PETS",
 	TextColor3 = PINK,
 	ZIndex = 3,
 })
@@ -228,14 +232,16 @@ local function makeTab(key, text, x)
 		Name = "Tab_" .. key,
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, x, 0, 12),
-		Size = UDim2.new(0, 150, 0, 34),
+		Size = UDim2.new(0, 124, 0, 34),
 		ZIndex = 4,
 	})
 	tabButtons[key] = b
 	return b
 end
-local earnedTab = makeTab("earned", "MY PETS", -272)
-local crateTab = makeTab("crate", "CRATE PETS", -112)
+local earnedTab = makeTab("earned", "MY PETS", -334)
+local crateTab = makeTab("crate", "CRATES", -204)
+local eggTab = makeTab("egg", "EGGS", -74)
+local TAB_COLORS = { earned = PINK, crate = Color3.fromRGB(190, 100, 255), egg = Color3.fromRGB(255, 190, 60) }
 
 local grid = Instance.new("ScrollingFrame")
 grid.Name = "Pets"
@@ -250,26 +256,187 @@ grid.ZIndex = 3
 grid.Parent = window
 local animations = {}
 local owned, equipped = {}, ""
+local render, renderEggShop -- defined below
 
-local function render()
+
+--==========================================================================
+-- Egg shop (EGGS tab): buy eggs with Sense, hatch a random egg pet
+--==========================================================================
+
+local function spendable()
+	return math.max(0, math.floor((player:GetAttribute("Sense") or 0) - (player:GetAttribute("SenseSpent") or 0)))
+end
+
+local hatching = false
+
+local overlay = frame(window, {
+	Name = "HatchOverlay",
+	Size = UDim2.fromScale(1, 1),
+	BackgroundColor3 = Color3.fromRGB(20, 22, 40),
+	BackgroundTransparency = 0.1,
+	Visible = false,
+	ZIndex = 30,
+})
+corner(overlay, UDim.new(0, 22))
+local hatchEgg = frame(overlay, {
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.fromScale(0.5, 0.42),
+	Size = UDim2.new(0, 130, 0, 165),
+	BackgroundColor3 = WHITE,
+	ZIndex = 31,
+})
+corner(hatchEgg, UDim.new(0.5, 0))
+stroke(hatchEgg, 4)
+local hatchTitle = label(overlay, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 40), Size = UDim2.new(0.8, 0, 0, 46), Text = "", ZIndex = 32 })
+local hatchSub = label(overlay, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 1, -170), Size = UDim2.new(0.8, 0, 0, 30), Text = "", TextColor3 = MUTED, ZIndex = 32 })
+local hatchViewport = nil
+local hatchEquip = textButton(overlay, "EQUIP", GREEN, { AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(0.5, -8, 1, -60), Size = UDim2.new(0, 170, 0, 50), ZIndex = 32, Visible = false })
+local hatchOk = textButton(overlay, "OK", Color3.fromRGB(95, 105, 140), { AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0.5, 8, 1, -60), Size = UDim2.new(0, 170, 0, 50), ZIndex = 32, Visible = false })
+local hatchedId = nil
+
+local function closeOverlay()
+	overlay.Visible = false
+	if hatchViewport then
+		hatchViewport:Destroy()
+		hatchViewport = nil
+	end
+	hatching = false
+	render()
+end
+hatchOk.MouseButton1Click:Connect(closeOverlay)
+hatchEquip.MouseButton1Click:Connect(function()
+	if hatchedId then
+		equipped = hatchedId
+		sfx("equip")
+		EquipPet:FireServer(hatchedId)
+	end
+	closeOverlay()
+end)
+
+local function hatch(egg)
+	if hatching or not HatchEgg or spendable() < egg.price then
+		return
+	end
+	hatching = true
+	overlay.Visible = true
+	hatchEgg.Visible = true
+	hatchEgg.BackgroundColor3 = egg.color
+	hatchEgg.Rotation = 0
+	hatchTitle.Text = string.upper(egg.name)
+	hatchTitle.TextColor3 = WHITE
+	hatchSub.Text = "Hatching..."
+	hatchEquip.Visible = false
+	hatchOk.Visible = false
+
+	local ok, result = pcall(function()
+		return HatchEgg:InvokeServer(egg.id)
+	end)
+	-- Wobble while it hatches.
+	for i = 1, 8 do
+		hatchEgg.Rotation = (i % 2 == 0 and 1 or -1) * (6 + i * 2)
+		task.wait(0.12)
+	end
+	hatchEgg.Rotation = 0
+	if not ok or type(result) ~= "table" or not result.ok then
+		hatchSub.Text = (type(result) == "table" and result.error) or "Couldn't hatch right now."
+		hatchOk.Visible = true
+		return
+	end
+
+	hatchEgg.Visible = false
+	local rarity = Pets.Rarities[result.rarity]
+	local animate
+	hatchViewport, animate = petPreview(overlay, result.petId, {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.42),
+		Size = UDim2.new(0, 260, 0, 200),
+		ZIndex = 31,
+	})
+	if animate then
+		table.insert(animations, animate)
+	end
+	hatchTitle.Text = (result.new and "NEW! " or "") .. string.upper(result.name)
+	hatchTitle.TextColor3 = rarity and rarity.color or WHITE
+	if result.new then
+		hatchSub.Text = string.format("%s  -  +%d%% SENSE WHEN EQUIPPED", string.upper(result.rarity), math.floor(Pets.perkFor(result.petId) * 100 + 0.5))
+		owned[result.petId] = true
+		hatchedId = result.petId
+		hatchEquip.Visible = equipped ~= result.petId
+	else
+		hatchSub.Text = string.format("You already have it  -  %d Sense back", result.refund)
+		hatchedId = nil
+	end
+	hatchOk.Visible = true
+	sfx(result.new and "hatch" or "toast")
+end
+
+renderEggShop = function()
+	local width = (COLUMNS * CARD_W + (COLUMNS - 1) * GAP - GAP) / 2
+	for i, egg in ipairs(Pets.Eggs) do
+		local cardFrame = frame(grid, {
+			Name = "Egg_" .. egg.id,
+			Position = UDim2.new(0, (i - 1) * (width + GAP), 0, 0),
+			Size = UDim2.new(0, width, 0, CARD_H),
+			BackgroundColor3 = TILE,
+			ZIndex = 3,
+		})
+		corner(cardFrame, UDim.new(0, 14))
+		stroke(cardFrame, 3, egg.color)
+		local shape = frame(cardFrame, {
+			Position = UDim2.new(0, 16, 0, 22),
+			Size = UDim2.new(0, 96, 0, 122),
+			BackgroundColor3 = egg.color,
+			ZIndex = 4,
+		})
+		corner(shape, UDim.new(0.5, 0))
+		stroke(shape, 3)
+		label(cardFrame, { Position = UDim2.new(0, 126, 0, 12), Size = UDim2.new(1, -136, 0, 30), TextXAlignment = Enum.TextXAlignment.Left, Text = string.upper(egg.name), TextColor3 = egg.color, ZIndex = 4 })
+		local odds = {}
+		for _, name in ipairs(Pets.AllRarities) do
+			if egg.odds[name] then
+				table.insert(odds, string.format("%d%% %s", egg.odds[name], name))
+			end
+		end
+		label(cardFrame, { Position = UDim2.new(0, 126, 0, 46), Size = UDim2.new(1, -136, 0, 54), TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left, Text = table.concat(odds, "  "), TextColor3 = MUTED, ZIndex = 4 })
+		local affordable = spendable() >= egg.price
+		local buy = textButton(cardFrame, string.format("HATCH  %d", egg.price), affordable and GREEN or Color3.fromRGB(95, 105, 140), {
+			Name = "HatchButton",
+			Position = UDim2.new(0, 126, 1, -56),
+			Size = UDim2.new(1, -140, 0, 44),
+			ZIndex = 4,
+		})
+		buy.MouseButton1Click:Connect(function()
+			if spendable() >= egg.price then
+				sfx("click")
+				hatch(egg)
+			else
+				sfx("bad", { volume = 0.5 })
+			end
+		end)
+	end
+	countLabel.Text = string.format("SENSE TO SPEND: %d", spendable())
+end
+
+render = function()
 	for _, child in ipairs(grid:GetChildren()) do
 		child:Destroy()
 	end
 	animations = {}
 	local count = 0
 	local shown = sectionList(section)
-	local rows = math.max(ROWS, math.ceil(#shown / COLUMNS))
+	local firstRow = section == "egg" and 1 or 0 -- the egg shop takes the first row
+	local rows = math.max(ROWS, firstRow + math.ceil(#shown / COLUMNS))
 	grid.CanvasSize = UDim2.new(0, 0, 0, rows * (CARD_H + GAP))
 	grid.CanvasPosition = Vector2.new(0, grid.CanvasPosition.Y)
 	for key, tab in pairs(tabButtons) do
-		tab.BackgroundColor3 = key == section and (key == "crate" and Color3.fromRGB(190, 100, 255) or PINK) or Color3.fromRGB(95, 105, 140)
+		tab.BackgroundColor3 = key == section and TAB_COLORS[key] or Color3.fromRGB(95, 105, 140)
 	end
 	for i, pet in ipairs(shown) do
 		local has = owned[pet.id] == true
 		if has then
 			count += 1
 		end
-		local row = math.floor((i - 1) / COLUMNS)
+		local row = firstRow + math.floor((i - 1) / COLUMNS)
 		local col = (i - 1) % COLUMNS
 		local isOn = has and equipped == pet.id
 		local card = frame(grid, {
@@ -282,6 +449,18 @@ local function render()
 		corner(card, UDim.new(0, 14))
 		local rarity = pet.rarity and Pets.Rarities[pet.rarity]
 		stroke(card, isOn and 4 or 3, isOn and GOLD or (rarity and rarity.color) or (has and pet.color or INK))
+		local perk = Pets.perkFor(pet.id)
+		if perk > 0 then
+			label(card, {
+				Name = "Perk",
+				Position = UDim2.new(0, 6, 0, 4),
+				Size = UDim2.new(0, 90, 0, 18),
+				TextXAlignment = Enum.TextXAlignment.Left,
+				Text = string.format("+%d%% SENSE", math.floor(perk * 100 + 0.5)),
+				TextColor3 = Color3.fromRGB(120, 255, 130),
+				ZIndex = 6,
+			})
+		end
 
 		local viewport, animate = petPreview(card, pet.id, {
 			Position = UDim2.new(0, 6, 0, 6),
@@ -332,6 +511,9 @@ local function render()
 		end
 	end
 	countLabel.Text = string.format("%d / %d UNLOCKED", count, #shown)
+	if section == "egg" then
+		renderEggShop()
+	end
 end
 
 local loading = false
@@ -366,6 +548,21 @@ end)
 earnedTab.MouseButton1Click:Connect(function()
 	if section ~= "earned" then
 		section = "earned"
+		grid.CanvasPosition = Vector2.new(0, 0)
+		sfx("click")
+		render()
+	end
+end)
+local function refreshBalance()
+	if gui.Enabled and section == "egg" and not hatching then
+		render()
+	end
+end
+player:GetAttributeChangedSignal("SenseSpent"):Connect(refreshBalance)
+
+eggTab.MouseButton1Click:Connect(function()
+	if section ~= "egg" then
+		section = "egg"
 		grid.CanvasPosition = Vector2.new(0, 0)
 		sfx("click")
 		render()

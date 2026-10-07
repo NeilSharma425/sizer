@@ -346,6 +346,11 @@ local function onSubmitGuess(player, guessedTargetHeight)
 	-- Compounding login-streak bonus: +5% per streak day, up to +50%.
 	local streakCount = PlayerData.getProfile(player).streak.count
 	senseBase += math.floor(senseBase * Progress.streakBonus(streakCount) + 0.5)
+	-- Equipped pet perk: +X% Sense.
+	local petProfile = PlayerData.getProfile(player)
+	if petProfile.pet ~= "" and petProfile.pets[petProfile.pet] then
+		senseBase += math.floor(senseBase * Pets.perkFor(petProfile.pet) + 0.5)
+	end
 
 	-- Combo: back-to-back good guesses earn bonus Sense.
 	local combo, comboBonus = Progress.combo(combos[player] or 0, score)
@@ -581,6 +586,7 @@ local function onDataLoaded(player)
 		sendProgress(player, "login", streak)
 	end
 	player:SetAttribute("Pet", profile.pet ~= "" and profile.pet or nil)
+	player:SetAttribute("SenseSpent", Progress.netSpent(profile))
 	if profile.flags.streak then
 		player:SetAttribute("StreakHintSeen", true)
 	end

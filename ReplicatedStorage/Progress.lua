@@ -69,6 +69,7 @@ function Progress.newProfile()
 		pets = {}, -- [petId] = true, unlocked from streak rewards
 		pet = "", -- equipped pet id ("" = none)
 		flags = {}, -- [name] = true, one-time hints already shown
+		wallet = { spent = 0, refunded = 0 }, -- egg shop spending (rank uses lifetime Sense)
 		daily = { day = 0, score = 0, answered = 0 }, -- today's run: score so far, questions answered
 		weekly = { week = 0, best = 0, rewardWeek = 0 },
 	}
@@ -92,6 +93,7 @@ function Progress.normalize(profile)
 	profile.pet = type(profile.pet) == "string" and profile.pet or ""
 	profile.flags = type(profile.flags) == "table" and profile.flags or {}
 	section("streak", { count = 0, best = 0, lastDay = 0 })
+	section("wallet", { spent = 0, refunded = 0 })
 	section("daily", { day = 0, score = 0, answered = 0 })
 	section("weekly", { week = 0, best = 0, rewardWeek = 0 })
 	return profile
@@ -133,6 +135,9 @@ function Progress.merge(base, extra)
 	if extra.pet ~= "" then
 		base.pet = extra.pet -- the newer save's choice wins
 	end
+
+	base.wallet.spent = math.max(base.wallet.spent, extra.wallet.spent)
+	base.wallet.refunded = math.max(base.wallet.refunded, extra.wallet.refunded)
 
 	base.streak.best = math.max(base.streak.best, extra.streak.best)
 	if extra.streak.lastDay > base.streak.lastDay then
@@ -339,6 +344,12 @@ end
 -- Compounding bonus on every round's Sense: +5% per streak day, up to +50%.
 function Progress.streakBonus(streak)
 	return 0.05 * math.min(math.max(streak, 0), 10)
+end
+
+-- Sense spent in the shop, net of duplicate refunds. Spendable Sense is the
+-- lifetime total minus this.
+function Progress.netSpent(profile)
+	return math.max(0, profile.wallet.spent - profile.wallet.refunded)
 end
 
 -- Updates the streak for a login on `today` (a day number). Returns
