@@ -2,9 +2,9 @@
 	LiveRoundManager.server.lua
 	Script: ServerScriptService.LiveRoundManager
 
-	Live lobby rounds: every few minutes everyone in the lobby gets the same
-	question at once (LiveRound "soon" -> "start"), has GUESS_SECONDS to
-	set the slider, and then sees a shared reveal with a top-3 podium
+	Live lobby rounds: every few minutes everyone in the lobby is offered the
+	same question at once (LiveRound "soon" -> "start"; players opt in with
+	the JOIN prompt), has GUESS_SECONDS to set the slider, and then sees a shared reveal with a top-3 podium
 	("results"). Points pay double and the podium earns bonus Sense, plus
 	the equipped pet's perk.
 

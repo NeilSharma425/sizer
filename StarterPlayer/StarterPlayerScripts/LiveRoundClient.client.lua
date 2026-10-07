@@ -2,10 +2,11 @@
 	LiveRoundClient.client.lua
 	LocalScript: StarterPlayer.StarterPlayerScripts.LiveRoundClient
 
-	The live lobby round panel (LiveRoundManager runs the round): a "LIVE
-	ROUND" warning, then a question with a slider and LOCK IN while a timer
-	counts down, then a shared reveal with both objects at their real sizes,
-	your score and Sense, and the top-3 podium.
+	The live lobby round (LiveRoundManager runs it). Everyone in the lobby
+	sees a "LIVE ROUND! JOIN" prompt at the top of the screen; players who
+	join get the question with a slider and LOCK IN while a timer counts
+	down, then a shared reveal with both objects at their real sizes, their
+	score and Sense, and the top-3 podium.
 
 	Players who are in a game session or haven't finished the tutorial skip
 	it.
@@ -14,7 +15,6 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
@@ -344,6 +344,135 @@ end
 -- Events
 --==========================================================================
 
+--==========================================================================
+-- Join prompt (top of the screen). Nobody is pulled into a live round;
+-- they tap JOIN if they want in.
+--==========================================================================
+
+local promptGui = Instance.new("ScreenGui")
+promptGui.Name = "SizerLivePrompt"
+promptGui.ResetOnSpawn = false
+promptGui.DisplayOrder = 6
+promptGui.Enabled = false
+promptGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+promptGui.Parent = playerGui
+
+local prompt = frame(promptGui, {
+	Name = "Prompt",
+	AnchorPoint = Vector2.new(0.5, 0),
+	Position = UDim2.new(0.5, 0, 0, 12),
+	Size = UDim2.new(0, 470, 0, 76),
+	BackgroundColor3 = PANEL,
+})
+corner(prompt, UDim.new(0, 18))
+stroke(prompt, 4, LIVE)
+local promptScale = Instance.new("UIScale")
+promptScale.Parent = prompt
+label(prompt, { Position = UDim2.new(0, 16, 0, 8), Size = UDim2.new(1, -150, 0, 32), TextXAlignment = Enum.TextXAlignment.Left, Text = "LIVE ROUND!", TextColor3 = LIVE })
+local promptSub = label(prompt, { Position = UDim2.new(0, 16, 0, 42), Size = UDim2.new(1, -150, 0, 24), TextXAlignment = Enum.TextXAlignment.Left, Text = "", TextColor3 = GOLD })
+local joinButton = textButton(prompt, "JOIN", GREEN, { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -14, 0.5, 0), Size = UDim2.new(0, 116, 0, 52) })
+
+local promptId = nil -- round the prompt is for
+local promptStartsAt = nil -- os.clock() when the question starts (during "soon")
+local pending = nil -- "start" data for a round the player hasn't joined yet
+local joinedId = nil
+
+local function hidePrompt()
+	promptGui.Enabled = false
+end
+
+local function showPrompt(id)
+	promptId = id
+	local camera = workspace.CurrentCamera
+	if camera then
+		promptScale.Scale = math.clamp(camera.ViewportSize.X / 560, 0.55, 1)
+	end
+	promptGui.Enabled = true
+end
+
+local function openWaiting(seconds)
+	hideToken += 1
+	current = nil
+	updateScale()
+	gui.Enabled = true
+	questionView.Visible = true
+	resultsView.Visible = false
+	header.Text = "LIVE ROUND!"
+	questionText.Text = "Everyone in the lobby gets the same question. Get ready!"
+	guessText.Text = ""
+	lockButton.Visible = false
+	lockedNote.Visible = false
+	track.Visible = false
+	timerLabel.Text = tostring(math.max(1, math.ceil(seconds)))
+	local endsAt = os.clock() + seconds
+	task.spawn(function()
+		while gui.Enabled and not current and os.clock() < endsAt do
+			timerLabel.Text = tostring(math.max(1, math.ceil(endsAt - os.clock())))
+			task.wait(0.2)
+		end
+	end)
+end
+
+local function openQuestion(data)
+	hideToken += 1
+	current = { id = data.id, referenceHeight = data.referenceHeight, endsAt = data.endsAt, ratio = 1, locked = false }
+	updateScale()
+	gui.Enabled = true
+	questionView.Visible = true
+	resultsView.Visible = false
+	track.Visible = true
+	lockButton.Visible = true
+	lockedNote.Visible = false
+	header.Text = "LIVE ROUND!"
+	questionText.Text = string.format(
+		"How big is %s %s compared to %s %s (%s)?",
+		data.targetIcon or "",
+		string.upper(data.targetName),
+		data.referenceIcon or "",
+		string.upper(data.referenceName),
+		formatMeters(data.referenceHeight)
+	)
+	setRatio(1)
+	sfx("start")
+end
+
+joinButton.MouseButton1Click:Connect(function()
+	if not promptId or not canPlay() then
+		hidePrompt()
+		return
+	end
+	joinedId = promptId
+	hidePrompt()
+	sfx("click")
+	if pending and pending.id == joinedId then
+		openQuestion(pending)
+		pending = nil
+	else
+		openWaiting(promptStartsAt and (promptStartsAt - os.clock()) or 3)
+	end
+end)
+
+-- Keep the prompt's countdown current, and drop it once the round is over.
+RunService.Heartbeat:Connect(function()
+	if not promptGui.Enabled then
+		return
+	end
+	if not canPlay() then
+		hidePrompt()
+		return
+	end
+	if pending then
+		local left = pending.endsAt - workspace:GetServerTimeNow()
+		if left <= 1 then
+			hidePrompt()
+			return
+		end
+		promptSub.Text = string.format("Win up to +70 SENSE!  %ds left to join", math.ceil(left))
+	elseif promptStartsAt then
+		promptSub.Text = string.format("Win up to +70 SENSE!  Starts in %ds", math.max(1, math.ceil(promptStartsAt - os.clock())))
+	end
+end)
+
 LiveRound.OnClientEvent:Connect(function(kind, data)
 	if type(data) ~= "table" then
 		return
@@ -352,52 +481,24 @@ LiveRound.OnClientEvent:Connect(function(kind, data)
 		if not canPlay() then
 			return
 		end
-		hideToken += 1
-		current = nil
-		updateScale()
-		gui.Enabled = true
-		questionView.Visible = true
-		resultsView.Visible = false
-		header.Text = "LIVE ROUND!"
-		questionText.Text = "Everyone in the lobby gets the same question. Get ready!"
-		guessText.Text = ""
-		lockButton.Visible = false
-		lockedNote.Visible = false
-		track.Visible = false
-		timerLabel.Text = tostring(data.seconds)
+		pending = nil
+		joinedId = nil
+		promptStartsAt = os.clock() + data.seconds
+		showPrompt(data.id)
 		sfx("live")
-		local endsAt = os.clock() + data.seconds
-		task.spawn(function()
-			while gui.Enabled and not current and os.clock() < endsAt do
-				timerLabel.Text = tostring(math.max(1, math.ceil(endsAt - os.clock())))
-				task.wait(0.2)
-			end
-		end)
 	elseif kind == "start" then
-		if not canPlay() then
-			return
+		if joinedId == data.id then
+			openQuestion(data)
+		elseif canPlay() then
+			pending = data
+			promptStartsAt = nil
+			if promptId ~= data.id or not promptGui.Enabled then
+				showPrompt(data.id)
+			end
 		end
-		hideToken += 1
-		current = { id = data.id, referenceHeight = data.referenceHeight, endsAt = data.endsAt, ratio = 1, locked = false }
-		updateScale()
-		gui.Enabled = true
-		questionView.Visible = true
-		resultsView.Visible = false
-		track.Visible = true
-		lockButton.Visible = true
-		lockedNote.Visible = false
-		header.Text = "LIVE ROUND!"
-		questionText.Text = string.format(
-			"How big is %s %s compared to %s %s (%s)?",
-			data.targetIcon or "",
-			string.upper(data.targetName),
-			data.referenceIcon or "",
-			string.upper(data.referenceName),
-			formatMeters(data.referenceHeight)
-		)
-		setRatio(1)
-		sfx("start")
 	elseif kind == "results" then
+		pending = nil
+		hidePrompt()
 		if not current or current.id ~= data.id or not gui.Enabled then
 			return
 		end
