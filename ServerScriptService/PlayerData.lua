@@ -34,10 +34,23 @@ local BOARD_SIZE = 10
 
 local PlayerData = {}
 
-local store = DataStoreService:GetDataStore(STORE_NAME)
+-- Creating a DataStore throws in an unpublished place (and when Studio
+-- API access is off). That must never break the game, so fall back to a
+-- memory-only mode where progress lasts for the session.
+local store = nil
 local orderedBoards = {}
-for kind, name in pairs(BOARD_NAMES) do
-	orderedBoards[kind] = DataStoreService:GetOrderedDataStore(name)
+do
+	local ok, err = pcall(function()
+		store = DataStoreService:GetDataStore(STORE_NAME)
+		for kind, name in pairs(BOARD_NAMES) do
+			orderedBoards[kind] = DataStoreService:GetOrderedDataStore(name)
+		end
+	end)
+	if not ok then
+		store = nil
+		orderedBoards = {}
+		warn("[Sizer] Saving is unavailable (" .. tostring(err) .. "). Publish the place and enable Studio API access to save progress. Running without saving.")
+	end
 end
 
 local states = {} -- [player] = { loaded, saving, savedSense, savedTimed }
@@ -63,6 +76,9 @@ end
 function PlayerData.load(player)
 	local state = { loaded = false, saving = false, savedSense = 0, savedTimed = 0 }
 	states[player] = state
+	if not store then
+		return false
+	end
 
 	local key = tostring(player.UserId)
 	local ok, data = withRetry(function()
@@ -159,6 +175,9 @@ local function nameFor(userId)
 end
 
 local function refreshBoards()
+	if not store then
+		return
+	end
 	for kind, ordered in pairs(orderedBoards) do
 		local ok, pages = pcall(function()
 			return ordered:GetSortedAsync(false, BOARD_SIZE)

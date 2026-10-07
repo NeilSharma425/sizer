@@ -14,7 +14,26 @@
 
 local Lighting = game:GetService("Lighting")
 local TweenService = game:GetService("TweenService")
-local PlayerData = require(script.Parent:WaitForChild("PlayerData"))
+-- Saving is optional: if the module ever fails to load, run without it
+-- instead of taking the whole game down.
+local okPlayerData, PlayerData = pcall(function()
+	return require(script.Parent:WaitForChild("PlayerData"))
+end)
+if not okPlayerData then
+	warn("[Sizer] PlayerData failed to load; running without saving:", PlayerData)
+	PlayerData = {
+		load = function()
+			return false
+		end,
+		release = function() end,
+		save = function()
+			return false
+		end,
+		getTop = function()
+			return {}
+		end,
+	}
+end
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CollectionService = game:GetService("CollectionService")
 
