@@ -174,7 +174,7 @@ ScaleData.Rounds = {
 	},
 	{
 		referenceName = "Verity",
-		referenceIcon = "💖",
+		referenceIcon = "😁",
 		referenceHeight = 2.5,
 		targetName = "La Vaca Saturno Saturnita",
 		targetIcon = "🐄",
@@ -194,7 +194,7 @@ ScaleData.Rounds = {
 	},
 	{
 		referenceName = "Verity",
-		referenceIcon = "💖",
+		referenceIcon = "😁",
 		referenceHeight = 2.5,
 		targetName = "Skibidi Toilet",
 		targetIcon = "🚽",

@@ -828,28 +828,46 @@ builders["Skibidi Toilet"] = function(m)
 end
 
 builders["Verity"] = function(m)
-	local body, light, dark = rgb(235, 170, 245), rgb(250, 215, 255), rgb(200, 130, 220)
-	for _, x in ipairs({ -1.2, 1.2 }) do
-		ball(m, 1.5, Vector3.new(x, 0.75, -0.6), dark)
+	local yellow = rgb(255, 215, 30)
+	local R = 3.5
+	local center = Vector3.new(0, R, 0)
+	ball(m, R * 2, center, yellow)
+
+	-- z on the sphere's front surface at (x, y), nudged outward so face
+	-- parts sit just proud of the yellow.
+	local function surfaceZ(x, y, lift)
+		local dy = y - center.Y
+		return -math.sqrt(math.max(R * R - x * x - dy * dy, 0.25)) - (lift or 0.05)
 	end
-	ball(m, 6, Vector3.new(0, 3.5, 0), body)
-	ball(m, 3.6, Vector3.new(0, 2.7, -1.5), light)
-	for _, s in ipairs({ -1, 1 }) do
-		tilted(m, Vector3.new(1.3, 1.3, 0.6), Vector3.new(s * 2, 6.5, 0), 0, 0, 45, body)
-		ball(m, 1.1, Vector3.new(s * 3.1, 3.2, -0.2), dark)
-		box(m, Vector3.new(0.6, 0.35, 0.1), Vector3.new(s * 1.6, 3.5, -2.8), rgb(255, 150, 190))
+
+	-- Round black eyes (two stacked dots make a tall oval).
+	for _, x in ipairs({ -1.05, 1.05 }) do
+		for _, y in ipairs({ 4.85, 5.25 }) do
+			ball(m, 0.66, Vector3.new(x, y, surfaceZ(x, y, -0.02)), BLACK)
+		end
 	end
-	eyePair(m, 0, 4.4, -2.75, 1.9, 0.95)
-	box(m, Vector3.new(0.9, 0.2, 0.1), Vector3.new(0, 3.4, -2.95), BLACK)
-	local gold = rgb(255, 205, 60)
-	box(m, Vector3.new(2.6, 0.5, 1.4), Vector3.new(0, 6.55, 0), gold, Enum.Material.Metal)
-	for _, x in ipairs({ -0.9, 0, 0.9 }) do
-		box(m, Vector3.new(0.5, 0.8, 0.5), Vector3.new(x, 7.2, 0), gold, Enum.Material.Metal)
+
+	-- Big toothy grin: a black backing curve with two rows of white teeth.
+	local function lowerY(x)
+		return 1.5 + 0.2 * x * x
 	end
-	tilted(m, Vector3.new(0.35, 1.6, 0.15), Vector3.new(-0.4, 2.4, -3.0), 0, 0, 20, WHITE)
-	tilted(m, Vector3.new(0.35, 1.6, 0.15), Vector3.new(0.4, 2.4, -3.0), 0, 0, -20, WHITE)
-	for _, p in ipairs({ { -3.6, 6.2 }, { 3.7, 5.4 }, { -3.9, 2 }, { 3.4, 7.3 } }) do
-		ball(m, 0.5, Vector3.new(p[1], p[2], -0.5), rgb(255, 235, 120), Enum.Material.Neon)
+	local function upperY(x)
+		return 2.25 + 0.115 * x * x
+	end
+	local slot, teeth = 0.4, 5.4
+	local i = 0
+	for x = -teeth / 2 + slot / 2, teeth / 2, slot do
+		i += 1
+		local lo, hi = lowerY(x), upperY(x)
+		local mid = (lo + hi) / 2
+		local height = math.max(hi - lo, 0.2)
+		local z = surfaceZ(x, mid, 0.04)
+		box(m, Vector3.new(slot + 0.02, height + 0.24, 0.1), Vector3.new(x, mid, z), BLACK)
+		local half = (height - 0.06) / 2
+		for _, dir in ipairs({ 1, -1 }) do
+			local ty = mid + dir * (half / 2 + 0.03)
+			box(m, Vector3.new(slot - 0.1, half, 0.1), Vector3.new(x, ty, surfaceZ(x, ty, 0.09)), WHITE)
+		end
 	end
 end
 

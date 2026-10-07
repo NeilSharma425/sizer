@@ -41,9 +41,9 @@ local MAX_RATIO = 50
 local LOG_MIN = math.log(MIN_RATIO)
 local LOG_MAX = math.log(MAX_RATIO)
 
-local RESULT_DELAY_SECONDS = 4
+local RESULT_DELAY_SECONDS = 2.2
 -- Rounds move faster in the 60-second challenge.
-local TIMED_RESULT_DELAY_SECONDS = 1.3
+local TIMED_RESULT_DELAY_SECONDS = 0.7
 local GOLD = Color3.fromRGB(255, 185, 30)
 
 local FONT = Enum.Font.FredokaOne
