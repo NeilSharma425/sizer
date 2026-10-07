@@ -828,46 +828,75 @@ builders["Skibidi Toilet"] = function(m)
 end
 
 builders["Verity"] = function(m)
-	local yellow = rgb(255, 215, 30)
+	local yellow = rgb(255, 214, 28)
 	local R = 3.5
 	local center = Vector3.new(0, R, 0)
 	ball(m, R * 2, center, yellow)
 
-	-- z on the sphere's front surface at (x, y), nudged outward so face
-	-- parts sit just proud of the yellow.
-	local function surfaceZ(x, y, lift)
+	-- CFrame sitting on the sphere's front at plane position (x, y), with
+	-- its front face pointing straight out of the surface so flat parts
+	-- hug the curve instead of sticking out at the sides.
+	local function surfaceCFrame(x, y, lift)
 		local dy = y - center.Y
-		return -math.sqrt(math.max(R * R - x * x - dy * dy, 0.25)) - (lift or 0.05)
+		local z = -math.sqrt(math.max(R * R - x * x - dy * dy, 0.25))
+		local normal = Vector3.new(x, dy, z).Unit
+		local pos = center + normal * (R + lift)
+		return CFrame.lookAt(pos, pos + normal)
 	end
 
-	-- Round black eyes (two stacked dots make a tall oval).
-	for _, x in ipairs({ -1.05, 1.05 }) do
-		for _, y in ipairs({ 4.85, 5.25 }) do
-			ball(m, 0.66, Vector3.new(x, y, surfaceZ(x, y, -0.02)), BLACK)
-		end
+	-- Squashed sphere (Part + SpecialMesh) for ovals; local -Z is outward.
+	local function ellipsoid(size, cf, color, transparency)
+		local p = Instance.new("Part")
+		p.Size = size
+		p.CFrame = cf
+		local mesh = Instance.new("SpecialMesh")
+		mesh.MeshType = Enum.MeshType.Sphere
+		mesh.Parent = p
+		add(m, p, color)
+		p.Transparency = transparency or 0
+		p.CastShadow = false
+		return p
 	end
 
-	-- Big toothy grin: a black backing curve with two rows of white teeth.
+	-- Gloss: soft highlights up and to the left.
+	ellipsoid(Vector3.new(1.7, 0.9, 0.22), surfaceCFrame(-1.3, 5.75, -0.02) * CFrame.Angles(0, 0, math.rad(35)), WHITE, 0.55)
+	ellipsoid(Vector3.new(0.6, 0.34, 0.16), surfaceCFrame(-0.35, 6.2, -0.02) * CFrame.Angles(0, 0, math.rad(15)), WHITE, 0.4)
+
+	-- Tall oval black eyes with a tiny glint.
+	for _, x in ipairs({ -1.2, 1.2 }) do
+		ellipsoid(Vector3.new(0.85, 1.55, 0.4), surfaceCFrame(x, 5.0, -0.04), BLACK)
+		ellipsoid(Vector3.new(0.24, 0.34, 0.16), surfaceCFrame(x + 0.16, 5.4, 0.1), WHITE)
+	end
+
+	-- Wide toothy grin: black outline backing with two rows of teeth, laid
+	-- along the curved surface.
 	local function lowerY(x)
-		return 1.5 + 0.2 * x * x
+		return 1.35 + 0.2 * x * x
 	end
 	local function upperY(x)
-		return 2.25 + 0.115 * x * x
+		return 2.2 + 0.1 * x * x
 	end
-	local slot, teeth = 0.4, 5.4
-	local i = 0
-	for x = -teeth / 2 + slot / 2, teeth / 2, slot do
-		i += 1
+	local slot = 0.3
+	local slots = 17
+	for i = 1, slots do
+		local x = (i - (slots + 1) / 2) * slot
 		local lo, hi = lowerY(x), upperY(x)
 		local mid = (lo + hi) / 2
 		local height = math.max(hi - lo, 0.2)
-		local z = surfaceZ(x, mid, 0.04)
-		box(m, Vector3.new(slot + 0.02, height + 0.24, 0.1), Vector3.new(x, mid, z), BLACK)
+		-- Tilt each slot to follow the curve of the smile.
+		local roll = CFrame.Angles(0, 0, math.atan(0.3 * x))
+		box(m, Vector3.new(slot + 0.04, height + 0.2, 0.12), surfaceCFrame(x, mid, 0.02) * roll, BLACK)
 		local half = (height - 0.06) / 2
 		for _, dir in ipairs({ 1, -1 }) do
 			local ty = mid + dir * (half / 2 + 0.03)
-			box(m, Vector3.new(slot - 0.1, half, 0.1), Vector3.new(x, ty, surfaceZ(x, ty, 0.09)), WHITE)
+			box(m, Vector3.new(slot - 0.07, half, 0.12), surfaceCFrame(x, ty, 0.07) * roll, rgb(252, 252, 248))
 		end
+	end
+	-- Rounded mouth corners.
+	for _, sign in ipairs({ -1, 1 }) do
+		local x = sign * (slot * slots / 2 + 0.05)
+		local y = (lowerY(x) + upperY(x)) / 2
+		ellipsoid(Vector3.new(0.4, 0.4, 0.2), surfaceCFrame(x, y, 0.02), BLACK)
 	end
 end
 
