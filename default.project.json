@@ -6,12 +6,18 @@
       "$className": "ReplicatedStorage",
       "ScaleData": {
         "$path": "ReplicatedStorage/ScaleData.lua"
+      },
+      "MapConfig": {
+        "$path": "ReplicatedStorage/MapConfig.lua"
       }
     },
     "ServerScriptService": {
       "$className": "ServerScriptService",
       "RoundManager": {
         "$path": "ServerScriptService/RoundManager.server.lua"
+      },
+      "MapBuilder": {
+        "$path": "ServerScriptService/MapBuilder.server.lua"
       }
     },
     "StarterPlayer": {

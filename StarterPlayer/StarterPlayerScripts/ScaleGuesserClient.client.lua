@@ -13,6 +13,8 @@ local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 
+local MapConfig = require(ReplicatedStorage:WaitForChild("MapConfig"))
+
 local remotesFolder = ReplicatedStorage:WaitForChild("ScaleGameRemotes")
 local RequestRound = remotesFolder:WaitForChild("RequestRound")
 local SubmitGuess = remotesFolder:WaitForChild("SubmitGuess")
@@ -37,6 +39,11 @@ local RESULT_DELAY_SECONDS = 4
 
 local PART_GAP = 10
 
+-- The two display parts live inside the Scale Guesser arena that
+-- MapBuilder constructs, centered on MapConfig.ArenaCenter.
+local ARENA_ORIGIN = MapConfig.ArenaCenter + Vector3.new(0, 0, 10)
+local GROUND_Y = MapConfig.GroundY
+
 local referencePart = Instance.new("Part")
 referencePart.Name = "ReferencePart"
 referencePart.Anchored = true
@@ -44,7 +51,7 @@ referencePart.CanCollide = false
 referencePart.Material = Enum.Material.SmoothPlastic
 referencePart.Color = Color3.fromRGB(60, 120, 220)
 referencePart.Size = Vector3.new(4, REFERENCE_DISPLAY_HEIGHT, 4)
-referencePart.Position = Vector3.new(-PART_GAP / 2, REFERENCE_DISPLAY_HEIGHT / 2, 0)
+referencePart.Position = ARENA_ORIGIN + Vector3.new(-PART_GAP / 2, GROUND_Y + REFERENCE_DISPLAY_HEIGHT / 2, 0)
 referencePart.Parent = workspace
 
 local referenceLabel = Instance.new("BillboardGui")
@@ -70,7 +77,7 @@ targetPart.CanCollide = false
 targetPart.Material = Enum.Material.SmoothPlastic
 targetPart.Color = Color3.fromRGB(230, 140, 40)
 targetPart.Size = Vector3.new(4, REFERENCE_DISPLAY_HEIGHT, 4)
-targetPart.Position = Vector3.new(PART_GAP / 2, REFERENCE_DISPLAY_HEIGHT / 2, 0)
+targetPart.Position = ARENA_ORIGIN + Vector3.new(PART_GAP / 2, GROUND_Y + REFERENCE_DISPLAY_HEIGHT / 2, 0)
 targetPart.Parent = workspace
 
 local targetLabel = Instance.new("BillboardGui")
@@ -96,7 +103,7 @@ local function setTargetRatio(ratio)
 	local displayHeight = REFERENCE_DISPLAY_HEIGHT * ratio
 	displayHeight = math.max(displayHeight, 0.05)
 	targetPart.Size = Vector3.new(4, displayHeight, 4)
-	targetPart.Position = Vector3.new(PART_GAP / 2, displayHeight / 2, 0)
+	targetPart.Position = ARENA_ORIGIN + Vector3.new(PART_GAP / 2, GROUND_Y + displayHeight / 2, 0)
 end
 
 --==========================================================================
@@ -116,6 +123,7 @@ rootFrame.Size = UDim2.new(0, 560, 0, 220)
 rootFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 rootFrame.BackgroundTransparency = 0.1
 rootFrame.BorderSizePixel = 0
+rootFrame.Visible = false
 rootFrame.Parent = screenGui
 
 local uiCorner = Instance.new("UICorner")
@@ -309,12 +317,17 @@ end)
 -- Round flow
 --==========================================================================
 
+local isPlaying = false
+
 local function startNewRound()
+	isPlaying = true
+	rootFrame.Visible = true
 	guessLocked = false
 	resultLabel.Text = ""
 	lockInButton.Visible = true
 	lockInButton.Active = true
 	lockInButton.AutoButtonColor = true
+	lockInButton.BackgroundColor3 = Color3.fromRGB(60, 170, 90)
 	promptLabel.Text = "Loading round..."
 	RequestRound:FireServer()
 end
@@ -365,4 +378,40 @@ RoundResult.OnClientEvent:Connect(function(result)
 	end)
 end)
 
-startNewRound()
+--==========================================================================
+-- Start kiosk (walk up to it in the arena and press E)
+--==========================================================================
+
+local arenaFolder = workspace:WaitForChild("Map"):WaitForChild("ScaleGuesserArena")
+local kiosk = arenaFolder:WaitForChild("Kiosk")
+local startPrompt = kiosk:WaitForChild("ProximityPrompt")
+
+startPrompt.Triggered:Connect(function(triggeringPlayer)
+	if triggeringPlayer == player and not isPlaying then
+		startNewRound()
+	end
+end)
+
+-- Once a player wanders far enough from the arena, hide the UI so it
+-- doesn't follow them around the rest of the map. The round loop simply
+-- stops advancing (RoundResult re-shows the UI) until they walk back and
+-- trigger the kiosk again.
+local HIDE_DISTANCE = MapConfig.ArenaRadius + 20
+
+RunService.Heartbeat:Connect(function()
+	if not isPlaying then
+		return
+	end
+
+	local character = player.Character
+	local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+	if not rootPart then
+		return
+	end
+
+	local distance = (rootPart.Position - MapConfig.ArenaCenter).Magnitude
+	if distance > HIDE_DISTANCE then
+		isPlaying = false
+		rootFrame.Visible = false
+	end
+end)
