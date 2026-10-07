@@ -586,7 +586,7 @@ local function buildDecor()
 		-- Inner
 		{ -40, 72 }, { -62, 68 }, { 40, 72 }, { 62, 68 }, { 78, -36 }, { 46, -4 },
 		{ 47, 44 }, { 82, 46 }, { -36, -60 }, { -84, -48 }, { -36, 82 }, { 36, 82 },
-		{ -24, -76 }, { 24, -76 },
+		{ -32, -78 }, { 32, -78 },
 	}
 	for _, t in ipairs(trees) do
 		blockyTree(Vector3.new(t[1], 0, t[2]), rng:NextNumber(0.9, 1.3), decor)
@@ -902,9 +902,11 @@ end
 
 local function buildBoards()
 	local boards = folder("Boards")
-	local lookTarget = Vector3.new(0, 0, 20)
+	-- All boards surround the spawn pad and face it: one directly behind the
+	-- player and one on each side.
+	local lookTarget = Vector3.new(0, 0, -67)
 
-	local main = darkBoard("Leaderboard", Vector3.new(-26, TILE_TOP, 64), lookTarget, Vector3.new(16, 11, 0.2), boards)
+	local main = darkBoard("Leaderboard", Vector3.new(0, TILE_TOP, -84), lookTarget, Vector3.new(16, 11, 0.2), boards)
 	local gui = surfaceGui(main, 40)
 	stroke(textLabel(gui, {
 		Size = UDim2.fromScale(1, 0.16),
@@ -922,7 +924,7 @@ local function buildBoards()
 	layout.Parent = list
 	refreshLeaderboard(list, totalScore)
 
-	local howTo = darkBoard("HowTo", Vector3.new(-42, TILE_TOP, 62), lookTarget, Vector3.new(13, 9, 0.2), boards)
+	local howTo = darkBoard("HowTo", Vector3.new(-21, TILE_TOP, -67), lookTarget, Vector3.new(13, 9, 0.2), boards)
 	stroke(textLabel(surfaceGui(howTo, 40), {
 		Size = UDim2.fromScale(0.9, 0.9),
 		Position = UDim2.fromScale(0.05, 0.05),
@@ -930,7 +932,7 @@ local function buildBoards()
 		TextColor3 = Color3.fromRGB(120, 220, 255),
 	}), 2)
 
-	local records = darkBoard("TimedRecords", Vector3.new(26, TILE_TOP, 64), lookTarget, Vector3.new(13, 9, 0.2), boards)
+	local records = darkBoard("TimedRecords", Vector3.new(21, TILE_TOP, -67), lookTarget, Vector3.new(13, 9, 0.2), boards)
 	local recordsGui = surfaceGui(records, 40)
 	stroke(textLabel(recordsGui, {
 		Size = UDim2.fromScale(1, 0.18),
