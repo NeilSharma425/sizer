@@ -12,9 +12,28 @@
 	(built by the client), so stations don't host the objects themselves.
 ]]
 
-local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
 local TweenService = game:GetService("TweenService")
+-- Saving is optional: if the module ever fails to load, run without it
+-- instead of taking the whole game down.
+local okPlayerData, PlayerData = pcall(function()
+	return require(script.Parent:WaitForChild("PlayerData"))
+end)
+if not okPlayerData then
+	warn("[Sizer] PlayerData failed to load; running without saving:", PlayerData)
+	PlayerData = {
+		load = function()
+			return false
+		end,
+		release = function() end,
+		save = function()
+			return false
+		end,
+		getTop = function()
+			return {}
+		end,
+	}
+end
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CollectionService = game:GetService("CollectionService")
 
@@ -586,7 +605,7 @@ local function buildDecor()
 		-- Inner
 		{ -40, 72 }, { -62, 68 }, { 40, 72 }, { 62, 68 }, { 78, -36 }, { 46, -4 },
 		{ 47, 44 }, { 82, 46 }, { -36, -60 }, { -84, -48 }, { -36, 82 }, { 36, 82 },
-		{ -24, -76 }, { 24, -76 },
+		{ -32, -78 }, { 32, -78 },
 	}
 	for _, t in ipairs(trees) do
 		blockyTree(Vector3.new(t[1], 0, t[2]), rng:NextNumber(0.9, 1.3), decor)
@@ -863,30 +882,21 @@ local function darkBoard(name, position, facingTarget, size, parent)
 	})
 end
 
-local function totalScore(plr)
-	local stats = plr:FindFirstChild("leaderstats")
-	local score = stats and stats:FindFirstChild("Score")
-	return score and score.Value or 0
+local function withCommas(n)
+	local formatted = tostring(math.floor(n)):reverse():gsub("(%d%d%d)", "%1,"):reverse()
+	return (formatted:gsub("^,", ""))
 end
 
-local function timedBest(plr)
-	return plr:GetAttribute("TimedBest") or 0
-end
-
-local function refreshLeaderboard(list, getValue)
+-- kind is "Sense" or "TimedBest"; entries come from PlayerData (saved
+-- global top list merged with the players currently online).
+local function refreshLeaderboard(list, kind)
 	for _, child in ipairs(list:GetChildren()) do
 		if child:IsA("TextLabel") then
 			child:Destroy()
 		end
 	end
-	local entries = {}
-	for _, plr in ipairs(Players:GetPlayers()) do
-		table.insert(entries, { name = plr.DisplayName, score = getValue(plr) })
-	end
-	table.sort(entries, function(a, b)
-		return a.score > b.score
-	end)
-	for i = 1, math.min(8, #entries) do
+	local entries = PlayerData.getTop(kind, 8)
+	for i, entry in ipairs(entries) do
 		textLabel(list, {
 			LayoutOrder = i,
 			Size = UDim2.fromScale(1, 0.115),
@@ -895,34 +905,49 @@ local function refreshLeaderboard(list, getValue)
 				or (i == 2 and Color3.fromRGB(210, 220, 235))
 				or (i == 3 and Color3.fromRGB(230, 150, 90))
 				or C.white,
-			Text = string.format("%d.  %s  -  %d", i, entries[i].name, entries[i].score),
+			Text = string.format("%d.  %s  -  %s", i, entry.name, withCommas(entry.value)),
+		})
+	end
+	if #entries == 0 then
+		textLabel(list, {
+			Size = UDim2.fromScale(1, 0.14),
+			TextColor3 = Color3.fromRGB(150, 155, 175),
+			Text = "No scores yet - be the first!",
 		})
 	end
 end
 
 local function buildBoards()
 	local boards = folder("Boards")
-	local lookTarget = Vector3.new(0, 0, 20)
+	-- All boards surround the spawn pad and face it: one directly behind the
+	-- player and one on each side.
+	local lookTarget = Vector3.new(0, 0, -67)
 
-	local main = darkBoard("Leaderboard", Vector3.new(-26, TILE_TOP, 64), lookTarget, Vector3.new(16, 11, 0.2), boards)
+	local main = darkBoard("Leaderboard", Vector3.new(0, TILE_TOP, -84), lookTarget, Vector3.new(16, 11, 0.2), boards)
 	local gui = surfaceGui(main, 40)
 	stroke(textLabel(gui, {
 		Size = UDim2.fromScale(1, 0.16),
 		Text = "🏆 TOP GUESSERS",
 		TextColor3 = Color3.fromRGB(255, 210, 70),
 	}), 3)
+	textLabel(gui, {
+		Size = UDim2.fromScale(0.5, 0.06),
+		Position = UDim2.fromScale(0.25, 0.165),
+		Text = "ranked by SENSE",
+		TextColor3 = Color3.fromRGB(150, 160, 190),
+	})
 	local list = Instance.new("Frame")
-	list.Size = UDim2.fromScale(0.86, 0.78)
-	list.Position = UDim2.fromScale(0.07, 0.19)
+	list.Size = UDim2.fromScale(0.86, 0.72)
+	list.Position = UDim2.fromScale(0.07, 0.24)
 	list.BackgroundTransparency = 1
 	list.Parent = gui
 	local layout = Instance.new("UIListLayout")
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Padding = UDim.new(0.008, 0)
 	layout.Parent = list
-	refreshLeaderboard(list, totalScore)
+	refreshLeaderboard(list, "Sense")
 
-	local howTo = darkBoard("HowTo", Vector3.new(-42, TILE_TOP, 62), lookTarget, Vector3.new(13, 9, 0.2), boards)
+	local howTo = darkBoard("HowTo", Vector3.new(-21, TILE_TOP, -67), lookTarget, Vector3.new(13, 9, 0.2), boards)
 	stroke(textLabel(surfaceGui(howTo, 40), {
 		Size = UDim2.fromScale(0.9, 0.9),
 		Position = UDim2.fromScale(0.05, 0.05),
@@ -930,7 +955,7 @@ local function buildBoards()
 		TextColor3 = Color3.fromRGB(120, 220, 255),
 	}), 2)
 
-	local records = darkBoard("TimedRecords", Vector3.new(26, TILE_TOP, 64), lookTarget, Vector3.new(13, 9, 0.2), boards)
+	local records = darkBoard("TimedRecords", Vector3.new(21, TILE_TOP, -67), lookTarget, Vector3.new(13, 9, 0.2), boards)
 	local recordsGui = surfaceGui(records, 40)
 	stroke(textLabel(recordsGui, {
 		Size = UDim2.fromScale(1, 0.18),
@@ -946,13 +971,13 @@ local function buildBoards()
 	recordsLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	recordsLayout.Padding = UDim.new(0.008, 0)
 	recordsLayout.Parent = recordsList
-	refreshLeaderboard(recordsList, timedBest)
+	refreshLeaderboard(recordsList, "TimedBest")
 
 	task.spawn(function()
 		while true do
 			task.wait(3)
-			refreshLeaderboard(list, totalScore)
-			refreshLeaderboard(recordsList, timedBest)
+			refreshLeaderboard(list, "Sense")
+			refreshLeaderboard(recordsList, "TimedBest")
 		end
 	end)
 end
@@ -1074,15 +1099,28 @@ end
 -- Build
 --==========================================================================
 
-setupLighting()
-buildGround()
-buildFence()
-buildPaths()
-buildStations()
-buildBoards()
-buildGiantGarden()
-buildPark()
-buildPlayground()
-buildPicnic()
-buildDecor()
-buildObby()
+-- Each step runs on its own so one failure can't leave the rest unbuilt.
+local steps = {
+	{ "lighting", setupLighting },
+	{ "ground", buildGround },
+	{ "fence", buildFence },
+	{ "paths", buildPaths },
+	{ "stations", buildStations },
+	{ "boards", buildBoards },
+	{ "giant garden", buildGiantGarden },
+	{ "park", buildPark },
+	{ "playground", buildPlayground },
+	{ "picnic", buildPicnic },
+	{ "decor", buildDecor },
+	{ "obby", buildObby },
+}
+
+local failed = 0
+for _, step in ipairs(steps) do
+	local ok, err = xpcall(step[2], debug.traceback)
+	if not ok then
+		failed += 1
+		warn("[Sizer] Map step '" .. step[1] .. "' failed:", err)
+	end
+end
+print(string.format("[Sizer] Map built (%d of %d steps ok)", #steps - failed, #steps))

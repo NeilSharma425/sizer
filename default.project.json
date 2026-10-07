@@ -21,6 +21,9 @@
       },
       "MapBuilder": {
         "$path": "ServerScriptService/MapBuilder.server.lua"
+      },
+      "PlayerData": {
+        "$path": "ServerScriptService/PlayerData.lua"
       }
     },
     "StarterPlayer": {
