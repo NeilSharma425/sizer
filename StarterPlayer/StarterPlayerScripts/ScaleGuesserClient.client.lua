@@ -205,7 +205,18 @@ local giftBadge = frame(rewardCard, {
 corner(giftBadge, UDim.new(1, 0))
 stroke(giftBadge, 3)
 gloss(giftBadge, Color3.fromRGB(255, 195, 50))
-label(giftBadge, { Size = UDim2.fromScale(0.66, 0.66), Position = UDim2.fromScale(0.17, 0.17), Text = "🎁" })
+do -- drawn gift box
+	local function bar(x, y, w, h, color)
+		local f = frame(giftBadge, { Position = UDim2.new(0, x, 0, y), Size = UDim2.new(0, w, 0, h), BackgroundColor3 = color })
+		corner(f, UDim.new(0, 3))
+		return f
+	end
+	bar(14, 24, 28, 22, WHITE)
+	bar(12, 18, 32, 9, Color3.fromRGB(235, 235, 245))
+	bar(25, 18, 6, 28, RED)
+	bar(16, 10, 11, 9, RED).Rotation = -25
+	bar(29, 10, 11, 9, RED).Rotation = 25
+end
 
 textStroke(label(rewardCard, {
 	Size = UDim2.new(1, -84, 0, 22),
@@ -244,8 +255,8 @@ local quickPlayButton = button(hud, "QUICK PLAY", GREEN, {
 local DAILY_BLUE = Color3.fromRGB(70, 150, 255)
 local sideMenu = frame(hud, {
 	Name = "SideMenu",
-	AnchorPoint = Vector2.new(0, 0.5),
-	Position = UDim2.new(0, 14, 0.5, 0),
+	AnchorPoint = Vector2.new(0, 0),
+	Position = UDim2.new(0, 14, 0, 12),
 	Size = UDim2.new(0, 92, 0, 4 * 84 + 3 * 8),
 	BackgroundTransparency = 1,
 })
@@ -255,7 +266,60 @@ sideLayout.Padding = UDim.new(0, 8)
 sideLayout.SortOrder = Enum.SortOrder.LayoutOrder
 sideLayout.Parent = sideMenu
 
--- A tile is a button with an emoji on top and a short caption underneath
+-- Icons are drawn from simple shapes (no emoji).
+local function drawIcon(parent, kind, color)
+	local box = frame(parent, {
+		Name = "Icon",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 7),
+		Size = UDim2.new(0, 44, 0, 44),
+		BackgroundTransparency = 1,
+	})
+	local function shape(x, y, w, h, c, radius)
+		local f = frame(box, { Position = UDim2.new(0, x, 0, y), Size = UDim2.new(0, w, 0, h), BackgroundColor3 = c })
+		corner(f, radius or UDim.new(0, 3))
+		return f
+	end
+	local round = UDim.new(1, 0)
+	if kind == "calendar" then
+		shape(4, 8, 36, 32, WHITE, UDim.new(0, 6))
+		shape(4, 8, 36, 12, RED, UDim.new(0, 6))
+		shape(4, 15, 36, 5, RED, UDim.new(0, 0))
+		shape(11, 3, 5, 10, INK, round)
+		shape(28, 3, 5, 10, INK, round)
+		for row = 0, 1 do
+			for col = 0, 2 do
+				shape(9 + col * 10, 24 + row * 8, 6, 5, color)
+			end
+		end
+	elseif kind == "stopwatch" then
+		shape(17, 1, 10, 6, INK)
+		shape(4, 6, 36, 36, WHITE, round)
+		shape(9, 11, 26, 26, color, round)
+		shape(21, 14, 3, 11, WHITE, round) -- hand
+		shape(21, 22, 9, 3, WHITE, round)
+		shape(20, 21, 5, 5, INK, round)
+	elseif kind == "book" then
+		shape(3, 8, 19, 30, WHITE, UDim.new(0, 4))
+		shape(22, 8, 19, 30, Color3.fromRGB(225, 225, 240), UDim.new(0, 4))
+		shape(21, 6, 3, 34, INK, UDim.new(0, 1))
+		for i = 0, 2 do
+			shape(7, 14 + i * 7, 11, 3, color)
+			shape(27, 14 + i * 7, 10, 3, color)
+		end
+	else -- help
+		shape(4, 4, 36, 36, WHITE, round)
+		label(box, {
+			Size = UDim2.new(0, 28, 0, 30),
+			Position = UDim2.new(0, 8, 0, 6),
+			Text = "?",
+			TextColor3 = color,
+		})
+	end
+	return box
+end
+
+-- A tile is a button with a drawn icon on top and a short caption underneath
 -- (the caption label is named "Caption" so other scripts can change it).
 local function menuTile(name, order, icon, caption, color)
 	local tile = Instance.new("TextButton")
@@ -270,25 +334,26 @@ local function menuTile(name, order, icon, caption, color)
 	corner(tile, UDim.new(0, 14))
 	stroke(tile, 3)
 	gloss(tile, color)
-	label(tile, {
-		Name = "Icon",
-		Position = UDim2.new(0, 0, 0, 6),
-		Size = UDim2.new(1, 0, 0, 42),
-		Text = icon,
-	})
+	drawIcon(tile, icon, color)
 	textStroke(label(tile, {
 		Name = "Caption",
-		Position = UDim2.new(0, 4, 0, 52),
+		Position = UDim2.new(0, 4, 0, 54),
 		Size = UDim2.new(1, -8, 0, 22),
 		Text = caption,
 	}), 2)
 	return tile
 end
 
-local dailyButton = menuTile("DailyButton", 1, "📅", "DAILY", DAILY_BLUE)
-local challengeButton = menuTile("ChallengeButton", 2, "⏱️", "60s", GOLD)
-menuTile("SizedexButton", 3, "📖", "SIZEDEX", Color3.fromRGB(110, 90, 220))
-menuTile("HelpButton", 4, "❓", "HELP", Color3.fromRGB(95, 110, 150))
+local dailyButton = menuTile("DailyButton", 1, "calendar", "DAILY", DAILY_BLUE)
+local challengeButton = menuTile("ChallengeButton", 2, "stopwatch", "60s", GOLD)
+menuTile("SizedexButton", 3, "book", "SIZEDEX", Color3.fromRGB(110, 90, 220))
+local helpButton = menuTile("HelpButton", 4, "help", "HELP", Color3.fromRGB(95, 110, 150))
+-- Only offered until the tutorial has been done.
+local function syncHelp()
+	helpButton.Visible = player:GetAttribute("TutorialDone") ~= true
+end
+player:GetAttributeChangedSignal("TutorialDone"):Connect(syncHelp)
+syncHelp()
 
 -- Red "!" badge while today's daily is waiting to be played.
 local dailyBadge = frame(dailyButton, {

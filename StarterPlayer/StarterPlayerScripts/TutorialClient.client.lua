@@ -552,10 +552,10 @@ local function findMenuTile(name)
 end
 
 local TOUR = {
-	{ find = function() return findMenuTile("DailyButton") end, icon = "📅", text = "5 new questions every day", color = Color3.fromRGB(70, 150, 255) },
-	{ find = function() return findMenuTile("ChallengeButton") end, icon = "⏱️", text = "60 seconds. Beat the clock!", color = GOLD },
-	{ find = function() return findMenuTile("SizedexButton") end, icon = "📖", text = "Collect every object", color = Color3.fromRGB(150, 120, 255) },
-	{ find = findProgressGui, icon = "🔥", text = "Earn Sense, rank up, keep your streak", color = Color3.fromRGB(255, 140, 40) },
+	{ find = function() return findMenuTile("DailyButton") end, text = "5 new questions every day", color = Color3.fromRGB(70, 150, 255) },
+	{ find = function() return findMenuTile("ChallengeButton") end, text = "60 seconds. Beat the clock!", color = GOLD },
+	{ find = function() return findMenuTile("SizedexButton") end, text = "Collect every object", color = Color3.fromRGB(150, 120, 255) },
+	{ find = findProgressGui, text = "Earn Sense, rank up, keep your streak", color = Color3.fromRGB(255, 140, 40) },
 }
 local TOUR_STEP_SECONDS = 2.1
 
@@ -572,10 +572,9 @@ local function runTour(myToken)
 	local card = frame(gui, { Size = UDim2.new(0, 270, 0, 78), BackgroundColor3 = PURPLE, ZIndex = 14 })
 	corner(card, UDim.new(0, 16))
 	local cardStroke = stroke(card, 4, GOLD)
-	local cardIcon = label(card, { Position = UDim2.new(0, 8, 0.5, -26), Size = UDim2.new(0, 52, 0, 52), ZIndex = 15 })
 	local cardText = label(card, {
-		Position = UDim2.new(0, 66, 0, 8),
-		Size = UDim2.new(1, -76, 1, -16),
+		Position = UDim2.new(0, 14, 0, 8),
+		Size = UDim2.new(1, -28, 1, -16),
 		TextXAlignment = Enum.TextXAlignment.Left,
 		ZIndex = 15,
 	})
@@ -622,7 +621,6 @@ local function runTour(myToken)
 		local target = step.find()
 		if target and target.Visible and target.AbsoluteSize.X > 0 then
 			current = target
-			cardIcon.Text = step.icon
 			cardText.Text = step.text
 			cardStroke.Color = step.color
 			ringStroke.Color = step.color
