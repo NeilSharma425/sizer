@@ -485,55 +485,54 @@ TimedStop.OnServerEvent:Connect(function(player)
 	timedSessions[player] = nil
 end)
 
--- Floating tag over the player's head: their rank and Sense.
+-- Floating tag over the player's head: their name, rank and Sense, as
+-- outlined text with no background. It replaces Roblox's own name label so
+-- the two don't overlap, and everyone in the server can see it.
 local function attachSenseTag(player, character)
 	local head = character:WaitForChild("Head", 10)
 	if not head then
 		return
 	end
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+	end
 
 	local tag = Instance.new("BillboardGui")
 	tag.Name = "SenseTag"
 	tag.Adornee = head
-	tag.Size = UDim2.new(0, 170, 0, 56)
-	tag.StudsOffsetWorldSpace = Vector3.new(0, 2.8, 0)
-	tag.MaxDistance = 80
+	tag.Size = UDim2.new(0, 200, 0, 66)
+	tag.StudsOffsetWorldSpace = Vector3.new(0, 3, 0)
+	tag.MaxDistance = 120
 	tag.LightInfluence = 0
 	tag.Parent = head
 
-	local pill = Instance.new("Frame")
-	pill.Size = UDim2.fromScale(1, 1)
-	pill.BackgroundColor3 = Color3.fromRGB(30, 32, 48)
-	pill.BackgroundTransparency = 0.15
-	pill.Parent = tag
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 16)
-	corner.Parent = pill
-	local stroke = Instance.new("UIStroke")
-	stroke.Color = Color3.fromRGB(255, 195, 40)
-	stroke.Thickness = 2.5
-	stroke.Parent = pill
-
-	local function line(position, height, font)
+	local function line(position, height, font, color)
 		local text = Instance.new("TextLabel")
-		text.Position = UDim2.fromScale(0.04, position)
-		text.Size = UDim2.fromScale(0.92, height)
+		text.Position = UDim2.fromScale(0, position)
+		text.Size = UDim2.fromScale(1, height)
 		text.BackgroundTransparency = 1
 		text.Font = font
 		text.TextScaled = true
-		text.TextColor3 = Color3.fromRGB(255, 255, 255)
-		text.Parent = pill
+		text.TextColor3 = color
+		text.TextStrokeTransparency = 1
+		text.Parent = tag
+		local outline = Instance.new("UIStroke")
+		outline.Color = Color3.fromRGB(20, 20, 30)
+		outline.Thickness = 2
+		outline.Parent = text
 		return text
 	end
-	local rankText = line(0.06, 0.42, Enum.Font.GothamBold)
-	local senseText = line(0.5, 0.44, Enum.Font.GothamBlack)
+	local nameText = line(0, 0.36, Enum.Font.GothamBold, Color3.fromRGB(255, 255, 255))
+	local rankText = line(0.36, 0.32, Enum.Font.GothamBlack, Color3.fromRGB(255, 255, 255))
+	local senseText = line(0.68, 0.32, Enum.Font.GothamBlack, Color3.fromRGB(255, 215, 70))
+	nameText.Text = player.DisplayName
 
 	local function refresh()
 		local sense = player:GetAttribute("Sense") or 0
 		local info = Ranks.forSense(sense)
 		rankText.Text = info.rank.icon .. " " .. string.upper(info.rank.name)
 		rankText.TextColor3 = info.rank.color
-		stroke.Color = info.rank.color
 		senseText.Text = string.format("📏 %d SENSE", sense)
 	end
 	refresh()
