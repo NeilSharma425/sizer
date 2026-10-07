@@ -3,7 +3,8 @@
 	LocalScript: StarterPlayer.StarterPlayerScripts.DuelsDemo
 
 	The little show on the DUELS "coming soon" stand (MapBuilder tags it
-	"DuelsDemo"): one Roblox character winds up and slaps the other, who goes
+	"DuelsDemo"): a classic noob winds up and slaps a normal Roblox player
+	(the first player's avatar), who goes
 	wild (spins, jumps, flails, yells) and then shakes it off. Loops forever.
 	The characters' roots are anchored; this script moves the roots and
 	bends the joints (Motor6D.C0) locally, only while the camera is close
@@ -85,8 +86,16 @@ local function setup(folder)
 	if demos[folder] then
 		return
 	end
-	local slapper = folder:WaitForChild("Slapper", 20)
-	local victim = folder:WaitForChild("Victim", 20)
+	-- The victim is built once the first player joins, so it may arrive late.
+	local slapper, victim
+	for _ = 1, 120 do
+		slapper = folder:FindFirstChild("Slapper")
+		victim = folder:FindFirstChild("Victim")
+		if slapper and victim and victim:FindFirstChild("HumanoidRootPart") and victim:FindFirstChild("Head") then
+			break
+		end
+		task.wait(1)
+	end
 	if not slapper or not victim then
 		return
 	end

@@ -764,17 +764,29 @@ local function blockyStandIn(name, colors)
 	return model
 end
 
-local function robloxCharacter(name, cf, colors, parent)
+-- `userId` (optional) dresses the character as that player's real avatar;
+-- otherwise it's a plain avatar in `colors`.
+local function robloxCharacter(name, cf, colors, parent, userId)
+	local Players = game:GetService("Players")
 	local ok, model = pcall(function()
-		local description = Instance.new("HumanoidDescription")
-		description.HeadColor = colors.head
-		description.LeftArmColor = colors.arms
-		description.RightArmColor = colors.arms
-		description.TorsoColor = colors.torso
-		description.LeftLegColor = colors.legs
-		description.RightLegColor = colors.legs
-		return game:GetService("Players"):CreateHumanoidModelFromDescription(description, Enum.HumanoidRigType.R15)
+		local description
+		if userId then
+			description = Players:GetHumanoidDescriptionFromUserId(userId)
+		else
+			description = Instance.new("HumanoidDescription")
+			description.HeadColor = colors.head
+			description.LeftArmColor = colors.arms
+			description.RightArmColor = colors.arms
+			description.TorsoColor = colors.torso
+			description.LeftLegColor = colors.legs
+			description.RightLegColor = colors.legs
+		end
+		return Players:CreateHumanoidModelFromDescription(description, Enum.HumanoidRigType.R15)
 	end)
+	if (not ok or not model) and userId then
+		-- That player's avatar couldn't be loaded: use a plain avatar instead.
+		return robloxCharacter(name, cf, colors, parent)
+	end
 	if not ok or not model then
 		warn("[Sizer] Couldn't create a Roblox character for the DUELS stand, using a stand-in:", model)
 		model = blockyStandIn(name, colors)
@@ -916,12 +928,20 @@ local function buildStation(def, index, parent)
 			torso = Color3.fromRGB(13, 105, 172),
 			legs = Color3.fromRGB(164, 189, 71),
 		}, demo)
-		robloxCharacter("Victim", at(2, y, 3) * CFrame.Angles(0, math.pi / 2, 0), {
+		-- The other one is a normal Roblox player: the avatar of the first
+		-- player in the server (built once someone joins).
+		local victimCFrame = at(2, y, 3) * CFrame.Angles(0, math.pi / 2, 0)
+		local plainColors = {
 			head = Color3.fromRGB(234, 184, 146),
 			arms = Color3.fromRGB(234, 184, 146),
 			torso = Color3.fromRGB(196, 40, 28),
 			legs = Color3.fromRGB(40, 40, 48),
-		}, demo)
+		}
+		task.spawn(function()
+			local Players = game:GetService("Players")
+			local first = Players:GetPlayers()[1] or Players.PlayerAdded:Wait()
+			robloxCharacter("Victim", victimCFrame, plainColors, demo, first.UserId)
+		end)
 		CollectionService:AddTag(demo, "DuelsDemo")
 	end
 
