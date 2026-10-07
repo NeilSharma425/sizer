@@ -182,6 +182,7 @@ local function responsive(guiObject)
 	scale.Parent = guiObject
 	table.insert(responsiveScales, scale)
 end
+local layoutSideMenu -- set once the side menu exists
 local function updateHudScale()
 	local camera = workspace.CurrentCamera
 	if not camera then
@@ -190,6 +191,9 @@ local function updateHudScale()
 	local value = math.clamp(camera.ViewportSize.Y / 900, 0.55, 1.1)
 	for _, scale in ipairs(responsiveScales) do
 		scale.Scale = value
+	end
+	if layoutSideMenu then
+		layoutSideMenu(value)
 	end
 end
 
@@ -384,8 +388,38 @@ stroke(dailyBadge, 3)
 label(dailyBadge, { Size = UDim2.fromScale(0.6, 0.7), Position = UDim2.fromScale(0.2, 0.15), Text = "!", ZIndex = 4 })
 
 responsive(rewardCard)
-responsive(sideMenu)
 responsive(quickPlayButton)
+
+-- The side menu sits in the space between the top of the screen and the
+-- playtime reward card (bottom-left), shrinking on short screens so the
+-- two never overlap.
+local sideScale = Instance.new("UIScale")
+sideScale.Parent = sideMenu
+layoutSideMenu = function(hudValue)
+	local size = hud.AbsoluteSize
+	local screenHeight = size and size.Y or 0
+	if screenHeight <= 0 then
+		return
+	end
+	local tiles = 0
+	for _, child in ipairs(sideMenu:GetChildren()) do
+		if child:IsA("GuiButton") and child.Visible then
+			tiles += 1
+		end
+	end
+	local contentHeight = math.max(tiles * 84 + math.max(tiles - 1, 0) * 8, 1)
+	local top = 12
+	local bottom = 22 + 78 * hudValue + 14 -- the reward card plus a gap
+	local available = math.max(screenHeight - top - bottom, 60)
+	sideScale.Scale = math.min(hudValue, available / contentHeight)
+	sideMenu.Position = UDim2.new(0, 14, 0, top + available / 2)
+end
+for _, child in ipairs(sideMenu:GetChildren()) do
+	if child:IsA("GuiButton") then
+		child:GetPropertyChangedSignal("Visible"):Connect(updateHudScale)
+	end
+end
+hud:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateHudScale)
 
 local function setLobbyHudVisible(visible)
 	sideMenu.Visible = visible
