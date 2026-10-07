@@ -679,6 +679,10 @@ local fade = frame(fadeGui, {
 local function fadeThrough(callback)
 	local fadeIn = TweenService:Create(fade, TweenInfo.new(0.18), { BackgroundTransparency = 0 })
 	fadeIn:Play()
+	-- Hard safety: the overlay can never stay up, even if something yields.
+	task.delay(1.5, function()
+		fade.BackgroundTransparency = 1
+	end)
 	fadeIn.Completed:Wait()
 	local ok, err = xpcall(callback, debug.traceback)
 	TweenService:Create(fade, TweenInfo.new(0.35), { BackgroundTransparency = 1 }):Play()
@@ -827,6 +831,7 @@ local function startSession(station)
 	transitioning = true
 	activeStation = station
 	sessionId += 1
+	print("[Sizer] Starting game at", station.Name, station:GetAttribute("DisplayName"))
 
 	local color = station:GetAttribute("Color") or ORANGE
 	categoryTag.BackgroundColor3 = color
@@ -847,6 +852,14 @@ local function startSession(station)
 		if isFiniteCFrame(desired) then
 			workspace.CurrentCamera.CFrame = desired
 		end
+		print(string.format(
+			"[Sizer] In viewing room. Camera at %s looking at %s, camera type %s, objects %s / %s",
+			tostring(workspace.CurrentCamera.CFrame.Position),
+			tostring(workspace.CurrentCamera.CFrame.Position + workspace.CurrentCamera.CFrame.LookVector * 10),
+			tostring(workspace.CurrentCamera.CameraType),
+			tostring(reference.model and reference.model:GetExtentsSize()),
+			tostring(target.model and target.model:GetExtentsSize())
+		))
 		panel.Visible = true
 		quickPlayButton.Visible = false
 		rewardCard.Visible = false
@@ -881,6 +894,7 @@ RequestRound.OnClientEvent:Connect(function(roundInfo)
 		task.spawn(stopSession)
 		return
 	end
+	print("[Sizer] Round loaded:", roundInfo.referenceName, "vs", roundInfo.targetName)
 	currentRound = roundInfo
 	setLockEnabled(true)
 end)
