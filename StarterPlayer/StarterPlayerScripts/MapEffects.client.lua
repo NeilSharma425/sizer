@@ -12,7 +12,7 @@ local Players = game:GetService("Players")
 
 local player = Players.LocalPlayer
 
-local BOUNCE_SPEED = 95
+local BOUNCE_SPEED = 212 -- jump height grows with speed squared: 95 * sqrt(5) is 5x the old height
 local COOLDOWN = 0.35
 
 local lastBounce = 0
