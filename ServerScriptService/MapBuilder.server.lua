@@ -585,7 +585,7 @@ local function buildDecor()
 		{ -85, 84 }, { -62, 84 }, { -40, 86 }, { 40, 86 }, { 62, 84 }, { 85, 84 },
 		-- Inner
 		{ -40, 72 }, { -62, 68 }, { 40, 72 }, { 62, 68 }, { 78, -36 }, { 46, -4 },
-		{ 47, 44 }, { 82, 46 }, { -36, -60 }, { -84, -48 }, { -30, 62 }, { 30, 62 },
+		{ 47, 44 }, { 82, 46 }, { -36, -60 }, { -84, -48 }, { -36, 82 }, { 36, 82 },
 		{ -24, -76 }, { 24, -76 },
 	}
 	for _, t in ipairs(trees) do
@@ -617,7 +617,6 @@ local function buildPaths()
 	local paths = folder("Paths")
 	checker("SpawnPlaza", -15, 15, -80, -55, nil, paths)
 	checker("MainPath", -5, 5, -55, 60, nil, paths)
-	checker("NorthPlaza", -25, 25, 60, 80, nil, paths)
 	-- Cross paths out to the side zones (skip the main path they cross).
 	checker("SouthCrossWest", -90, -5, -50, -40, nil, paths)
 	checker("SouthCrossEast", 5, 90, -50, -40, nil, paths)
@@ -661,6 +660,18 @@ local STATIONS = {
 	{ category = "Space", label = "SPACE", icon = "🪐", color = Color3.fromRGB(150, 95, 255), pos = Vector3.new(15, 0, 2) },
 	{ category = "", label = "60s CHALLENGE", icon = "⏱️", color = Color3.fromRGB(255, 200, 40), pos = Vector3.new(-15, 0, -28), mode = "timed", subtitle = "BEAT THE CLOCK" },
 	{ category = "", label = "MIXED", icon = "🎲", color = Color3.fromRGB(30, 200, 200), pos = Vector3.new(15, 0, -28) },
+	-- End of the line, centered on the main path and facing the spawn,
+	-- topped with a giant Verity.
+	{
+		category = "Brainrot",
+		label = "BRAINROT",
+		icon = "🧠",
+		color = Color3.fromRGB(255, 70, 190),
+		pos = Vector3.new(0, 0, 70),
+		facing = Vector3.new(0, 0, -1),
+		subtitle = "MEME SIZES",
+		giant = { model = "Verity", scale = 3.2 },
+	},
 }
 
 local function buildStation(def, index, parent)
@@ -671,8 +682,8 @@ local function buildStation(def, index, parent)
 	station:SetAttribute("Mode", def.mode or "normal")
 
 	local center = def.pos
-	-- Station faces the main path (x = 0).
-	local facing = Vector3.new(-math.sign(center.X), 0, 0)
+	-- Side stations face the main path (x = 0); centered ones set `facing`.
+	local facing = def.facing or Vector3.new(-math.sign(center.X), 0, 0)
 	local base = CFrame.lookAt(center, center + facing)
 	local function at(x, y, z)
 		return base * CFrame.new(x, y, z)
@@ -759,11 +770,40 @@ local function buildStation(def, index, parent)
 		TextColor3 = def.color,
 	}), 3)
 
+	-- Giant character perched on top of the back panel.
+	local labelCFrame = at(0, TILE_TOP + panelHeight + 4, 8)
+	if def.giant then
+		local ObjectModels = require(ReplicatedStorage:WaitForChild("ObjectModels"))
+		local perchY = TILE_TOP + panelHeight + 0.8
+		local perch = at(0, perchY, 8).Position
+		cylinder(perch + Vector3.new(0, 0.3, 0), 0.6, 5, {
+			Name = "GiantPerch",
+			Material = Enum.Material.Neon,
+			Color = def.color,
+			Parent = station,
+		})
+		local giant = ObjectModels.build(def.giant.model, def.icon, def.color)
+		giant.Name = "Giant" .. def.giant.model
+		giant:ScaleTo(def.giant.scale)
+		giant:PivotTo(CFrame.new(perch.X, perch.Y + 0.6, perch.Z))
+		giant.Parent = station
+		local core = giant:FindFirstChildWhichIsA("BasePart")
+		if core then
+			local glow = Instance.new("PointLight")
+			glow.Range = 50
+			glow.Brightness = 1.5
+			glow.Color = Color3.fromRGB(255, 225, 110)
+			glow.Parent = core
+		end
+		-- The giant covers the usual title spot, so float it in front.
+		labelCFrame = at(0, TILE_TOP + 15.5, -1)
+	end
+
 	-- Floating world-scaled title above the station.
 	local labelAnchor = part({
 		Name = "LabelAnchor",
 		Size = Vector3.new(1, 1, 1),
-		CFrame = at(0, TILE_TOP + panelHeight + 4, 8),
+		CFrame = labelCFrame,
 		Transparency = 1,
 		CanCollide = false,
 		CanQuery = false,
@@ -790,152 +830,11 @@ local function buildStation(def, index, parent)
 	return station
 end
 
--- Brainrot stage: a big neon showcase dead ahead of the spawn, with
--- character statues on it and a podium in front. It is a normal station
--- (Category = "Brainrot") so the client hooks it like the others.
-local BRAINROT_Z = -14
-local BRAINROT_COLOR = Color3.fromRGB(255, 70, 190)
-
-local function buildBrainrotStation(parent)
-	local ObjectModels = require(ReplicatedStorage:WaitForChild("ObjectModels"))
-	local pink = BRAINROT_COLOR
-	local station = folder("StationBrainrot", parent)
-	station:SetAttribute("Category", "Brainrot")
-	station:SetAttribute("DisplayName", "BRAINROT")
-	station:SetAttribute("Color", pink)
-	station:SetAttribute("Mode", "normal")
-
-	local stageTop = 1.2
-	part({
-		Name = "StageFloor",
-		Size = Vector3.new(28, stageTop, 8),
-		Position = Vector3.new(0, stageTop / 2, BRAINROT_Z),
-		Color = Color3.fromRGB(38, 22, 66),
-		Parent = station,
-	})
-	part({
-		Name = "StageTrimFront",
-		Size = Vector3.new(28.2, 0.3, 0.4),
-		Position = Vector3.new(0, stageTop + 0.05, BRAINROT_Z - 4),
-		Material = Enum.Material.Neon,
-		Color = pink,
-		Parent = station,
-	})
-	for _, x in ipairs({ -14, 14 }) do
-		part({
-			Name = "StageTrimSide",
-			Size = Vector3.new(0.4, 0.3, 8),
-			Position = Vector3.new(x, stageTop + 0.05, BRAINROT_Z),
-			Material = Enum.Material.Neon,
-			Color = pink,
-			Parent = station,
-		})
-	end
-
-	-- Backdrop wall facing the spawn, with a neon frame and title.
-	local wallZ = BRAINROT_Z + 4.5
-	local wall = part({
-		Name = "Backdrop",
-		Size = Vector3.new(34, 24, 1),
-		Position = Vector3.new(0, 12, wallZ),
-		Color = Color3.fromRGB(28, 16, 52),
-		Parent = station,
-	})
-	for _, bar in ipairs({
-		{ Vector3.new(34.6, 0.6, 0.4), Vector3.new(0, 24.3, 0) },
-		{ Vector3.new(34.6, 0.6, 0.4), Vector3.new(0, 0.3, 0) },
-		{ Vector3.new(0.6, 24, 0.4), Vector3.new(-17.3, 12, 0) },
-		{ Vector3.new(0.6, 24, 0.4), Vector3.new(17.3, 12, 0) },
-	}) do
-		part({
-			Name = "NeonFrame",
-			Size = bar[1],
-			Position = Vector3.new(bar[2].X, bar[2].Y, wallZ - 0.5),
-			Material = Enum.Material.Neon,
-			Color = pink,
-			Parent = station,
-		})
-	end
-	local wallGui = surfaceGui(wall, 30)
-	stroke(textLabel(wallGui, {
-		Size = UDim2.fromScale(0.9, 0.34),
-		Position = UDim2.fromScale(0.05, 0.05),
-		Text = "BRAINROT",
-		TextColor3 = pink,
-	}), 6)
-	stroke(textLabel(wallGui, {
-		Size = UDim2.fromScale(0.9, 0.1),
-		Position = UDim2.fromScale(0.05, 0.4),
-		Text = "HOW BIG ARE THEY?",
-		TextColor3 = C.white,
-	}), 3)
-	local glow = Instance.new("PointLight")
-	glow.Range = 40
-	glow.Brightness = 2
-	glow.Color = pink
-	glow.Parent = wall
-
-	-- Statues (built by the same module the viewing room uses).
-	local roster = {
-		{ "Verity", -17, 0.8, 0 },
-		{ "Cappuccino Assassino", -11, 0.85, stageTop },
-		{ "Tralalero Tralala", -5.5, 0.62, stageTop },
-		{ "Tung Tung Tung Sahur", 0, 0.9, stageTop },
-		{ "Brr Brr Patapim", 5.5, 0.72, stageTop },
-		{ "Ballerina Cappuccina", 11, 0.85, stageTop },
-		{ "Chimpanzini Bananini", 17, 0.8, 0 },
-	}
-	for _, entry in ipairs(roster) do
-		local model = ObjectModels.build(entry[1], "?", pink)
-		model:ScaleTo(entry[3])
-		model:PivotTo(CFrame.new(entry[2], entry[4], BRAINROT_Z))
-		model.Parent = station
-	end
-
-	-- Podium with the start prompt, facing the spawn.
-	local podiumZ = -21
-	local podium = part({
-		Name = "Podium",
-		Size = Vector3.new(4, 3.4, 2),
-		Position = Vector3.new(0, 0.2 + 1.7, podiumZ),
-		Color = C.dark,
-		Parent = station,
-	})
-	part({
-		Name = "PodiumTop",
-		Size = Vector3.new(4.6, 0.5, 2.6),
-		Position = Vector3.new(0, 0.2 + 3.65, podiumZ),
-		Color = pink,
-		Parent = station,
-	})
-	local face = part({
-		Name = "PodiumFace",
-		Size = Vector3.new(3.2, 2, 0.1),
-		Position = Vector3.new(0, 0.2 + 1.9, podiumZ - 1.05),
-		Material = Enum.Material.Neon,
-		Color = pink,
-		CanCollide = false,
-		Parent = station,
-	})
-	textLabel(surfaceGui(face, 60), { Size = UDim2.fromScale(1, 1), Text = "PLAY" })
-	worldLabel("BRAINROT", Vector3.new(0, 7, podiumZ), pink, 14, station)
-
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.Name = "ProximityPrompt"
-	prompt.ActionText = "Play"
-	prompt.ObjectText = "BRAINROT"
-	prompt.HoldDuration = 0
-	prompt.MaxActivationDistance = 12
-	prompt.RequiresLineOfSight = false
-	prompt.Parent = podium
-end
-
 local function buildStations()
 	local stations = folder("Stations")
 	for i, def in ipairs(STATIONS) do
 		buildStation(def, i, stations)
 	end
-	buildBrainrotStation(stations)
 end
 
 --==========================================================================
@@ -1005,7 +904,7 @@ local function buildBoards()
 	local boards = folder("Boards")
 	local lookTarget = Vector3.new(0, 0, 20)
 
-	local main = darkBoard("Leaderboard", Vector3.new(0, TILE_TOP, 75), lookTarget, Vector3.new(16, 11, 0.2), boards)
+	local main = darkBoard("Leaderboard", Vector3.new(-26, TILE_TOP, 64), lookTarget, Vector3.new(16, 11, 0.2), boards)
 	local gui = surfaceGui(main, 40)
 	stroke(textLabel(gui, {
 		Size = UDim2.fromScale(1, 0.16),
@@ -1023,7 +922,7 @@ local function buildBoards()
 	layout.Parent = list
 	refreshLeaderboard(list, totalScore)
 
-	local howTo = darkBoard("HowTo", Vector3.new(-19, TILE_TOP, 71), lookTarget, Vector3.new(13, 9, 0.2), boards)
+	local howTo = darkBoard("HowTo", Vector3.new(-42, TILE_TOP, 62), lookTarget, Vector3.new(13, 9, 0.2), boards)
 	stroke(textLabel(surfaceGui(howTo, 40), {
 		Size = UDim2.fromScale(0.9, 0.9),
 		Position = UDim2.fromScale(0.05, 0.05),
@@ -1031,7 +930,7 @@ local function buildBoards()
 		TextColor3 = Color3.fromRGB(120, 220, 255),
 	}), 2)
 
-	local records = darkBoard("TimedRecords", Vector3.new(19, TILE_TOP, 71), lookTarget, Vector3.new(13, 9, 0.2), boards)
+	local records = darkBoard("TimedRecords", Vector3.new(26, TILE_TOP, 64), lookTarget, Vector3.new(13, 9, 0.2), boards)
 	local recordsGui = surfaceGui(records, 40)
 	stroke(textLabel(recordsGui, {
 		Size = UDim2.fromScale(1, 0.18),
