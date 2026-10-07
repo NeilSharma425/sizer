@@ -538,9 +538,9 @@ end
 
 ProgressEvent.OnClientEvent:Connect(function(kind, payload)
 	if kind == "login" then
-		if payload.broken then
-			toast(string.format("🔥 NEW STREAK  DAY 1  +%d SENSE", payload.reward), Color3.fromRGB(255, 140, 40), 4)
-		else
+		-- Day 1 (a first login, or a streak that just restarted) gets no
+		-- streak toast; from day 2 on it's worth celebrating.
+		if (payload.count or 0) >= 2 then
 			toast(string.format("🔥 DAY %d STREAK  +%d SENSE", payload.count, payload.reward), Color3.fromRGB(255, 140, 40), 4)
 			if payload.pet then
 				sfx("pet")

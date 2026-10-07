@@ -196,10 +196,6 @@ end
 local function grant(player, pet)
 	local profile = PlayerData.getProfile(player)
 	profile.pets[pet.id] = true
-	if profile.pet == "" then
-		profile.pet = pet.id
-		player:SetAttribute("Pet", pet.id)
-	end
 	PlayerData.markDirty(player)
 	task.spawn(PlayerData.save, player) -- rare and valuable: save right away
 	ProgressEvent:FireClient(player, "pet", { id = pet.id, name = pet.name })

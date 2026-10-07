@@ -176,10 +176,6 @@ local function checkPetUnlocks(player)
 	for _, pet in ipairs(Pets.List) do
 		if pet.rule.kind ~= "streak" and not profile.pets[pet.id] and Pets.qualifies(pet.rule, state) then
 			profile.pets[pet.id] = true
-			if profile.pet == "" then
-				profile.pet = pet.id
-				player:SetAttribute("Pet", pet.id)
-			end
 			PlayerData.markDirty(player)
 			if pet.rule.kind ~= "start" then
 				sendProgress(player, "pet", { id = pet.id, name = pet.name })
@@ -383,10 +379,6 @@ local function onSubmitGuess(player, guessedTargetHeight)
 				local starter = Pets.get(STARTER_PET)
 				if starter and not profile.pets[STARTER_PET] then
 					profile.pets[STARTER_PET] = true
-					if profile.pet == "" then
-						profile.pet = STARTER_PET
-						player:SetAttribute("Pet", STARTER_PET)
-					end
 					sendProgress(player, "starterPet", { id = STARTER_PET, name = starter.name })
 				end
 			end

@@ -3,12 +3,13 @@
 	LocalScript: StarterPlayer.StarterPlayerScripts.OnboardingClient
 
 	Picks up where the tutorial leaves off, one nudge at a time:
-	  1. right after the tutorial: point at DAILY ("your first daily is only
-	     3 questions")
+	  1. right after the tutorial: point at DAILY (the first daily is a
+	     short one, 3 questions)
 	  2. after the first daily: StreakClient points at DAILY again to show
 	     the streak rewards
 	  3. then: "YOU UNLOCKED A PET!" pointing at the PETS tile (the server
-	     gives the starter pet for finishing the first daily)
+	     gives the starter pet for finishing the first daily; the player
+	     equips it there)
 	Each step is remembered on the server (MarkHint) so it only shows once.
 ]]
 
@@ -213,7 +214,7 @@ local function startDailyStep()
 		return
 	end
 	sfx("toast")
-	point("DailyButton", "YOUR FIRST DAILY CHALLENGE!", "Only 3 questions today. Tap DAILY to play!", BLUE)
+	point("DailyButton", "YOUR FIRST DAILY CHALLENGE!", "Tap DAILY to play today's challenge!", BLUE)
 end
 
 -- Tapping DAILY (or finishing the first daily anywhere) completes the step.
@@ -264,7 +265,7 @@ local function startPetStep()
 	local id = petId or "mouse"
 	local info = Pets.get(id)
 	sfx("pet")
-	point("PetsButton", "YOU UNLOCKED A PET!", string.format("Your %s is here. Tap PETS to see it!", info and info.name or petName or "new pet"), PINK, id)
+	point("PetsButton", "YOU UNLOCKED A PET!", string.format("Your %s is here. Tap PETS to equip it!", info and info.name or petName or "new pet"), PINK, id)
 end
 
 task.spawn(function()

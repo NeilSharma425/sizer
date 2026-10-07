@@ -69,10 +69,6 @@ HatchEgg.OnServerInvoke = function(player, eggId)
 	local refund = 0
 	if isNew then
 		profile.pets[pet.id] = true
-		if profile.pet == "" then
-			profile.pet = pet.id
-			player:SetAttribute("Pet", pet.id)
-		end
 	else
 		refund = math.floor(egg.price * Pets.DUPLICATE_REFUND)
 		profile.wallet.refunded += refund

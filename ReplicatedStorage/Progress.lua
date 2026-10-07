@@ -379,7 +379,6 @@ function Progress.updateStreak(profile, today)
 	if reward.pet and not profile.pets[reward.pet] then
 		profile.pets[reward.pet] = true
 		pet = reward.pet
-		profile.pet = reward.pet -- newest pet is equipped right away
 	end
 	return {
 		isNew = true,
