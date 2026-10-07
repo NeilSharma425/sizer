@@ -31,6 +31,15 @@ local RoundResult = remotesFolder:WaitForChild("RoundResult")
 local TimedStart = remotesFolder:WaitForChild("TimedStart")
 local TimedStop = remotesFolder:WaitForChild("TimedStop")
 local TimedEnd = remotesFolder:WaitForChild("TimedEnd")
+local ProgressEvent = remotesFolder:WaitForChild("ProgressEvent")
+
+-- Small shared folder for talking to ProgressClient: it publishes the daily
+-- challenge status as attributes (DailyDone, DailyAnswered, DailyTotal,
+-- DailyResetIn, DailyStatusAt) and we set RefreshRequest to ask for a fresh
+-- copy after a daily run.
+local bus = Instance.new("Folder")
+bus.Name = "SizerBus"
+bus.Parent = player:WaitForChild("PlayerGui")
 
 local ObjectModels = require(ReplicatedStorage:WaitForChild("ObjectModels"))
 
@@ -223,24 +232,45 @@ local rewardBarFill = frame(rewardBarBack, {
 corner(rewardBarFill, UDim.new(1, 0))
 
 local challengeButton = button(hud, "⏱️ 60s CHALLENGE", GOLD, {
-	AnchorPoint = Vector2.new(1, 1),
-	Position = UDim2.new(0.5, -8, 1, -20),
+	AnchorPoint = Vector2.new(0.5, 1),
+	Position = UDim2.new(0.5, 0, 1, -20),
 	Size = UDim2.new(0, 300, 0, 68),
 })
 
 local quickPlayButton = button(hud, "QUICK PLAY", GREEN, {
 	AnchorPoint = Vector2.new(0, 1),
-	Position = UDim2.new(0.5, 8, 1, -24),
+	Position = UDim2.new(0.5, 164, 1, -24),
 	Size = UDim2.new(0, 220, 0, 60),
 })
 
+local DAILY_BLUE = Color3.fromRGB(70, 150, 255)
+local dailyButton = button(hud, "📅 DAILY", DAILY_BLUE, {
+	Name = "DailyButton",
+	AnchorPoint = Vector2.new(1, 1),
+	Position = UDim2.new(0.5, -164, 1, -24),
+	Size = UDim2.new(0, 220, 0, 60),
+})
+-- Red "!" badge while today's daily is waiting to be played.
+local dailyBadge = frame(dailyButton, {
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.new(1, -6, 0, 6),
+	Size = UDim2.new(0, 28, 0, 28),
+	BackgroundColor3 = RED,
+	ZIndex = 3,
+})
+corner(dailyBadge, UDim.new(1, 0))
+stroke(dailyBadge, 3)
+label(dailyBadge, { Size = UDim2.fromScale(0.6, 0.7), Position = UDim2.fromScale(0.2, 0.15), Text = "!", ZIndex = 4 })
+
 responsive(rewardCard)
 responsive(challengeButton)
+responsive(dailyButton)
 responsive(quickPlayButton)
 
 local function setLobbyHudVisible(visible)
 	challengeButton.Visible = visible
 	quickPlayButton.Visible = visible
+	dailyButton.Visible = visible
 	rewardCard.Visible = visible
 end
 
@@ -282,6 +312,17 @@ local popup = label(hud, {
 	ZIndex = 10,
 })
 textStroke(popup, 5)
+
+local comboPopup = label(hud, {
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.fromScale(0.5, 0.47),
+	Size = UDim2.new(0, 460, 0, 46),
+	Text = "",
+	TextColor3 = Color3.fromRGB(255, 160, 50),
+	Visible = false,
+	ZIndex = 10,
+})
+textStroke(comboPopup, 3)
 
 --==========================================================================
 -- Game panel
@@ -472,6 +513,55 @@ local endStopButton = button(endCard, "STOP", RED, {
 	ZIndex = 6,
 })
 responsive(endCard)
+
+-- End-of-daily card.
+local dailyCard = frame(hud, {
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.fromScale(0.5, 0.5),
+	Size = UDim2.new(0, 440, 0, 330),
+	BackgroundColor3 = Color3.fromRGB(40, 45, 75),
+	Visible = false,
+	ZIndex = 5,
+})
+corner(dailyCard, UDim.new(0, 22))
+stroke(dailyCard, 4, DAILY_BLUE)
+gloss(dailyCard, Color3.fromRGB(40, 45, 75))
+textStroke(label(dailyCard, {
+	Size = UDim2.new(1, -40, 0, 56),
+	Position = UDim2.new(0, 20, 0, 16),
+	Text = "📅 DAILY COMPLETE!",
+	TextColor3 = DAILY_BLUE:Lerp(WHITE, 0.4),
+	ZIndex = 6,
+}), 4)
+local dailyScoreText = label(dailyCard, {
+	Size = UDim2.new(1, -40, 0, 56),
+	Position = UDim2.new(0, 20, 0, 84),
+	Text = "0 / 500",
+	ZIndex = 6,
+})
+textStroke(dailyScoreText, 3)
+local dailyRewardText = label(dailyCard, {
+	Size = UDim2.new(1, -40, 0, 38),
+	Position = UDim2.new(0, 20, 0, 148),
+	Text = "+0 SENSE",
+	TextColor3 = Color3.fromRGB(120, 255, 130),
+	ZIndex = 6,
+})
+textStroke(dailyRewardText, 2.5)
+label(dailyCard, {
+	Size = UDim2.new(1, -40, 0, 30),
+	Position = UDim2.new(0, 20, 0, 194),
+	Text = "COME BACK TOMORROW FOR NEW QUESTIONS",
+	TextColor3 = Color3.fromRGB(180, 190, 220),
+	ZIndex = 6,
+})
+local dailyDoneButton = button(dailyCard, "DONE", GREEN, {
+	AnchorPoint = Vector2.new(0.5, 1),
+	Position = UDim2.new(0.5, 0, 1, -22),
+	Size = UDim2.new(0, 200, 0, 58),
+	ZIndex = 6,
+})
+responsive(dailyCard)
 updateHudScale()
 workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(updateHudScale)
 if workspace.CurrentCamera then
@@ -911,6 +1001,9 @@ local function stopSession()
 	if sessionMode == "timed" and not timedEnded then
 		TimedStop:FireServer()
 	end
+	if sessionMode == "daily" then
+		bus:SetAttribute("RefreshRequest", os.clock())
+	end
 	activeStation = nil
 	sessionMode = "normal"
 	timedEndsAt = nil
@@ -922,6 +1015,7 @@ local function stopSession()
 		panel.Visible = false
 		timerCard.Visible = false
 		endCard.Visible = false
+		dailyCard.Visible = false
 		setLobbyHudVisible(true)
 	end)
 	transitioning = false
@@ -948,7 +1042,8 @@ local function startSession(station)
 		TimedStop:FireServer()
 	end
 	activeStation = station
-	sessionMode = station:GetAttribute("Mode") == "timed" and "timed" or "normal"
+	local mode = station:GetAttribute("Mode")
+	sessionMode = (mode == "timed" or mode == "daily") and mode or "normal"
 	timedEnded = false
 	timedEndsAt = nil
 	sessionId += 1
@@ -984,6 +1079,7 @@ local function startSession(station)
 		panel.Visible = true
 		timerCard.Visible = false
 		endCard.Visible = false
+		dailyCard.Visible = false
 		setLobbyHudVisible(false)
 	end)
 	transitioning = false
@@ -1065,6 +1161,9 @@ RequestRound.OnClientEvent:Connect(function(roundInfo)
 		target.label.Text = roundInfo.targetName .. "\n???"
 		questionText.Text = string.format("How big is a %s next to a %s?", roundInfo.targetName, roundInfo.referenceName)
 		showDifficulty(roundInfo.difficulty)
+		if roundInfo.daily then
+			categoryText.Text = string.format("DAILY %d/%d", roundInfo.daily.index, roundInfo.daily.total)
+		end
 		setRatio(1)
 	end, debug.traceback)
 	if not ok then
@@ -1091,6 +1190,32 @@ lockInButton.MouseButton1Click:Connect(function()
 	setLockEnabled(false)
 	SubmitGuess:FireServer(currentRound.referenceHeight * currentRatio)
 end)
+
+local function showCombo(result)
+	local combo = result.combo or 0
+	if combo < 2 then
+		comboPopup.Visible = false
+		return
+	end
+	local text = string.format("🔥 COMBO x%d", combo)
+	if (result.comboBonus or 0) > 0 then
+		text ..= string.format("   +%d SENSE", result.comboBonus)
+	end
+	comboPopup.Text = text
+	comboPopup.TextTransparency = 0
+	comboPopup.Position = UDim2.fromScale(0.5, 0.47)
+	comboPopup.Visible = true
+	local stroke = comboPopup:FindFirstChildOfClass("UIStroke")
+	if stroke then
+		stroke.Transparency = 0
+	end
+	bump(comboPopup)
+	local info = TweenInfo.new(1.6, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+	TweenService:Create(comboPopup, info, { Position = UDim2.fromScale(0.5, 0.42), TextTransparency = 1 }):Play()
+	if stroke then
+		TweenService:Create(stroke, info, { Transparency = 1 }):Play()
+	end
+end
 
 local function showPopup(score)
 	popup.Text = "+" .. score
@@ -1131,6 +1256,7 @@ RoundResult.OnClientEvent:Connect(function(result)
 		result.fact
 	)
 	showPopup(result.score)
+	showCombo(result)
 	if result.timedScore then
 		timedScoreText.Text = "CHALLENGE SCORE: " .. result.timedScore
 		bump(timedScoreText)
@@ -1138,6 +1264,21 @@ RoundResult.OnClientEvent:Connect(function(result)
 
 	local mySession = sessionId
 	local delaySeconds = sessionMode == "timed" and TIMED_RESULT_DELAY_SECONDS or RESULT_DELAY_SECONDS
+
+	-- The last daily question: show the summary instead of another round.
+	if sessionMode == "daily" and result.daily and result.daily.done then
+		bus:SetAttribute("RefreshRequest", os.clock())
+		task.delay(RESULT_DELAY_SECONDS, function()
+			if sessionId == mySession and activeStation and sessionMode == "daily" then
+				panel.Visible = false
+				dailyScoreText.Text = string.format("%d / %d", result.daily.score, result.daily.total * 100)
+				dailyRewardText.Text = string.format("+%d SENSE", result.daily.reward or 0)
+				dailyCard.Visible = true
+				bump(dailyCard)
+			end
+		end)
+		return
+	end
 	task.delay(delaySeconds, function()
 		local timeLeft = not timedEndsAt or workspace:GetServerTimeNow() < timedEndsAt
 		if sessionId == mySession and activeStation and (sessionMode ~= "timed" or timeLeft) then
@@ -1186,6 +1327,57 @@ challengeButton.MouseButton1Click:Connect(function()
 			return
 		end
 	end
+end)
+
+-- The daily challenge reuses the normal session flow with a stand-in
+-- "station" (never placed in the world) that carries the same attributes.
+local dailyStation = Instance.new("Folder")
+dailyStation.Name = "DailyStation"
+dailyStation:SetAttribute("Category", "__daily")
+dailyStation:SetAttribute("DisplayName", "DAILY")
+dailyStation:SetAttribute("Color", DAILY_BLUE)
+dailyStation:SetAttribute("Mode", "daily")
+
+dailyButton.MouseButton1Click:Connect(function()
+	if not bus:GetAttribute("DailyDone") then
+		startSession(dailyStation)
+	end
+end)
+
+dailyDoneButton.MouseButton1Click:Connect(stopSession)
+
+-- If the server says today's daily is already finished, leave the screen.
+ProgressEvent.OnClientEvent:Connect(function(kind)
+	if kind == "dailyDone" and sessionMode == "daily" then
+		stopSession()
+	end
+end)
+
+-- Button text and badge follow the status ProgressClient publishes.
+local dailyShownText = nil
+local function formatCountdown(seconds)
+	seconds = math.max(0, math.floor(seconds))
+	return string.format("%dh %02dm", math.floor(seconds / 3600), math.floor(seconds % 3600 / 60))
+end
+RunService.Heartbeat:Connect(function()
+	local done = bus:GetAttribute("DailyDone")
+	local answered = bus:GetAttribute("DailyAnswered") or 0
+	local total = bus:GetAttribute("DailyTotal") or 5
+	local text
+	if done then
+		local resetIn = (bus:GetAttribute("DailyResetIn") or 0) - (os.clock() - (bus:GetAttribute("DailyStatusAt") or os.clock()))
+		text = "✅ DAILY  " .. formatCountdown(resetIn)
+	elseif answered > 0 then
+		text = string.format("📅 DAILY %d/%d", answered, total)
+	else
+		text = "📅 DAILY"
+	end
+	if text ~= dailyShownText then
+		dailyShownText = text
+		dailyButton.Text = text
+	end
+	dailyBadge.Visible = bus:GetAttribute("DailyDone") == false
+	dailyButton.BackgroundColor3 = done and Color3.fromRGB(95, 105, 140) or DAILY_BLUE
 end)
 
 player.CharacterAdded:Connect(function()

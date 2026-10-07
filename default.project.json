@@ -50,6 +50,9 @@
         },
         "TutorialClient": {
           "$path": "StarterPlayer/StarterPlayerScripts/TutorialClient.client.lua"
+        },
+        "ProgressClient": {
+          "$path": "StarterPlayer/StarterPlayerScripts/ProgressClient.client.lua"
         }
       }
     }
