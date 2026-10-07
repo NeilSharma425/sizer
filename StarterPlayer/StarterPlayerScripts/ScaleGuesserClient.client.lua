@@ -14,6 +14,7 @@ local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
+local Lighting = game:GetService("Lighting")
 
 local player = Players.LocalPlayer
 
@@ -417,13 +418,13 @@ scenePart({
 	Name = "Floor",
 	Size = Vector3.new(6000, 2, 6000),
 	Position = SCENE - Vector3.new(0, 1, 0),
-	Color = Color3.fromRGB(226, 232, 246),
+	Color = Color3.fromRGB(196, 206, 226),
 })
 scenePart({
 	Name = "Backdrop",
 	Size = Vector3.new(8000, 4000, 2),
 	Position = SCENE + Vector3.new(0, 1990, 1500),
-	Color = Color3.fromRGB(175, 205, 250),
+	Color = Color3.fromRGB(110, 165, 235),
 })
 local stageRing = scenePart({
 	Name = "StageRing",
@@ -577,9 +578,23 @@ local function placeParts(ratio)
 	updateRuler(viewHeight)
 end
 
+local function isFiniteCFrame(cf)
+	local p, look = cf.Position, cf.LookVector
+	return p.X == p.X and p.Y == p.Y and p.Z == p.Z and look.X == look.X and math.abs(p.Magnitude) < 1e7
+end
+
 local function cameraStep(dt)
 	local camera = workspace.CurrentCamera
-	camera.CFrame = camera.CFrame:Lerp((cameraFor(framing)), 1 - math.exp(-dt * 6))
+	local desired = cameraFor(framing)
+	-- Never let a bad value poison the camera; Lerp from NaN stays NaN.
+	if not isFiniteCFrame(desired) then
+		return
+	end
+	if not isFiniteCFrame(camera.CFrame) then
+		camera.CFrame = desired
+		return
+	end
+	camera.CFrame = camera.CFrame:Lerp(desired, 1 - math.exp(-dt * 6))
 end
 
 local playerControls = nil
@@ -603,13 +618,24 @@ end
 
 local inViewer = false
 
+-- The lobby's haze washes out the viewing room; thin it while playing.
+local savedAtmosphereDensity = nil
+
 local function enterViewer()
 	inViewer = true
 	viewer.Parent = workspace
+	local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
+	if atmosphere then
+		savedAtmosphereDensity = atmosphere.Density
+		atmosphere.Density = 0.05
+	end
 	local camera = workspace.CurrentCamera
 	camera.CameraType = Enum.CameraType.Scriptable
 	camera.FieldOfView = VIEW_FOV
-	camera.CFrame = cameraFor(framing)
+	local desired = cameraFor(framing)
+	if isFiniteCFrame(desired) then
+		camera.CFrame = desired
+	end
 	RunService:BindToRenderStep(CAMERA_STEP, Enum.RenderPriority.Camera.Value + 1, cameraStep)
 	setControlsEnabled(false)
 end
@@ -621,6 +647,10 @@ local function exitViewer()
 	inViewer = false
 	RunService:UnbindFromRenderStep(CAMERA_STEP)
 	viewer.Parent = nil
+	local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
+	if atmosphere and savedAtmosphereDensity then
+		atmosphere.Density = savedAtmosphereDensity
+	end
 	local camera = workspace.CurrentCamera
 	camera.CameraType = Enum.CameraType.Custom
 	camera.FieldOfView = 70
@@ -644,12 +674,15 @@ local fade = frame(fadeGui, {
 	BackgroundTransparency = 1,
 })
 
+-- Always fades back out, even if the callback errors, so the screen can
+-- never get stuck white. Returns pcall-style ok, err.
 local function fadeThrough(callback)
 	local fadeIn = TweenService:Create(fade, TweenInfo.new(0.18), { BackgroundTransparency = 0 })
 	fadeIn:Play()
 	fadeIn.Completed:Wait()
-	callback()
+	local ok, err = xpcall(callback, debug.traceback)
 	TweenService:Create(fade, TweenInfo.new(0.35), { BackgroundTransparency = 1 }):Play()
+	return ok, err
 end
 
 --==========================================================================
@@ -801,21 +834,33 @@ local function startSession(station)
 	categoryText.Text = station:GetAttribute("DisplayName") or "MIXED"
 
 	currentRound = nil
-	setModel(reference, "Reference", "?")
-	setModel(target, "Target", "?")
-	reference.label.Text = "Reference"
-	target.label.Text = "Target"
-	setRatio(1)
-
-	fadeThrough(function()
+	local ok, err = fadeThrough(function()
 		if not inViewer then
 			enterViewer()
+		end
+		setModel(reference, "Reference", "?")
+		setModel(target, "Target", "?")
+		reference.label.Text = "Reference"
+		target.label.Text = "Target"
+		setRatio(1)
+		local desired = cameraFor(framing)
+		if isFiniteCFrame(desired) then
+			workspace.CurrentCamera.CFrame = desired
 		end
 		panel.Visible = true
 		quickPlayButton.Visible = false
 		rewardCard.Visible = false
 	end)
 	transitioning = false
+	if not ok then
+		warn("[Sizer] Could not start the game:", err)
+		activeStation = nil
+		exitViewer()
+		panel.Visible = false
+		quickPlayButton.Visible = true
+		rewardCard.Visible = true
+		return
+	end
 	requestRound()
 end
 
@@ -823,13 +868,20 @@ RequestRound.OnClientEvent:Connect(function(roundInfo)
 	if not activeStation then
 		return
 	end
+	local ok, err = xpcall(function()
+		setModel(reference, roundInfo.referenceName, roundInfo.referenceIcon)
+		setModel(target, roundInfo.targetName, roundInfo.targetIcon)
+		reference.label.Text = string.format("%s\n%s", roundInfo.referenceName, formatHeight(roundInfo.referenceHeight))
+		target.label.Text = roundInfo.targetName .. "\n???"
+		questionText.Text = string.format("How big is a %s next to a %s?", roundInfo.targetName, roundInfo.referenceName)
+		setRatio(1)
+	end, debug.traceback)
+	if not ok then
+		warn("[Sizer] Could not load round", roundInfo.referenceName, "vs", roundInfo.targetName, err)
+		task.spawn(stopSession)
+		return
+	end
 	currentRound = roundInfo
-	setModel(reference, roundInfo.referenceName, roundInfo.referenceIcon)
-	setModel(target, roundInfo.targetName, roundInfo.targetIcon)
-	reference.label.Text = string.format("%s\n%s", roundInfo.referenceName, formatHeight(roundInfo.referenceHeight))
-	target.label.Text = roundInfo.targetName .. "\n???"
-	questionText.Text = string.format("How big is a %s next to a %s?", roundInfo.targetName, roundInfo.referenceName)
-	setRatio(1)
 	setLockEnabled(true)
 end)
 

@@ -71,10 +71,13 @@ local function zcyl(model, length, radius, pos, color, material)
 	return cylinder(model, length, radius, CFrame.new(pos) * CFrame.Angles(0, math.pi / 2, 0), color, material)
 end
 
--- Square beam from one point to another.
+-- Square beam from one point to another. CFrame.lookAt with the default up
+-- vector yields NaN for vertical beams, so those use X as "up" instead.
 local function beam(model, from, to, thickness, color, material)
-	local length = (to - from).Magnitude
-	return box(model, Vector3.new(thickness, thickness, length), CFrame.lookAt((from + to) / 2, to), color, material)
+	local delta = to - from
+	local length = delta.Magnitude
+	local up = math.abs(delta.Unit.Y) > 0.99 and Vector3.new(1, 0, 0) or Vector3.new(0, 1, 0)
+	return box(model, Vector3.new(thickness, thickness, length), CFrame.lookAt((from + to) / 2, to, up), color, material)
 end
 
 local function wedge(model, size, cf, color, material)
