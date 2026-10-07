@@ -92,6 +92,9 @@
         },
         "LiveRoundClient": {
           "$path": "StarterPlayer/StarterPlayerScripts/LiveRoundClient.client.lua"
+        },
+        "DuelsDemo": {
+          "$path": "StarterPlayer/StarterPlayerScripts/DuelsDemo.client.lua"
         }
       }
     }

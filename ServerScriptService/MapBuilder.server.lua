@@ -696,6 +696,117 @@ local STATIONS = {
 	},
 }
 
+-- "Coming soon" stands: built like stations but not playable (they live in
+-- Map.Teasers, not Map.Stations, so the game never starts them).
+local TEASERS = {
+	{
+		label = "DUELS",
+		icon = "⚔️",
+		color = Color3.fromRGB(255, 90, 60),
+		pos = Vector3.new(-26, 0, 72),
+		facing = Vector3.new(0, 0, -1),
+		subtitle = "COMING SOON",
+		comingSoon = true,
+		duelsDemo = true,
+	},
+}
+
+-- A real Roblox character (the default R15 avatar), anchored at the root
+-- so it stands still until the client animates its joints (DuelsDemo).
+-- If the avatar can't be created, a jointed blocky stand-in is used.
+local function blockyStandIn(name, colors)
+	local model = Instance.new("Model")
+	model.Name = name
+	local function limb(partName, size, y, color)
+		return part({ Name = partName, Size = size, CFrame = CFrame.new(0, y, 0), Color = color, Anchored = false, CanCollide = false, Parent = model })
+	end
+	local root = part({ Name = "HumanoidRootPart", Size = Vector3.new(2, 2, 1), CFrame = CFrame.new(0, 3, 0), Transparency = 1, CanCollide = false, Parent = model })
+	local torso = limb("Torso", Vector3.new(2, 2, 1), 3, colors.torso)
+	local function joint(jointName, part0, part1, offset)
+		local m = Instance.new("Motor6D")
+		m.Name = jointName
+		m.Part0 = part0
+		m.Part1 = part1
+		m.C0 = CFrame.new(offset)
+		m.C1 = CFrame.new()
+		m.Parent = part1
+		part1.CFrame = part0.CFrame * m.C0
+	end
+	joint("RootJoint", root, torso, Vector3.new(0, 0, 0))
+	local head = limb("Head", Vector3.new(2, 1, 1), 4.5, colors.head)
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.Head
+	mesh.Scale = Vector3.new(1.25, 1.25, 1.25)
+	mesh.Parent = head
+	local face = Instance.new("Decal")
+	face.Name = "face"
+	face.Texture = "rbxasset://textures/face.png"
+	face.Parent = head
+	joint("Neck", torso, head, Vector3.new(0, 1.5, 0))
+	-- Limbs hang from their joint (C1 moves the part's center below it).
+	local function hanging(jointName, partName, offset, color)
+		local p = limb(partName, Vector3.new(1, 2, 1), 0, color)
+		local m = Instance.new("Motor6D")
+		m.Name = jointName
+		m.Part0 = torso
+		m.Part1 = p
+		m.C0 = CFrame.new(offset)
+		m.C1 = CFrame.new(0, 0.5 * (offset.Y > 0 and 1 or 2), 0)
+		m.Parent = p
+		p.CFrame = torso.CFrame * m.C0 * m.C1:Inverse()
+	end
+	hanging("LeftShoulder", "Left Arm", Vector3.new(-1.5, 0.5, 0), colors.arms)
+	hanging("RightShoulder", "Right Arm", Vector3.new(1.5, 0.5, 0), colors.arms)
+	hanging("LeftHip", "Left Leg", Vector3.new(-0.5, -1, 0), colors.legs)
+	hanging("RightHip", "Right Leg", Vector3.new(0.5, -1, 0), colors.legs)
+	root.Anchored = true
+	model.PrimaryPart = root
+	return model
+end
+
+local function robloxCharacter(name, cf, colors, parent)
+	local ok, model = pcall(function()
+		local description = Instance.new("HumanoidDescription")
+		description.HeadColor = colors.head
+		description.LeftArmColor = colors.arms
+		description.RightArmColor = colors.arms
+		description.TorsoColor = colors.torso
+		description.LeftLegColor = colors.legs
+		description.RightLegColor = colors.legs
+		return game:GetService("Players"):CreateHumanoidModelFromDescription(description, Enum.HumanoidRigType.R15)
+	end)
+	if not ok or not model then
+		warn("[Sizer] Couldn't create a Roblox character for the DUELS stand, using a stand-in:", model)
+		model = blockyStandIn(name, colors)
+	end
+	model.Name = name
+	local root = model:FindFirstChild("HumanoidRootPart")
+	if root then
+		root.Anchored = true
+		model.PrimaryPart = root
+	end
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+		humanoid.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
+	end
+	for _, d in ipairs(model:GetDescendants()) do
+		if d:IsA("BasePart") then
+			d.CanCollide = false
+			d.CanQuery = false
+		elseif d:IsA("Script") or d:IsA("LocalScript") then
+			d:Destroy()
+		end
+	end
+	-- Stand it on the ground at `cf`.
+	model:PivotTo(cf)
+	local boxCFrame, size = model:GetBoundingBox()
+	local bottom = boxCFrame.Position.Y - size.Y / 2
+	model:PivotTo(cf + Vector3.new(0, cf.Position.Y - bottom, 0))
+	model.Parent = parent
+	return model
+end
+
 local function buildStation(def, index, parent)
 	local station = folder("Station" .. index, parent)
 	station:SetAttribute("Category", def.category)
@@ -752,16 +863,18 @@ local function buildStation(def, index, parent)
 		CanCollide = false,
 		Parent = station,
 	})
-	textLabel(surfaceGui(face, 60), { Size = UDim2.fromScale(1, 1), Text = "PLAY" })
+	textLabel(surfaceGui(face, 60), { Size = UDim2.fromScale(1, 1), Text = def.comingSoon and "SOON" or "PLAY" })
 
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.Name = "ProximityPrompt"
-	prompt.ActionText = "Play"
-	prompt.ObjectText = def.label
-	prompt.HoldDuration = 0
-	prompt.MaxActivationDistance = 10
-	prompt.RequiresLineOfSight = false
-	prompt.Parent = podium
+	if not def.comingSoon then
+		local prompt = Instance.new("ProximityPrompt")
+		prompt.Name = "ProximityPrompt"
+		prompt.ActionText = "Play"
+		prompt.ObjectText = def.label
+		prompt.HoldDuration = 0
+		prompt.MaxActivationDistance = 10
+		prompt.RequiresLineOfSight = false
+		prompt.Parent = podium
+	end
 
 	-- Back panel showing the category icon.
 	local panelHeight = 13
@@ -788,9 +901,29 @@ local function buildStation(def, index, parent)
 	stroke(textLabel(panelGui, {
 		Size = UDim2.fromScale(0.9, 0.22),
 		Position = UDim2.fromScale(0.05, 0.72),
-		Text = "PRESS E TO PLAY",
+		Text = def.comingSoon and "COMING SOON!" or "PRESS E TO PLAY",
 		TextColor3 = def.color,
 	}), 3)
+
+	-- A tiny looping show: one character slaps the other, who goes wild.
+	-- The client animates it (DuelsDemo.client.lua).
+	if def.duelsDemo then
+		local demo = folder("DuelsDemo", station)
+		local y = TILE_TOP
+		robloxCharacter("Slapper", at(-2, y, 3) * CFrame.Angles(0, -math.pi / 2, 0), {
+			head = Color3.fromRGB(245, 205, 48),
+			arms = Color3.fromRGB(245, 205, 48),
+			torso = Color3.fromRGB(13, 105, 172),
+			legs = Color3.fromRGB(164, 189, 71),
+		}, demo)
+		robloxCharacter("Victim", at(2, y, 3) * CFrame.Angles(0, math.pi / 2, 0), {
+			head = Color3.fromRGB(234, 184, 146),
+			arms = Color3.fromRGB(234, 184, 146),
+			torso = Color3.fromRGB(196, 40, 28),
+			legs = Color3.fromRGB(40, 40, 48),
+		}, demo)
+		CollectionService:AddTag(demo, "DuelsDemo")
+	end
 
 	-- Giant character perched on top of the back panel.
 	local labelCFrame = at(0, TILE_TOP + panelHeight + 4, 8)
@@ -856,6 +989,13 @@ local function buildStations()
 	local stations = folder("Stations")
 	for i, def in ipairs(STATIONS) do
 		buildStation(def, i, stations)
+	end
+end
+
+local function buildTeasers()
+	local teasers = folder("Teasers")
+	for i, def in ipairs(TEASERS) do
+		buildStation(def, i, teasers)
 	end
 end
 
@@ -1137,6 +1277,7 @@ local steps = {
 	{ "fence", buildFence },
 	{ "paths", buildPaths },
 	{ "stations", buildStations },
+	{ "coming soon", buildTeasers },
 	{ "boards", buildBoards },
 	{ "giant garden", buildGiantGarden },
 	{ "park", buildPark },
