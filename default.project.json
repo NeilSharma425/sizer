@@ -12,6 +12,12 @@
       },
       "ObjectModels": {
         "$path": "ReplicatedStorage/ObjectModels.lua"
+      },
+      "Difficulty": {
+        "$path": "ReplicatedStorage/Difficulty.lua"
+      },
+      "RoundGenerator": {
+        "$path": "ReplicatedStorage/RoundGenerator.lua"
       }
     },
     "ServerScriptService": {

@@ -253,6 +253,46 @@ ScaleData.Rounds = {
 		fact = "Jupiter's diameter is about 139,820 km -- around 11 times wider than Earth.",
 	},
 	{
+		referenceName = "Earth",
+		referenceIcon = "🌍",
+		referenceHeight = 12742000,
+		targetName = "Mars",
+		targetIcon = "🔴",
+		targetHeight = 6779000,
+		category = "Space",
+		fact = "Mars is about 6,779 km across -- roughly half of Earth's 12,742 km diameter.",
+	},
+	{
+		referenceName = "Moon",
+		referenceIcon = "🌕",
+		referenceHeight = 3474000,
+		targetName = "Mercury",
+		targetIcon = "⚫",
+		targetHeight = 4879000,
+		category = "Space",
+		fact = "Mercury is about 4,879 km across -- roughly 40% wider than the Moon (3,474 km).",
+	},
+	{
+		referenceName = "Mars",
+		referenceIcon = "🔴",
+		referenceHeight = 6779000,
+		targetName = "Venus",
+		targetIcon = "🟡",
+		targetHeight = 12104000,
+		category = "Space",
+		fact = "Venus is about 12,104 km across -- nearly Earth's size and almost twice as wide as Mars (6,779 km).",
+	},
+	{
+		referenceName = "Neptune",
+		referenceIcon = "🔵",
+		referenceHeight = 49244000,
+		targetName = "Saturn",
+		targetIcon = "🪐",
+		targetHeight = 116460000,
+		category = "Space",
+		fact = "Saturn is about 116,460 km across (not counting its rings) -- roughly 2.4 times as wide as Neptune (49,244 km).",
+	},
+	{
 		referenceName = "Jupiter",
 		referenceIcon = "🪐",
 		referenceHeight = 139820000,
@@ -263,5 +303,15 @@ ScaleData.Rounds = {
 		fact = "The Sun is about 1,391,000 km across -- roughly 10 Jupiters, or 109 Earths, side by side.",
 	},
 }
+
+-- Pair up the objects above into more rounds, then tag every round Easy /
+-- Medium / Hard from how far apart the two sizes are.
+local RoundGenerator = require(script.Parent:WaitForChild("RoundGenerator"))
+RoundGenerator.expand(ScaleData.Rounds)
+
+local Difficulty = require(script.Parent:WaitForChild("Difficulty"))
+for _, round in ipairs(ScaleData.Rounds) do
+	round.difficulty = Difficulty.classify(round.referenceHeight, round.targetHeight)
+end
 
 return ScaleData

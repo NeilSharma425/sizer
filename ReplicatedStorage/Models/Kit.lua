@@ -25,6 +25,8 @@ local function add(model, p, color, material)
 	return p
 end
 
+Kit.add = add
+
 local function toCFrame(pos)
 	return typeof(pos) == "CFrame" and pos or CFrame.new(pos)
 end

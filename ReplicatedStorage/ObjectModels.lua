@@ -765,7 +765,7 @@ builders["Verity"] = function(m)
 		local mesh = Instance.new("SpecialMesh")
 		mesh.MeshType = Enum.MeshType.Sphere
 		mesh.Parent = p
-		add(m, p, color)
+		Kit.add(m, p, color)
 		p.Transparency = transparency or 0
 		p.CastShadow = false
 		return p
@@ -812,6 +812,9 @@ builders["Verity"] = function(m)
 		ellipsoid(Vector3.new(0.4, 0.4, 0.2), surfaceCFrame(x, y, 0.02), BLACK)
 	end
 end
+
+-- More planets live in their own module to keep this file manageable.
+require(script.Parent:WaitForChild("Models"):WaitForChild("Planets"))(builders)
 
 --==========================================================================
 -- Fallback & public API

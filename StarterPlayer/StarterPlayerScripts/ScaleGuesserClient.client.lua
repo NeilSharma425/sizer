@@ -316,6 +316,43 @@ local categoryText = label(categoryTag, {
 })
 textStroke(categoryText)
 
+-- Difficulty badge (top-left of the panel), colored per level.
+local DIFFICULTY_COLORS = {
+	Easy = Color3.fromRGB(70, 200, 90),
+	Medium = Color3.fromRGB(255, 165, 40),
+	Hard = Color3.fromRGB(235, 70, 70),
+}
+local difficultyTag = frame(panel, {
+	AnchorPoint = Vector2.new(0, 0.5),
+	Position = UDim2.new(0, 16, 0, 0),
+	Size = UDim2.new(0, 112, 0, 36),
+	BackgroundColor3 = DIFFICULTY_COLORS.Easy,
+	Visible = false,
+	ZIndex = 2,
+})
+corner(difficultyTag, UDim.new(1, 0))
+stroke(difficultyTag, 3.5)
+local difficultyGloss = gloss(difficultyTag, DIFFICULTY_COLORS.Easy)
+local difficultyText = label(difficultyTag, {
+	Size = UDim2.new(1, -16, 0.76, 0),
+	Position = UDim2.new(0, 8, 0.12, 0),
+	Text = "EASY",
+	ZIndex = 3,
+})
+textStroke(difficultyText)
+
+local function showDifficulty(level)
+	local color = DIFFICULTY_COLORS[level]
+	if not color then
+		difficultyTag.Visible = false
+		return
+	end
+	difficultyTag.BackgroundColor3 = color
+	difficultyGloss.Color = ColorSequence.new(color:Lerp(WHITE, 0.25), color:Lerp(INK, 0.12))
+	difficultyText.Text = string.upper(level)
+	difficultyTag.Visible = true
+end
+
 local leaveButton = button(panel, "STOP", RED, {
 	AnchorPoint = Vector2.new(1, 0),
 	Position = UDim2.new(1, -14, 0, 16),
@@ -854,6 +891,7 @@ local function requestRound()
 	resultText.Text = ""
 	questionText.Text = "Loading round..."
 	guessText.Text = "Guess: --"
+	difficultyTag.Visible = false
 	setLockEnabled(false)
 	local category = activeStation:GetAttribute("Category")
 	RequestRound:FireServer(category ~= "" and category or nil)
@@ -1020,6 +1058,7 @@ RequestRound.OnClientEvent:Connect(function(roundInfo)
 		reference.label.Text = string.format("%s\n%s", roundInfo.referenceName, formatHeight(roundInfo.referenceHeight))
 		target.label.Text = roundInfo.targetName .. "\n???"
 		questionText.Text = string.format("How big is a %s next to a %s?", roundInfo.targetName, roundInfo.referenceName)
+		showDifficulty(roundInfo.difficulty)
 		setRatio(1)
 	end, debug.traceback)
 	if not ok then

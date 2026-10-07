@@ -13,6 +13,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
 local ScaleData = require(ReplicatedStorage:WaitForChild("ScaleData"))
+local Difficulty = require(ReplicatedStorage:WaitForChild("Difficulty"))
 -- Saving is optional: if the module ever fails to load, run without it
 -- instead of taking the whole game down.
 local okPlayerData, PlayerData = pcall(function()
@@ -96,38 +97,38 @@ local function isEligible(round, categoryFilter)
 	return round.category == categoryFilter
 end
 
--- Pass a categoryFilter string (or nil for "any category") and only
--- matching rounds are eligible.
+-- Picks a round for this player: first a difficulty, weighted by their
+-- Sense (more Sense = harder mix), then a random unseen round of that
+-- difficulty. Pass a categoryFilter string, or nil for "any category".
 local function pickRoundIndex(player, categoryFilter)
 	local history = playerHistory[player] or {}
-	local candidates = {}
+	local recent = {}
+	for _, historyIndex in ipairs(history) do
+		recent[historyIndex] = true
+	end
 
+	local fresh = { Easy = {}, Medium = {}, Hard = {} }
+	local eligible = {}
 	for index, round in ipairs(ScaleData.Rounds) do
 		if isEligible(round, categoryFilter) then
-			local recentlyUsed = false
-			for _, historyIndex in ipairs(history) do
-				if historyIndex == index then
-					recentlyUsed = true
-					break
-				end
-			end
-			if not recentlyUsed then
-				table.insert(candidates, index)
+			table.insert(eligible, index)
+			if not recent[index] then
+				table.insert(fresh[round.difficulty], index)
 			end
 		end
 	end
 
-	-- If every eligible round was recently used (small data set), fall back
-	-- to the full eligible set rather than failing to produce a round.
-	if #candidates == 0 then
-		for index, round in ipairs(ScaleData.Rounds) do
-			if isEligible(round, categoryFilter) then
-				table.insert(candidates, index)
-			end
-		end
+	local counts = {}
+	for _, level in ipairs(Difficulty.Levels) do
+		counts[level] = #fresh[level]
+	end
+	local level = Difficulty.choose(counts, player:GetAttribute("Sense") or 0)
+	if level then
+		return fresh[level][math.random(1, #fresh[level])]
 	end
 
-	return candidates[math.random(1, #candidates)]
+	-- Everything eligible was seen recently (tiny category): allow repeats.
+	return eligible[math.random(1, #eligible)]
 end
 
 local function recordHistory(player, roundIndex)
@@ -167,6 +168,7 @@ local function onRequestRound(player, categoryFilter)
 			targetName = round.targetName,
 			targetIcon = round.targetIcon,
 			category = round.category,
+			difficulty = round.difficulty,
 		}
 	)
 end
