@@ -87,6 +87,16 @@ end
 updateScale()
 
 local token = 0
+-- Top of the screen, or just under the live round's JOIN prompt if that's up.
+local function bannerTop()
+	local livePrompt = playerGui:FindFirstChild("SizerLivePrompt")
+	local promptFrame = livePrompt and livePrompt.Enabled and livePrompt:FindFirstChild("Prompt")
+	if promptFrame and promptFrame.AbsoluteSize then
+		return promptFrame.AbsolutePosition.Y + promptFrame.AbsoluteSize.Y + 8
+	end
+	return 12
+end
+
 local function show(title, sub, color, seconds)
 	token += 1
 	local mine = token
@@ -96,7 +106,7 @@ local function show(title, sub, color, seconds)
 	cardStroke.Color = color
 	updateScale()
 	card.Visible = true
-	TweenService:Create(card, TweenInfo.new(0.4, Enum.EasingStyle.Back), { Position = UDim2.new(0.5, 0, 0, 90) }):Play()
+	TweenService:Create(card, TweenInfo.new(0.4, Enum.EasingStyle.Back), { Position = UDim2.new(0.5, 0, 0, bannerTop()) }):Play()
 	task.delay(seconds, function()
 		if token ~= mine then
 			return
