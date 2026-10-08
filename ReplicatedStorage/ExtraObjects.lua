@@ -2,7 +2,7 @@
 	ExtraObjects.lua
 	ModuleScript: ReplicatedStorage.ExtraObjects
 
-	100 more objects across every category. Each has a low-poly model in
+	About 100 more objects across every category. Each has a low-poly model in
 	ObjectModels (see Models/Extra*.lua). RoundGenerator pairs these up with
 	each other and with the original objects to make lots of extra rounds,
 	using each object's `fact` in the answer text.
@@ -111,4 +111,5 @@ return {
 	{ name = "Burbaloni Luliloli", icon = "🐌", height = 2, category = "Brainrot", fact = "A coconut-shelled snail with perfect hair." },
 	{ name = "Pot Hotspot", icon = "🍲", height = 0.9, category = "Brainrot", fact = "A talking cooking pot that is always on the boil." },
 	{ name = "Piccione Macchina", icon = "🐦", height = 2.8, category = "Brainrot", fact = "A pigeon that is also a car." },
+	{ name = "Scary Verity", icon = "💀", height = 2.7, category = "Brainrot", fact = "A bony, grinning Verity that stands about 2.7 m tall. Don't look behind you." },
 }

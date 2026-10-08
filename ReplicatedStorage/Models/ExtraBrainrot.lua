@@ -227,4 +227,98 @@ return function(builders)
 		box(m, V(4, 0.4, 7), V(-1, 8.2, 0), gray)
 		return 11.2
 	end
+
+	-- Tall, starved figure with a crooked neck, hollow eyes and a grin.
+	builders["Scary Verity"] = function(m)
+		local skin, dark, bone = rgb(150, 118, 74), rgb(92, 70, 42), rgb(182, 150, 100)
+		local function ellipsoid(size, cf, color, material)
+			local p = Instance.new("Part")
+			p.Size = size
+			p.CFrame = cf
+			local mesh = Instance.new("SpecialMesh")
+			mesh.MeshType = Enum.MeshType.Sphere
+			mesh.Parent = p
+			return Kit.add(m, p, color, material)
+		end
+		local rod = Kit.rod
+
+		-- Legs: bony shins and thighs with knobbly knees, long flat feet.
+		for _, s in ipairs({ -1, 1 }) do
+			box(m, V(1.1, 0.6, 2.6), V(s * 1.35, 0.3, -0.5), skin)
+			for t = 0, 3 do
+				box(m, V(0.24, 0.3, 0.5), V(s * 1.35 + (t - 1.5) * 0.27, 0.2, -1.95), skin)
+			end
+			ball(m, 0.9, V(s * 1.3, 0.8, 0), skin)
+			rod(m, V(s * 1.3, 0.8, 0), V(s * 1.15, 8, -0.1), 0.42, skin)
+			ball(m, 1.35, V(s * 1.15, 8.1, -0.2), bone)
+			rod(m, V(s * 1.15, 8.2, -0.1), V(s * 0.95, 14.6, 0), 0.5, skin)
+		end
+
+		-- Narrow hips, caved-in belly, ribcage you can count.
+		ellipsoid(V(3.1, 1.9, 2), CFrame.new(0, 15, 0), skin)
+		rod(m, V(0, 15.4, 0.1), V(0, 18, 0.1), 0.8, rgb(122, 95, 58))
+		ellipsoid(V(3.4, 4.6, 2.4), CFrame.new(0, 19.6, 0.15) * CFrame.Angles(math.rad(-8), 0, 0), skin)
+		for i = 0, 6 do
+			local y = 17.9 + i * 0.52
+			local w = 2.7 - math.abs(i - 3.5) * 0.16
+			box(m, V(w, 0.2, 0.3), V(0, y, -1.12), dark)
+			box(m, V(w - 0.2, 0.22, 0.3), V(0, y + 0.26, -1.08), bone)
+		end
+		box(m, V(0.3, 2.6, 0.3), V(0, 19.4, -1.2), dark) -- breastbone groove
+
+		-- Shoulders and collarbones.
+		for _, s in ipairs({ -1, 1 }) do
+			ball(m, 1.3, V(s * 2.15, 21.6, 0.2), skin)
+			Kit.beam(m, V(s * 0.3, 21.8, -0.7), V(s * 2, 21.9, -0.4), 0.3, bone)
+		end
+
+		-- Arms hang way past the hips, ending in long, curled fingers.
+		for _, s in ipairs({ -1, 1 }) do
+			local shoulder, elbow, wrist = V(s * 2.3, 21.5, 0.2), V(s * 2.75, 15.2, 0.3), V(s * 2.95, 8.8, -0.2)
+			rod(m, shoulder, elbow, 0.4, skin)
+			ball(m, 0.95, elbow, bone)
+			rod(m, elbow, wrist, 0.32, skin)
+			box(m, V(0.5, 1.5, 1.1), V(s * 3, 8.1, -0.25), skin)
+			for f = 0, 3 do
+				local top = V(s * 3.02, 7.5, -0.6 + f * 0.3)
+				local knuckle = top + V(s * 0.05, -1.6, -0.1)
+				rod(m, top, knuckle, 0.1, skin)
+				rod(m, knuckle, knuckle + V(-s * 0.15, -1.1, -0.35), 0.09, dark)
+			end
+		end
+
+		-- Thin neck bent to one side, head lolling on it.
+		rod(m, V(0, 21.6, 0.3), V(-0.6, 23.2, -0.3), 0.38, skin)
+		rod(m, V(-0.6, 23.2, -0.3), V(-1.25, 24.1, -0.7), 0.34, skin)
+		local head = CFrame.new(-1.6, 25.1, -0.9) * CFrame.Angles(0, 0, math.rad(38))
+		ellipsoid(V(3, 3.4, 3.2), head, skin)
+		ellipsoid(V(1.9, 1.5, 2.2), head * CFrame.new(0, -1.25, -0.3), skin) -- jaw
+		ellipsoid(V(2.5, 0.7, 1), head * CFrame.new(0, 0.75, -1.15), bone) -- brow ridge
+
+		local function face(x, y)
+			local k = 1 - (x / 1.5) ^ 2 - (y / 1.7) ^ 2
+			return -1.6 * math.sqrt(math.max(k, 0.05))
+		end
+		-- Deep black eye sockets with pinprick glowing pupils.
+		for _, x in ipairs({ -0.62, 0.62 }) do
+			ellipsoid(V(0.85, 1.05, 0.4), head * CFrame.new(x, 0.15, face(x, 0.15) + 0.1), BLACK)
+			ball(m, 0.16, (head * CFrame.new(x, 0.1, face(x, 0.1) - 0.08)).Position, rgb(255, 40, 30), NEON)
+		end
+		-- Slit nostrils.
+		for _, x in ipairs({ -0.14, 0.14 }) do
+			box(m, V(0.1, 0.28, 0.1), head * CFrame.new(x, -0.45, face(x, -0.45) - 0.02), BLACK)
+		end
+		-- Huge grin stretching up the cheeks, full of yellowed teeth.
+		local teeth = rgb(222, 210, 160)
+		for i = -5, 5 do
+			local x = i * 0.18
+			local y = -1.0 + 0.09 * i * i * 0.18
+			local z = face(x, y)
+			local tilt = CFrame.Angles(0, 0, math.atan(0.032 * i * 2))
+			box(m, V(0.2, 0.5, 0.2), head * CFrame.new(x, y, z + 0.05) * tilt, BLACK)
+			box(m, V(0.13, 0.18, 0.12), head * CFrame.new(x, y + 0.13, z - 0.04) * tilt, teeth)
+			box(m, V(0.13, 0.16, 0.12), head * CFrame.new(x, y - 0.14, z - 0.04) * tilt, teeth)
+		end
+		return 27
+	end
 end
