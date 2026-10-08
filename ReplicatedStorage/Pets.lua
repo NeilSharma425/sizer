@@ -17,7 +17,7 @@ local Pets = {}
 -- by RoundManager), streak (login streak day, granted by
 -- Progress.updateStreak), rank (rank number from Ranks), category (every
 -- object in the category earned a Sizedex star), timed (60s challenge best),
--- sense (total Sense ever earned; the "grind" pets).
+-- sense (total Sense ever earned).
 Pets.List = {
 	{ id = "mouse", perk = 0.02, name = "Pocket Mouse", color = Color3.fromRGB(190, 190, 205), rule = { kind = "firstDaily" }, how = "Finish your first daily challenge", blurb = "Small, but it knows its sizes." },
 	{ id = "robot", perk = 0.05, name = "Ruler Bot", color = Color3.fromRGB(120, 190, 255), rule = { kind = "rank", rank = 4 }, how = "Reach the Estimator rank", blurb = "Measures everything it sees." },
@@ -31,14 +31,14 @@ Pets.List = {
 	{ id = "ghost", perk = 0.15, name = "Halo Ghost", color = Color3.fromRGB(235, 240, 255), rule = { kind = "rank", rank = 8 }, how = "Reach the Master rank", blurb = "Friendly, and a little holy." },
 	{ id = "cosmiccube", perk = 0.15, name = "Cosmic Cube", color = Color3.fromRGB(130, 110, 255), rule = { kind = "streak", day = 7 }, how = "Reach a 7 day login streak", blurb = "A tiny galaxy that orbits you." },
 	{ id = "rainbowslime", perk = 0.25, name = "Rainbow Slime", color = Color3.fromRGB(255, 120, 200), rule = { kind = "streak", day = 14 }, how = "Reach a 14 day login streak", blurb = "The rarest pet. Shifts through every colour." },
-	-- Grind pets: total Sense earned. Tuned for about 1,000 Sense a day
+	-- Sense pets: unlock at a total Sense earned. Tuned for about 1,000 Sense a day
 	-- (roughly half an hour of play): the first takes about a week, the next
 	-- two more weeks, then three, four and five more.
 	{ id = "tapepal", perk = 0.18, name = "Tape Pal", color = Color3.fromRGB(255, 205, 40), rule = { kind = "sense", sense = 7000 }, how = "Earn 7,000 total Sense", blurb = "Always ready to measure." },
 	{ id = "golem", perk = 0.24, name = "Rune Golem", color = Color3.fromRGB(90, 230, 255), rule = { kind = "sense", sense = 21000 }, how = "Earn 21,000 total Sense", blurb = "Carved from a very old mountain." },
 	{ id = "starwhale", perk = 0.3, name = "Star Whale", color = Color3.fromRGB(110, 140, 255), rule = { kind = "sense", sense = 42000 }, how = "Earn 42,000 total Sense", blurb = "Swims through the night sky." },
 	{ id = "phoenix", perk = 0.38, name = "Phoenix", color = Color3.fromRGB(255, 120, 40), rule = { kind = "sense", sense = 70000 }, how = "Earn 70,000 total Sense", blurb = "Burns bright, never gives up." },
-	{ id = "infinitydragon", perk = 0.5, name = "Infinity Dragon", color = Color3.fromRGB(255, 120, 220), rule = { kind = "sense", sense = 105000 }, variantOf = "babydragon", rainbow = true, neon = true, accessory = "crown", how = "Earn 105,000 total Sense", blurb = "The ultimate grind. Every colour, forever." },
+	{ id = "infinitydragon", perk = 0.5, name = "Infinity Dragon", color = Color3.fromRGB(255, 120, 220), rule = { kind = "sense", sense = 105000 }, variantOf = "babydragon", rainbow = true, neon = true, accessory = "crown", how = "Earn 105,000 total Sense", blurb = "The ultimate pet. Every colour, forever." },
 	-- Crate-only pets: dropped from airdrop crates, never earned any other way.
 	{ id = "neonmouse", name = "Neon Mouse", color = Color3.fromRGB(80, 240, 150), rule = { kind = "crate" }, rarity = "Rare", variantOf = "mouse", hue = 0.38, shift = 0.38, minSat = 0.7, how = "Airdrop crates only", blurb = "Glows in the dark. Squeaks in color." },
 	{ id = "skyduck", name = "Sky Duck", color = Color3.fromRGB(90, 170, 255), rule = { kind = "crate" }, rarity = "Rare", variantOf = "duck", hue = 0.6, shift = 0.5, minSat = 0.5, how = "Airdrop crates only", blurb = "Fell from the clouds. Landed fine." },
@@ -243,7 +243,7 @@ function Pets.qualifies(rule, state)
 	return false
 end
 
--- The grind pets (rule kind "sense"), cheapest first.
+-- The pets unlocked by total Sense (rule kind "sense"), cheapest first.
 function Pets.sensePets()
 	local out = {}
 	for _, pet in ipairs(Pets.List) do
@@ -257,7 +257,7 @@ function Pets.sensePets()
 	return out
 end
 
--- The cheapest grind pet not in `owned` ({ [id] = true }), or nil.
+-- The cheapest Sense pet not in `owned` ({ [id] = true }), or nil.
 function Pets.nextSensePet(owned)
 	for _, pet in ipairs(Pets.sensePets()) do
 		if not owned[pet.id] then

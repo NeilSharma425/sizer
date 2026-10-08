@@ -6,8 +6,8 @@
 	with a live 3D preview and its Sense perk, how to unlock the ones you
 	don't have yet, and an EQUIP button for the ones you do. Tabs: MY PETS
 	(earned), CRATES (airdrop-only) and EGGS (the egg shop plus egg pets).
-	MY PETS opens with a banner for the next grind pet and a progress bar
-	towards the total Sense it needs.
+	MY PETS opens with a banner for the next pet unlocked by Sense and a
+	progress bar towards the total Sense it needs.
 ]]
 
 local Players = game:GetService("Players")
@@ -259,7 +259,7 @@ grid.Parent = window
 local animations = {}
 local owned, equipped = {}, ""
 local render, renderEggShop -- defined below
-local updateGoal -- refreshes the grind pet banner's progress bar, if shown
+local updateGoal -- refreshes the next pet banner's progress bar, if shown
 
 local function commas(n)
 	local s = tostring(math.floor(n))
@@ -267,11 +267,11 @@ local function commas(n)
 	return (out:gsub("^,", ""))
 end
 
--- MY PETS banner: the next grind pet (shown in full colour as a teaser) and
+-- MY PETS banner: the next pet unlocked by total Sense (shown in full colour as a teaser) and
 -- a progress bar towards the total Sense it needs.
 local function renderGoal(pet)
 	local card = frame(grid, {
-		Name = "NextGrindPet",
+		Name = "NextSensePet",
 		Size = UDim2.new(0, COLUMNS * CARD_W + (COLUMNS - 1) * GAP, 0, CARD_H),
 		BackgroundColor3 = TILE,
 		ZIndex = 3,
@@ -290,7 +290,7 @@ local function renderGoal(pet)
 		Position = UDim2.new(0, 190, 0, 12),
 		Size = UDim2.new(0, 300, 0, 22),
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Text = "NEXT GRIND PET",
+		Text = "NEXT PET UNLOCK",
 		TextColor3 = GOLD,
 		ZIndex = 4,
 	})
@@ -521,7 +521,7 @@ render = function()
 	local count = 0
 	local shown = sectionList(section)
 	local goal = section == "earned" and Pets.nextSensePet(owned) or nil
-	-- The egg shop, or the next grind pet banner, takes the first row.
+	-- The egg shop, or the next pet banner, takes the first row.
 	local firstRow = (section == "egg" or goal) and 1 or 0
 	if goal then
 		renderGoal(goal)
