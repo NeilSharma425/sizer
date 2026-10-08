@@ -3,8 +3,8 @@
 	ModuleScript: ReplicatedStorage.ExtraObjects
 
 	More objects across every category, including a big batch of animals.
-	Each has a low-poly model in ObjectModels (see Models/Extra*.lua and
-	Models/MoreAnimals.lua). RoundGenerator pairs these up with
+	Each has a low-poly model in ObjectModels (see Models/Extra*.lua,
+	Models/MoreAnimals.lua and Models/Places.lua). RoundGenerator pairs these up with
 	each other and with the original objects to make lots of extra rounds,
 	using each object's `fact` in the answer text.
 
@@ -250,4 +250,36 @@ return {
 	{ name = "Velociraptor", icon = "🦖", height = 2, category = "Animals", fact = "Velociraptor was only about 2 m long, mostly tail -- about the size of a turkey." },
 	{ name = "Spinosaurus", icon = "🦖", height = 15, category = "Animals", fact = "Spinosaurus was about 15 m long, even longer than T. rex." },
 	{ name = "Pteranodon", icon = "🦅", height = 6, category = "Animals", fact = "Pteranodon had wings about 6 m from tip to tip." },
+
+	-- Countries and continents (models in Models/Places.lua). Size is the
+	-- widest straight-line span; the US is the lower 48 and France is mainland.
+	{ name = "United States", icon = "🇺🇸", height = 4700000, category = "Countries", fact = "The lower 48 United States stretch about 4,700 km across at the widest." },
+	{ name = "Canada", icon = "🇨🇦", height = 5600000, category = "Countries", fact = "Canada is about 5,600 km across at its widest -- the second-biggest country." },
+	{ name = "Mexico", icon = "🇲🇽", height = 3300000, category = "Countries", fact = "Mexico stretches about 3,300 km from corner to corner." },
+	{ name = "Brazil", icon = "🇧🇷", height = 4400000, category = "Countries", fact = "Brazil is about 4,400 km across -- the biggest country in South America." },
+	{ name = "Argentina", icon = "🇦🇷", height = 3700000, category = "Countries", fact = "Argentina runs about 3,700 km from north to south." },
+	{ name = "United Kingdom", icon = "🇬🇧", height = 980000, category = "Countries", fact = "The United Kingdom is about 980 km from top to bottom." },
+	{ name = "France", icon = "🇫🇷", height = 1400000, category = "Countries", fact = "Mainland France is about 1,400 km across at its widest." },
+	{ name = "Germany", icon = "🇩🇪", height = 890000, category = "Countries", fact = "Germany is about 890 km across at its widest." },
+	{ name = "Italy", icon = "🇮🇹", height = 1200000, category = "Countries", fact = "Italy -- the boot -- is about 1,200 km from end to end." },
+	{ name = "Spain", icon = "🇪🇸", height = 1100000, category = "Countries", fact = "Spain is about 1,100 km across at its widest." },
+	{ name = "Russia", icon = "🇷🇺", height = 8100000, category = "Countries", fact = "Russia is about 8,100 km across in a straight line -- the biggest country on Earth." },
+	{ name = "China", icon = "🇨🇳", height = 5000000, category = "Countries", fact = "China is about 5,000 km across at its widest." },
+	{ name = "India", icon = "🇮🇳", height = 3100000, category = "Countries", fact = "India is about 3,100 km across at its widest." },
+	{ name = "Japan", icon = "🇯🇵", height = 2000000, category = "Countries", fact = "Japan's islands stretch about 2,000 km from end to end." },
+	{ name = "South Korea", icon = "🇰🇷", height = 500000, category = "Countries", fact = "South Korea is only about 500 km from top to bottom." },
+	{ name = "Australia", icon = "🇦🇺", height = 4000000, category = "Countries", fact = "Australia is about 4,000 km across -- a country and a continent." },
+	{ name = "New Zealand", icon = "🇳🇿", height = 1400000, category = "Countries", fact = "New Zealand's islands stretch about 1,400 km from end to end." },
+	{ name = "Egypt", icon = "🇪🇬", height = 1600000, category = "Countries", fact = "Egypt is about 1,600 km across at its widest." },
+	{ name = "South Africa", icon = "🇿🇦", height = 1800000, category = "Countries", fact = "South Africa is about 1,800 km across at its widest." },
+	{ name = "Saudi Arabia", icon = "🇸🇦", height = 2300000, category = "Countries", fact = "Saudi Arabia is about 2,300 km across at its widest." },
+	{ name = "Turkey", icon = "🇹🇷", height = 1700000, category = "Countries", fact = "Turkey is about 1,700 km from west to east." },
+	{ name = "Indonesia", icon = "🇮🇩", height = 5300000, category = "Countries", fact = "Indonesia's thousands of islands stretch about 5,300 km from end to end." },
+	{ name = "Nigeria", icon = "🇳🇬", height = 1500000, category = "Countries", fact = "Nigeria is about 1,500 km across at its widest." },
+	{ name = "Africa", icon = "🌍", height = 8800000, category = "Countries", fact = "Africa is about 8,800 km across at its widest." },
+	{ name = "Asia", icon = "🌏", height = 12800000, category = "Countries", fact = "Asia, the biggest continent, is about 12,800 km across at its widest." },
+	{ name = "Europe", icon = "🌍", height = 5800000, category = "Countries", fact = "Europe is about 5,800 km across at its widest." },
+	{ name = "North America", icon = "🌎", height = 10000000, category = "Countries", fact = "North America is about 10,000 km across at its widest." },
+	{ name = "South America", icon = "🌎", height = 7600000, category = "Countries", fact = "South America is about 7,600 km from top to bottom." },
+	{ name = "Antarctica", icon = "🧊", height = 5700000, category = "Countries", fact = "Antarctica is about 5,700 km across -- covered in ice." },
 }

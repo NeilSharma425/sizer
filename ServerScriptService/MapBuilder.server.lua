@@ -694,6 +694,16 @@ local STATIONS = {
 		subtitle = "MEME SIZES",
 		giant = { model = "Verity", scale = 3.2 },
 	},
+	-- Across from the DUELS stand, facing the spawn.
+	{
+		category = "Countries",
+		label = "COUNTRIES",
+		icon = "🌍",
+		color = Color3.fromRGB(60, 185, 110),
+		pos = Vector3.new(26, 0, 72),
+		facing = Vector3.new(0, 0, -1),
+		subtitle = "& CONTINENTS",
+	},
 }
 
 -- "Coming soon" stands: built like stations but not playable (they live in
