@@ -122,14 +122,24 @@ local function formatMeters(m)
 	local function trim(text)
 		return (text:gsub("%.0$", ""))
 	end
-	if m >= 1000 then
+	if m >= 9.461e15 then
+		return trim(string.format("%.0f", m / 9.461e15)) .. " light-years"
+	elseif m >= 1e12 then
+		return trim(string.format("%.1f", m / 1e12)) .. " billion km"
+	elseif m >= 1e9 then
+		return trim(string.format("%.1f", m / 1e9)) .. " million km"
+	elseif m >= 1000 then
 		return trim(string.format("%.1f", m / 1000)) .. " km"
 	elseif m >= 1 then
 		return trim(string.format("%.1f", m)) .. " m"
 	elseif m >= 0.01 then
 		return trim(string.format("%.1f", m * 100)) .. " cm"
+	elseif m >= 0.001 then
+		return trim(string.format("%.1f", m * 1000)) .. " mm"
+	elseif m >= 1e-6 then
+		return trim(string.format("%.1f", m * 1e6)) .. " micrometres"
 	end
-	return trim(string.format("%.1f", m * 1000)) .. " mm"
+	return trim(string.format("%.0f", m * 1e9)) .. " nanometres"
 end
 
 local function formatRatio(r)

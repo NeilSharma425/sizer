@@ -40,8 +40,17 @@ local function trimZero(text)
 	return (text:gsub("%.0$", ""))
 end
 
+-- Also used for tiny (micrometre, nanometre) and space-sized things.
+-- Keep in step with formatHeight (ScaleGuesserClient) and formatMeters
+-- (LiveRoundClient).
 local function formatMeters(m)
-	if m >= 10000 then
+	if m >= 9.461e15 then
+		return withCommas(m / 9.461e15) .. " light-years"
+	elseif m >= 1e12 then
+		return trimZero(string.format("%.1f", m / 1e12)) .. " billion km"
+	elseif m >= 1e9 then
+		return trimZero(string.format("%.1f", m / 1e9)) .. " million km"
+	elseif m >= 10000 then
 		return withCommas(m / 1000) .. " km"
 	elseif m >= 1000 then
 		return trimZero(string.format("%.1f", m / 1000)) .. " km"
@@ -49,8 +58,12 @@ local function formatMeters(m)
 		return trimZero(string.format("%.1f", m)) .. " m"
 	elseif m >= 0.01 then
 		return trimZero(string.format("%.1f", m * 100)) .. " cm"
+	elseif m >= 0.001 then
+		return trimZero(string.format("%.1f", m * 1000)) .. " mm"
+	elseif m >= 1e-6 then
+		return trimZero(string.format("%.1f", m * 1e6)) .. " micrometres"
 	end
-	return trimZero(string.format("%.1f", m * 1000)) .. " mm"
+	return trimZero(string.format("%.0f", m * 1e9)) .. " nanometres"
 end
 
 local function formatTimes(ratio)

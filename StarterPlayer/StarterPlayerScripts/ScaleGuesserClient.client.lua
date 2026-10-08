@@ -1112,7 +1112,13 @@ local function withCommas(n)
 end
 
 local function formatHeight(meters)
-	if meters >= 10000 then
+	if meters >= 9.461e15 then
+		return withCommas(meters / 9.461e15) .. " light-years"
+	elseif meters >= 1e12 then
+		return string.format("%.1f billion km", meters / 1e12)
+	elseif meters >= 1e9 then
+		return string.format("%.1f million km", meters / 1e9)
+	elseif meters >= 10000 then
 		return withCommas(meters / 1000) .. " km"
 	elseif meters >= 1000 then
 		return string.format("%.1f km", meters / 1000)
@@ -1120,8 +1126,12 @@ local function formatHeight(meters)
 		return string.format("%.1f m", meters)
 	elseif meters >= 0.01 then
 		return string.format("%.0f cm", meters * 100)
-	else
+	elseif meters >= 0.001 then
 		return string.format("%.1f mm", meters * 1000)
+	elseif meters >= 1e-6 then
+		return string.format("%.1f micrometres", meters * 1e6)
+	else
+		return string.format("%.0f nanometres", meters * 1e9)
 	end
 end
 

@@ -615,7 +615,7 @@ local function buildDecor()
 	end
 	for _, f in ipairs({
 		{ -50, 74 }, { -72, 76 }, { 50, 74 }, { 72, 76 }, { -30, -70 }, { 30, -70 },
-		{ -27, 18 }, { 27, -34 }, { 80, -2 }, { -84, 40 }, { -26, 48 }, { 26, 48 },
+		{ -27, 18 }, { 27, -34 }, { 80, -2 }, { -84, 40 }, { 26, 48 },
 	}) do
 		flowerPatch(Vector3.new(f[1], 0, f[2]), decor)
 	end
@@ -703,6 +703,16 @@ local STATIONS = {
 		pos = Vector3.new(26, 0, 72),
 		facing = Vector3.new(0, 0, -1),
 		subtitle = "& CONTINENTS",
+	},
+	-- Between the left station row and the DUELS stand, facing the spawn.
+	{
+		category = "Record Breakers",
+		label = "RECORD BREAKERS",
+		icon = "🏆",
+		color = Color3.fromRGB(255, 120, 40),
+		pos = Vector3.new(-26, 0, 52),
+		facing = Vector3.new(0, 0, -1),
+		subtitle = "TINIEST & BIGGEST",
 	},
 }
 
