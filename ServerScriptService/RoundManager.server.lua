@@ -172,6 +172,7 @@ local function checkPetUnlocks(player)
 		rank = Ranks.forSense(player:GetAttribute("Sense") or 0).index,
 		cats = profile.cats,
 		timedBest = player:GetAttribute("TimedBest") or 0,
+		sense = player:GetAttribute("Sense") or 0,
 	}
 	for _, pet in ipairs(Pets.List) do
 		if pet.rule.kind ~= "streak" and not profile.pets[pet.id] and Pets.qualifies(pet.rule, state) then

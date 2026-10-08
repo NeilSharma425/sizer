@@ -6,6 +6,8 @@
 	with a live 3D preview and its Sense perk, how to unlock the ones you
 	don't have yet, and an EQUIP button for the ones you do. Tabs: MY PETS
 	(earned), CRATES (airdrop-only) and EGGS (the egg shop plus egg pets).
+	MY PETS opens with a banner for the next grind pet and a progress bar
+	towards the total Sense it needs.
 ]]
 
 local Players = game:GetService("Players")
@@ -257,6 +259,99 @@ grid.Parent = window
 local animations = {}
 local owned, equipped = {}, ""
 local render, renderEggShop -- defined below
+local updateGoal -- refreshes the grind pet banner's progress bar, if shown
+
+local function commas(n)
+	local s = tostring(math.floor(n))
+	local out = s:reverse():gsub("(%d%d%d)", "%1,"):reverse()
+	return (out:gsub("^,", ""))
+end
+
+-- MY PETS banner: the next grind pet (shown in full colour as a teaser) and
+-- a progress bar towards the total Sense it needs.
+local function renderGoal(pet)
+	local card = frame(grid, {
+		Name = "NextGrindPet",
+		Size = UDim2.new(0, COLUMNS * CARD_W + (COLUMNS - 1) * GAP, 0, CARD_H),
+		BackgroundColor3 = TILE,
+		ZIndex = 3,
+	})
+	corner(card, UDim.new(0, 14))
+	stroke(card, 4, pet.color)
+	local _, animate = petPreview(card, pet.id, {
+		Position = UDim2.new(0, 8, 0, 8),
+		Size = UDim2.new(0, 170, 1, -16),
+		ZIndex = 4,
+	})
+	if animate then
+		table.insert(animations, animate)
+	end
+	label(card, {
+		Position = UDim2.new(0, 190, 0, 12),
+		Size = UDim2.new(0, 300, 0, 22),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Text = "NEXT GRIND PET",
+		TextColor3 = GOLD,
+		ZIndex = 4,
+	})
+	label(card, {
+		Position = UDim2.new(0, 190, 0, 36),
+		Size = UDim2.new(1, -210, 0, 40),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Text = string.upper(pet.name),
+		TextColor3 = pet.color:Lerp(WHITE, 0.25),
+		ZIndex = 4,
+	})
+	label(card, {
+		Position = UDim2.new(0, 190, 0, 80),
+		Size = UDim2.new(1, -210, 0, 22),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Text = string.format("+%d%% SENSE WHILE EQUIPPED", math.floor(Pets.perkFor(pet.id) * 100 + 0.5)),
+		TextColor3 = Color3.fromRGB(120, 255, 130),
+		ZIndex = 4,
+	})
+	local bar = frame(card, {
+		Name = "Progress",
+		Position = UDim2.new(0, 190, 0, 112),
+		Size = UDim2.new(1, -210, 0, 32),
+		BackgroundColor3 = Color3.fromRGB(30, 34, 58),
+		ZIndex = 4,
+	})
+	corner(bar, UDim.new(0, 10))
+	stroke(bar, 2, INK)
+	local fill = frame(bar, {
+		Name = "Fill",
+		Size = UDim2.fromScale(0, 1),
+		BackgroundColor3 = pet.color,
+		ZIndex = 5,
+	})
+	corner(fill, UDim.new(0, 10))
+	local amount = label(bar, {
+		Name = "Amount",
+		Position = UDim2.new(0, 8, 0, 3),
+		Size = UDim2.new(1, -16, 1, -6),
+		Text = "",
+		ZIndex = 6,
+	})
+	label(card, {
+		Position = UDim2.new(0, 190, 0, 150),
+		Size = UDim2.new(1, -210, 0, 22),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Text = "Earn Sense from every guess, daily challenges and live rounds!",
+		TextColor3 = MUTED,
+		ZIndex = 4,
+	})
+	updateGoal = function()
+		if not card.Parent then
+			return
+		end
+		local sense = player:GetAttribute("Sense") or 0
+		local need = pet.rule.sense
+		fill.Size = UDim2.fromScale(math.clamp(sense / need, 0, 1), 1)
+		amount.Text = string.format("%s / %s SENSE", commas(math.min(sense, need)), commas(need))
+	end
+	updateGoal()
+end
 
 
 --==========================================================================
@@ -422,9 +517,15 @@ render = function()
 		child:Destroy()
 	end
 	animations = {}
+	updateGoal = nil
 	local count = 0
 	local shown = sectionList(section)
-	local firstRow = section == "egg" and 1 or 0 -- the egg shop takes the first row
+	local goal = section == "earned" and Pets.nextSensePet(owned) or nil
+	-- The egg shop, or the next grind pet banner, takes the first row.
+	local firstRow = (section == "egg" or goal) and 1 or 0
+	if goal then
+		renderGoal(goal)
+	end
 	local rows = math.max(ROWS, firstRow + math.ceil(#shown / COLUMNS))
 	grid.CanvasSize = UDim2.new(0, 0, 0, rows * (CARD_H + GAP))
 	grid.CanvasPosition = Vector2.new(0, grid.CanvasPosition.Y)
@@ -559,6 +660,11 @@ local function refreshBalance()
 	end
 end
 player:GetAttributeChangedSignal("SenseSpent"):Connect(refreshBalance)
+player:GetAttributeChangedSignal("Sense"):Connect(function()
+	if gui.Enabled and updateGoal then
+		updateGoal()
+	end
+end)
 
 eggTab.MouseButton1Click:Connect(function()
 	if section ~= "egg" then

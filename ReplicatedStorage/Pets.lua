@@ -16,7 +16,8 @@ local Pets = {}
 -- rule kinds: firstDaily (given for finishing the first daily challenge,
 -- by RoundManager), streak (login streak day, granted by
 -- Progress.updateStreak), rank (rank number from Ranks), category (every
--- object in the category earned a Sizedex star), timed (60s challenge best).
+-- object in the category earned a Sizedex star), timed (60s challenge best),
+-- sense (total Sense ever earned; the "grind" pets).
 Pets.List = {
 	{ id = "mouse", perk = 0.02, name = "Pocket Mouse", color = Color3.fromRGB(190, 190, 205), rule = { kind = "firstDaily" }, how = "Finish your first daily challenge", blurb = "Small, but it knows its sizes." },
 	{ id = "robot", perk = 0.05, name = "Ruler Bot", color = Color3.fromRGB(120, 190, 255), rule = { kind = "rank", rank = 4 }, how = "Reach the Estimator rank", blurb = "Measures everything it sees." },
@@ -30,6 +31,14 @@ Pets.List = {
 	{ id = "ghost", perk = 0.15, name = "Halo Ghost", color = Color3.fromRGB(235, 240, 255), rule = { kind = "rank", rank = 8 }, how = "Reach the Master rank", blurb = "Friendly, and a little holy." },
 	{ id = "cosmiccube", perk = 0.15, name = "Cosmic Cube", color = Color3.fromRGB(130, 110, 255), rule = { kind = "streak", day = 7 }, how = "Reach a 7 day login streak", blurb = "A tiny galaxy that orbits you." },
 	{ id = "rainbowslime", perk = 0.25, name = "Rainbow Slime", color = Color3.fromRGB(255, 120, 200), rule = { kind = "streak", day = 14 }, how = "Reach a 14 day login streak", blurb = "The rarest pet. Shifts through every colour." },
+	-- Grind pets: total Sense earned. Tuned for about 1,000 Sense a day
+	-- (roughly half an hour of play): the first takes about a week, the next
+	-- two more weeks, then three, four and five more.
+	{ id = "tapepal", perk = 0.18, name = "Tape Pal", color = Color3.fromRGB(255, 205, 40), rule = { kind = "sense", sense = 7000 }, how = "Earn 7,000 total Sense", blurb = "Always ready to measure." },
+	{ id = "golem", perk = 0.24, name = "Rune Golem", color = Color3.fromRGB(90, 230, 255), rule = { kind = "sense", sense = 21000 }, how = "Earn 21,000 total Sense", blurb = "Carved from a very old mountain." },
+	{ id = "starwhale", perk = 0.3, name = "Star Whale", color = Color3.fromRGB(110, 140, 255), rule = { kind = "sense", sense = 42000 }, how = "Earn 42,000 total Sense", blurb = "Swims through the night sky." },
+	{ id = "phoenix", perk = 0.38, name = "Phoenix", color = Color3.fromRGB(255, 120, 40), rule = { kind = "sense", sense = 70000 }, how = "Earn 70,000 total Sense", blurb = "Burns bright, never gives up." },
+	{ id = "infinitydragon", perk = 0.5, name = "Infinity Dragon", color = Color3.fromRGB(255, 120, 220), rule = { kind = "sense", sense = 105000 }, variantOf = "babydragon", rainbow = true, neon = true, accessory = "crown", how = "Earn 105,000 total Sense", blurb = "The ultimate grind. Every colour, forever." },
 	-- Crate-only pets: dropped from airdrop crates, never earned any other way.
 	{ id = "neonmouse", name = "Neon Mouse", color = Color3.fromRGB(80, 240, 150), rule = { kind = "crate" }, rarity = "Rare", variantOf = "mouse", hue = 0.38, shift = 0.38, minSat = 0.7, how = "Airdrop crates only", blurb = "Glows in the dark. Squeaks in color." },
 	{ id = "skyduck", name = "Sky Duck", color = Color3.fromRGB(90, 170, 255), rule = { kind = "crate" }, rarity = "Rare", variantOf = "duck", hue = 0.6, shift = 0.5, minSat = 0.5, how = "Airdrop crates only", blurb = "Fell from the clouds. Landed fine." },
@@ -218,7 +227,7 @@ function Pets.rollCratePet(rng)
 end
 
 -- True when a non-streak rule is met. state = { rank (number), cats (table),
--- timedBest (number) }. Streak pets are granted by the login streak.
+-- timedBest (number), sense (number) }. Streak pets are granted by the login streak.
 function Pets.qualifies(rule, state)
 	if rule.kind == "start" then
 		return true
@@ -228,8 +237,34 @@ function Pets.qualifies(rule, state)
 		return state.cats ~= nil and state.cats[rule.name] == true
 	elseif rule.kind == "timed" then
 		return (state.timedBest or 0) >= rule.score
+	elseif rule.kind == "sense" then
+		return (state.sense or 0) >= rule.sense
 	end
 	return false
+end
+
+-- The grind pets (rule kind "sense"), cheapest first.
+function Pets.sensePets()
+	local out = {}
+	for _, pet in ipairs(Pets.List) do
+		if pet.rule.kind == "sense" then
+			table.insert(out, pet)
+		end
+	end
+	table.sort(out, function(a, b)
+		return a.rule.sense < b.rule.sense
+	end)
+	return out
+end
+
+-- The cheapest grind pet not in `owned` ({ [id] = true }), or nil.
+function Pets.nextSensePet(owned)
+	for _, pet in ipairs(Pets.sensePets()) do
+		if not owned[pet.id] then
+			return pet
+		end
+	end
+	return nil
 end
 
 function Pets.get(id)
@@ -561,6 +596,166 @@ function builders.babydragon(model)
 	end
 end
 
+
+-- A living tape measure: yellow case with a face, its tape wagging like a tail.
+function builders.tapepal(model)
+	local yellow, black = Color3.fromRGB(255, 205, 40), Color3.fromRGB(35, 35, 45)
+	part(model, { Size = Vector3.new(1.9, 1.8, 1.2), Color = yellow, CFrame = CFrame.new(0, 0.1, 0) })
+	for _, x in ipairs({ -1, 1 }) do
+		part(model, { Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.1, 1.3, 1.3), Color = black, CFrame = CFrame.new(x * 0.96, 0.1, 0) })
+		part(model, { Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.12, 0.45, 0.45), Color = Color3.fromRGB(200, 205, 215), Material = Enum.Material.Metal, CFrame = CFrame.new(x * 0.98, 0.1, 0) })
+	end
+	part(model, { Size = Vector3.new(0.9, 0.25, 0.3), Color = black, CFrame = CFrame.new(0, 1.05, 0.2) }) -- lock button
+	for _, x in ipairs({ -0.38, 0.38 }) do
+		ball(model, Vector3.new(0.42, 0.5, 0.15), Color3.new(1, 1, 1), Vector3.new(x, 0.4, -0.6))
+		ball(model, Vector3.new(0.22, 0.3, 0.12), black, Vector3.new(x, 0.38, -0.66))
+	end
+	part(model, { Size = Vector3.new(0.6, 0.12, 0.08), Color = black, CFrame = CFrame.new(0, -0.05, -0.62) })
+	-- The tape: a strip out of the front-bottom with tick marks and a hook.
+	local tape = { part(model, { Size = Vector3.new(0.6, 0.06, 1.6), Color = Color3.fromRGB(255, 225, 90), CFrame = CFrame.new(0, -0.7, -1.4) }) }
+	for i = 0, 3 do
+		table.insert(tape, part(model, { Size = Vector3.new(i % 2 == 0 and 0.35 or 0.2, 0.08, 0.05), Color = black, CFrame = CFrame.new(-0.12, -0.67, -0.8 - i * 0.38) }))
+	end
+	table.insert(tape, part(model, { Size = Vector3.new(0.62, 0.3, 0.08), Color = Color3.fromRGB(200, 205, 215), Material = Enum.Material.Metal, CFrame = CFrame.new(0, -0.6, -2.2) }))
+	local bases = {}
+	for i, p in ipairs(tape) do
+		bases[i] = p.CFrame
+	end
+	local pivot = CFrame.new(0, -0.7, -0.6)
+	return function(t, o)
+		local wag = pivot * CFrame.Angles(0, math.sin(t * 4) * 0.35, 0) * pivot:Inverse()
+		for i, p in ipairs(tape) do
+			p.CFrame = o * wag * bases[i]
+		end
+	end
+end
+
+-- Chunky stone golem with glowing runes and swinging arms.
+function builders.golem(model)
+	local stone, dark, glow = Color3.fromRGB(125, 130, 145), Color3.fromRGB(85, 90, 105), Color3.fromRGB(90, 230, 255)
+	part(model, { Size = Vector3.new(1.7, 1.5, 1.2), Color = stone, Material = Enum.Material.Slate, CFrame = CFrame.new(0, -0.1, 0) })
+	part(model, { Size = Vector3.new(1.1, 0.9, 1.0), Color = stone, Material = Enum.Material.Slate, CFrame = CFrame.new(0, 1.1, -0.1) })
+	part(model, { Size = Vector3.new(1.2, 0.25, 1.05), Color = dark, Material = Enum.Material.Slate, CFrame = CFrame.new(0, 1.35, -0.12) }) -- brow
+	part(model, { Size = Vector3.new(0.8, 0.3, 0.6), Color = Color3.fromRGB(90, 150, 80), Material = Enum.Material.Grass, CFrame = CFrame.new(0.3, 1.6, 0.1) }) -- moss
+	local glows = {}
+	for _, x in ipairs({ -0.26, 0.26 }) do
+		table.insert(glows, part(model, { Size = Vector3.new(0.22, 0.14, 0.1), Color = glow, Material = Enum.Material.Neon, CFrame = CFrame.new(x, 1.12, -0.62) }))
+	end
+	-- Runes on the chest.
+	table.insert(glows, part(model, { Size = Vector3.new(0.1, 0.8, 0.06), Color = glow, Material = Enum.Material.Neon, CFrame = CFrame.new(0, -0.05, -0.62) }))
+	for _, a in ipairs({ -0.7, 0.7 }) do
+		table.insert(glows, part(model, { Size = Vector3.new(0.08, 0.5, 0.06), Color = glow, Material = Enum.Material.Neon, CFrame = CFrame.new(0, 0.05, -0.62) * CFrame.Angles(0, 0, a) }))
+	end
+	for _, x in ipairs({ -0.45, 0.45 }) do
+		part(model, { Size = Vector3.new(0.6, 0.5, 0.7), Color = dark, Material = Enum.Material.Slate, CFrame = CFrame.new(x, -1.05, 0) })
+	end
+	local arms = {}
+	for _, side in ipairs({ -1, 1 }) do
+		table.insert(arms, { side = side, part = part(model, { Size = Vector3.new(0.6, 1.5, 0.7), Color = dark, Material = Enum.Material.Slate, CFrame = CFrame.new(side * 1.2, -0.2, 0) }) })
+	end
+	return function(t, o)
+		for _, arm in ipairs(arms) do
+			local swing = math.sin(t * 3 + (arm.side > 0 and math.pi or 0)) * 0.3
+			arm.part.CFrame = o * CFrame.new(arm.side * 1.2, 0.45, 0) * CFrame.Angles(swing, 0, 0) * CFrame.new(0, -0.65, 0)
+		end
+		local pulse = 0.15 + 0.35 * (0.5 + 0.5 * math.sin(t * 3))
+		for _, g in ipairs(glows) do
+			g.Transparency = pulse
+		end
+	end
+end
+
+-- Deep-blue whale speckled with stars, flicking its tail and blowing sparkles.
+function builders.starwhale(model)
+	local navy, belly, star = Color3.fromRGB(45, 60, 140), Color3.fromRGB(150, 175, 240), Color3.fromRGB(255, 240, 150)
+	ball(model, Vector3.new(1.8, 1.5, 2.8), navy, Vector3.new(0, 0, 0))
+	ball(model, Vector3.new(1.4, 0.9, 2.3), belly, Vector3.new(0, -0.38, -0.15))
+	for _, x in ipairs({ -0.62, 0.62 }) do
+		ball(model, Vector3.new(0.18, 0.24, 0.14), Color3.fromRGB(20, 20, 35), Vector3.new(x, 0.15, -1.05))
+		part(model, { Size = Vector3.new(0.9, 0.12, 0.5), Color = navy, CFrame = CFrame.new(x * 1.35, -0.35, -0.3) * CFrame.Angles(0, 0, x * 0.5) })
+	end
+	for i, pos in ipairs({ Vector3.new(-0.4, 0.68, -0.3), Vector3.new(0.35, 0.6, 0.4), Vector3.new(0.05, 0.74, 0.1), Vector3.new(-0.3, 0.55, 0.85), Vector3.new(0.5, 0.45, -0.7), Vector3.new(-0.6, 0.4, 0.4) }) do
+		local s = i % 2 == 0 and 0.16 or 0.24
+		ball(model, Vector3.new(s, s, s), star, pos).Material = Enum.Material.Neon
+	end
+	local tail = {
+		ball(model, Vector3.new(0.8, 0.7, 1.0), navy, Vector3.new(0, 0.1, 1.6)),
+		part(model, { Size = Vector3.new(1.6, 0.12, 0.6), Color = navy, CFrame = CFrame.new(0, 0.2, 2.2) }),
+	}
+	local tailBases = { tail[1].CFrame, tail[2].CFrame }
+	local spout = {}
+	for i = 1, 3 do
+		spout[i] = ball(model, Vector3.new(0.2, 0.2, 0.2), Color3.fromRGB(170, 230, 255), Vector3.new(0, 1, 0))
+		spout[i].Material = Enum.Material.Neon
+	end
+	local pivot = CFrame.new(0, 0.1, 1.2)
+	return function(t, o)
+		local flick = pivot * CFrame.Angles(math.sin(t * 3) * 0.35, 0, 0) * pivot:Inverse()
+		for i, p in ipairs(tail) do
+			p.CFrame = o * flick * tailBases[i]
+		end
+		for i, s in ipairs(spout) do
+			local k = (t * 0.8 + i / 3) % 1
+			s.CFrame = o * CFrame.new(math.sin(i * 2.1) * 0.3 * k, 0.8 + k * 1.1, -0.4)
+			s.Transparency = k
+		end
+	end
+end
+
+-- Fire bird: flapping neon wings, a flame crest and a swaying tail of fire.
+function builders.phoenix(model)
+	local red, orange, gold = Color3.fromRGB(230, 60, 40), Color3.fromRGB(255, 130, 30), Color3.fromRGB(255, 210, 60)
+	ball(model, Vector3.new(1.3, 1.4, 1.6), red, Vector3.new(0, 0, 0))
+	ball(model, Vector3.new(0.9, 1.0, 1.0), orange, Vector3.new(0, -0.1, -0.5))
+	ball(model, Vector3.new(1.0, 1.0, 1.0), red, Vector3.new(0, 0.95, -0.55))
+	part(model, { Size = Vector3.new(0.22, 0.2, 0.45), Color = gold, Material = Enum.Material.Metal, CFrame = CFrame.new(0, 0.85, -1.15) * CFrame.Angles(math.rad(-25), 0, 0) })
+	for _, x in ipairs({ -0.25, 0.25 }) do
+		ball(model, Vector3.new(0.2, 0.24, 0.12), Color3.fromRGB(30, 20, 30), Vector3.new(x, 1.05, -1.02))
+	end
+	local flames = {}
+	for i, a in ipairs({ -0.4, 0, 0.4 }) do
+		flames[i] = part(model, { Size = Vector3.new(0.18, 0.7 - math.abs(a) * 0.5, 0.18), Color = gold, Material = Enum.Material.Neon, CFrame = CFrame.new(0, 1.6, -0.5 + a) * CFrame.Angles(a * 0.8, 0, 0) })
+	end
+	local tail = {}
+	for i, c in ipairs({ orange, gold, red }) do
+		tail[i] = part(model, { Size = Vector3.new(0.3, 0.12, 1.6), Color = c, Material = Enum.Material.Neon, CFrame = CFrame.new((i - 2) * 0.25, -0.2, 1.4) })
+	end
+	local tailBases = {}
+	for i, p in ipairs(tail) do
+		tailBases[i] = p.CFrame
+	end
+	local wings = {}
+	for _, side in ipairs({ -1, 1 }) do
+		table.insert(wings, {
+			side = side,
+			inner = part(model, { Size = Vector3.new(1.2, 0.12, 0.9), Color = orange, Material = Enum.Material.Neon }),
+			outer = part(model, { Size = Vector3.new(0.9, 0.1, 0.6), Color = gold, Material = Enum.Material.Neon }),
+		})
+	end
+	local flameBases = {}
+	for i, f in ipairs(flames) do
+		flameBases[i] = f.CFrame
+	end
+	local pivot = CFrame.new(0, -0.1, 0.7)
+	local function animate(t, o)
+		for _, w in ipairs(wings) do
+			local flap = w.side * (0.15 + 0.55 * math.sin(t * 7))
+			local root = o * CFrame.new(w.side * 0.55, 0.3, 0) * CFrame.Angles(0, 0, flap)
+			w.inner.CFrame = root * CFrame.new(w.side * 0.6, 0, 0)
+			w.outer.CFrame = root * CFrame.new(w.side * 1.2, 0, 0) * CFrame.Angles(0, 0, flap * 0.6) * CFrame.new(w.side * 0.4, 0, 0.1)
+		end
+		local sway = pivot * CFrame.Angles(math.sin(t * 2) * 0.15, math.sin(t * 3) * 0.25, 0) * pivot:Inverse()
+		for i, p in ipairs(tail) do
+			p.CFrame = o * sway * tailBases[i]
+		end
+		for i, f in ipairs(flames) do
+			f.CFrame = o * CFrame.new(0, 0.06 * math.sin(t * 10 + i), 0) * flameBases[i]
+			f.Transparency = 0.1 + 0.25 * math.sin(t * 10 + i * 2) ^ 2
+		end
+	end
+	animate(0, CFrame.new()) -- place the wings for still previews
+	return animate
+end
 
 function builders.cat(model)
 	local orange, cream, dark = Color3.fromRGB(255, 170, 90), Color3.fromRGB(255, 235, 205), Color3.fromRGB(40, 30, 40)
