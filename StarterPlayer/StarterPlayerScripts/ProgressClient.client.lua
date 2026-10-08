@@ -37,6 +37,7 @@ local RoundResult = remotes:WaitForChild("RoundResult")
 
 local Ranks = require(ReplicatedStorage:WaitForChild("Ranks"))
 local Progress = require(ReplicatedStorage:WaitForChild("Progress"))
+local ScreenFit = require(ReplicatedStorage:WaitForChild("ScreenFit"))
 
 local FONT = Enum.Font.FredokaOne
 local INK = Color3.fromRGB(25, 20, 35)
@@ -292,7 +293,8 @@ rowScale.Parent = row
 local function updateScale()
 	local camera = workspace.CurrentCamera
 	if camera then
-		local value = math.clamp(camera.ViewportSize.Y / 900, 0.6, 1.1)
+		-- About a tenth of the screen's height, so it stays small on phones.
+		local value = ScreenFit.scaleFor(camera.ViewportSize, 290, 76, { fx = 0.3, fy = 0.1, min = 0.4, max = 1.1 })
 		cardScale.Scale = value
 		rowScale.Scale = value
 	end
@@ -404,7 +406,9 @@ local function showRankUp(info)
 	bannerStroke.Color = info.rank.color
 	rankBanner.Visible = true
 	bannerScale.Scale = 0
-	TweenService:Create(bannerScale, TweenInfo.new(0.45, Enum.EasingStyle.Back), { Scale = 1 }):Play()
+	local camera = workspace.CurrentCamera
+	local fitted = camera and ScreenFit.scaleFor(camera.ViewportSize, 500, 150, { fx = 0.8, fy = 0.3 }) or 1
+	TweenService:Create(bannerScale, TweenInfo.new(0.45, Enum.EasingStyle.Back), { Scale = fitted }):Play()
 	celebrate(UDim2.fromScale(0.5, 0.32))
 	task.delay(3.2, function()
 		if bannerToken == myToken then
@@ -426,10 +430,12 @@ end
 local toastHolder = frame(gui, {
 	Name = "Toasts",
 	AnchorPoint = Vector2.new(0.5, 0),
-	Position = UDim2.new(0.5, 0, 0, 112),
+	Position = UDim2.new(0.5, 0, 0.12, 12),
 	Size = UDim2.new(0, 460, 0, 300),
 	BackgroundTransparency = 1,
 })
+-- Toasts stay a slim strip on small screens.
+ScreenFit.fit(toastHolder, 460, 46, { fx = 0.6, fy = 0.08, max = 1 })
 local toastLayout = Instance.new("UIListLayout")
 toastLayout.SortOrder = Enum.SortOrder.LayoutOrder
 toastLayout.Padding = UDim.new(0, 8)

@@ -51,6 +51,7 @@ bus.Name = "SizerBus"
 bus.Parent = player:WaitForChild("PlayerGui")
 
 local ObjectModels = require(ReplicatedStorage:WaitForChild("ObjectModels"))
+local ScreenFit = require(ReplicatedStorage:WaitForChild("ScreenFit"))
 
 local stationsFolder = workspace:WaitForChild("Map"):WaitForChild("Stations")
 
@@ -183,6 +184,7 @@ local function responsive(guiObject)
 	table.insert(responsiveScales, scale)
 end
 local layoutSideMenu -- set once the side menu exists
+local rewardScale -- the reward card's UIScale (smaller on phones)
 local function updateHudScale()
 	local camera = workspace.CurrentCamera
 	if not camera then
@@ -191,6 +193,9 @@ local function updateHudScale()
 	local value = math.clamp(camera.ViewportSize.Y / 900, 0.55, 1.1)
 	for _, scale in ipairs(responsiveScales) do
 		scale.Scale = value
+	end
+	if rewardScale and ScreenFit.isCompact(camera.ViewportSize) then
+		rewardScale.Scale = math.clamp(camera.ViewportSize.Y * 0.11 / 78, 0.4, 0.6)
 	end
 	if layoutSideMenu then
 		layoutSideMenu(value)
@@ -345,7 +350,7 @@ local function menuTile(name, order, icon, caption, color)
 	local tile = Instance.new("TextButton")
 	tile.Name = name
 	tile.LayoutOrder = order
-	tile.Size = UDim2.new(1, 0, 0, 84)
+	tile.Size = UDim2.new(0, 92, 0, 84)
 	tile.BackgroundColor3 = color
 	tile.BorderSizePixel = 0
 	tile.Text = ""
@@ -388,26 +393,47 @@ stroke(dailyBadge, 3)
 label(dailyBadge, { Size = UDim2.fromScale(0.6, 0.7), Position = UDim2.fromScale(0.2, 0.15), Text = "!", ZIndex = 4 })
 
 responsive(rewardCard)
+rewardScale = rewardCard:FindFirstChildOfClass("UIScale")
 responsive(quickPlayButton)
 
--- The side menu sits in the space between the top of the screen and the
--- playtime reward card (bottom-left), shrinking on short screens so the
--- two never overlap.
+-- Desktop: the side menu sits in the space between the top of the screen
+-- and the playtime reward card (bottom-left), shrinking on short screens so
+-- the two never overlap. Phones: the menu runs along the top-left with the
+-- reward card under it, clear of the thumbstick and jump button.
 local sideScale = Instance.new("UIScale")
 sideScale.Parent = sideMenu
+local TILE_W, TILE_H, TILE_GAP = 92, 84, 8
 layoutSideMenu = function(hudValue)
 	local size = hud.AbsoluteSize
 	local screenHeight = size and size.Y or 0
 	if screenHeight <= 0 then
 		return
 	end
+	if ScreenFit.isCompact(size) then
+		sideLayout.FillDirection = Enum.FillDirection.Horizontal
+		sideMenu.AutomaticSize = Enum.AutomaticSize.X
+		sideMenu.Size = UDim2.new(0, 0, 0, TILE_H)
+		sideMenu.AnchorPoint = Vector2.new(0, 0)
+		sideMenu.Position = UDim2.new(0, 10, 0, 8)
+		local tileScale = math.clamp(screenHeight * 0.12 / TILE_H, 0.45, 0.7)
+		sideScale.Scale = tileScale
+		rewardCard.AnchorPoint = Vector2.new(0, 0)
+		rewardCard.Position = UDim2.new(0, 10, 0, 8 + TILE_H * tileScale + 8)
+		return
+	end
+	sideLayout.FillDirection = Enum.FillDirection.Vertical
+	sideMenu.AutomaticSize = Enum.AutomaticSize.Y
+	sideMenu.Size = UDim2.new(0, TILE_W, 0, 0)
+	sideMenu.AnchorPoint = Vector2.new(0, 0.5)
+	rewardCard.AnchorPoint = Vector2.new(0, 1)
+	rewardCard.Position = UDim2.new(0, 14, 1, -22)
 	local tiles = 0
 	for _, child in ipairs(sideMenu:GetChildren()) do
 		if child:IsA("GuiButton") and child.Visible then
 			tiles += 1
 		end
 	end
-	local contentHeight = math.max(tiles * 84 + math.max(tiles - 1, 0) * 8, 1)
+	local contentHeight = math.max(tiles * TILE_H + math.max(tiles - 1, 0) * TILE_GAP, 1)
 	local top = 12
 	local bottom = 22 + 78 * hudValue + 14 -- the reward card plus a gap
 	local available = math.max(screenHeight - top - bottom, 60)

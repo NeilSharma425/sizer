@@ -23,6 +23,7 @@ local playerGui = player:WaitForChild("PlayerGui")
 local remotes = ReplicatedStorage:WaitForChild("ScaleGameRemotes")
 local LiveRound = remotes:WaitForChild("LiveRound")
 local ObjectModels = require(ReplicatedStorage:WaitForChild("ObjectModels"))
+local ScreenFit = require(ReplicatedStorage:WaitForChild("ScreenFit"))
 
 local SoundFX = select(2, pcall(function()
 	return require(ReplicatedStorage:WaitForChild("SoundFX", 10))
@@ -385,7 +386,7 @@ local function showPrompt(id)
 	promptId = id
 	local camera = workspace.CurrentCamera
 	if camera then
-		promptScale.Scale = math.clamp(camera.ViewportSize.X / 560, 0.55, 1)
+		promptScale.Scale = ScreenFit.scaleFor(camera.ViewportSize, 470, 76, { fx = 0.6, fy = 0.13 })
 	end
 	promptGui.Enabled = true
 end

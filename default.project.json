@@ -36,6 +36,9 @@
       },
       "CrateLogic": {
         "$path": "ReplicatedStorage/CrateLogic.lua"
+      },
+      "ScreenFit": {
+        "$path": "ReplicatedStorage/ScreenFit.lua"
       }
     },
     "ServerScriptService": {

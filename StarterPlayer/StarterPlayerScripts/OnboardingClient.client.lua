@@ -18,6 +18,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Pets = require(ReplicatedStorage:WaitForChild("Pets"))
+local ScreenFit = require(ReplicatedStorage:WaitForChild("ScreenFit"))
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -72,6 +73,7 @@ card.Size = UDim2.new(0, 320, 0, 104)
 card.BackgroundColor3 = PANEL
 card.BorderSizePixel = 0
 card.Parent = gui
+ScreenFit.fit(card, 320, 104, { fx = 0.45, fy = 0.24 })
 local cardCorner = Instance.new("UICorner")
 cardCorner.CornerRadius = UDim.new(0, 16)
 cardCorner.Parent = card
@@ -186,7 +188,16 @@ RunService.RenderStepped:Connect(function()
 	ring.Position = UDim2.fromOffset(pos.X - pad - grow, pos.Y - pad - grow)
 	ring.Size = UDim2.fromOffset(size.X + (pad + grow) * 2, size.Y + (pad + grow) * 2)
 	ringStroke.Transparency = 0.1 + 0.4 * (0.5 + 0.5 * math.sin(os.clock() * 6))
-	card.Position = UDim2.fromOffset(pos.X + size.X + pad + 18 + math.sin(os.clock() * 4) * 4, pos.Y + size.Y / 2)
+	local bob = math.sin(os.clock() * 4) * 4
+	local layout = t.Parent:FindFirstChildOfClass("UIListLayout")
+	if layout and layout.FillDirection == Enum.FillDirection.Horizontal then
+		-- Phone layout: the menu runs along the top, so point from below.
+		card.AnchorPoint = Vector2.new(0, 0)
+		card.Position = UDim2.fromOffset(pos.X, pos.Y + size.Y + pad + 14 + bob)
+	else
+		card.AnchorPoint = Vector2.new(0, 0.5)
+		card.Position = UDim2.fromOffset(pos.X + size.X + pad + 18 + bob, pos.Y + size.Y / 2)
+	end
 	if previewAnimate then
 		previewAnimate(os.clock())
 	end

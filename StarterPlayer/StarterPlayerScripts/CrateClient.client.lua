@@ -18,6 +18,7 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
 local CrateEvent = ReplicatedStorage:WaitForChild("ScaleGameRemotes"):WaitForChild("CrateEvent")
+local ScreenFit = require(ReplicatedStorage:WaitForChild("ScreenFit"))
 
 local SoundFX = select(2, pcall(function()
 	return require(ReplicatedStorage:WaitForChild("SoundFX", 10))
@@ -81,7 +82,8 @@ local subLabel = makeLabel({ Position = UDim2.new(0, 14, 0, 42), Size = UDim2.ne
 local function updateScale()
 	local camera = workspace.CurrentCamera
 	if camera then
-		scale.Scale = math.clamp(camera.ViewportSize.X / 700, 0.55, 1)
+		-- At most ~60% of the width and ~13% of the height (small on phones).
+		scale.Scale = ScreenFit.scaleFor(camera.ViewportSize, 480, 76, { fx = 0.6, fy = 0.13 })
 	end
 end
 updateScale()

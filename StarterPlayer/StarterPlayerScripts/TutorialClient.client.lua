@@ -28,6 +28,7 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
 local TutorialDoneRemote = ReplicatedStorage:WaitForChild("ScaleGameRemotes"):WaitForChild("TutorialDone")
+local ScreenFit = require(ReplicatedStorage:WaitForChild("ScreenFit"))
 
 local FONT = Enum.Font.FredokaOne
 local INK = Color3.fromRGB(25, 20, 35)
@@ -648,6 +649,7 @@ local function runTour(myToken)
 	local ringStroke = stroke(ring, 5, GOLD)
 
 	local card = frame(gui, { Size = UDim2.new(0, 270, 0, 78), BackgroundColor3 = PURPLE, ZIndex = 14 })
+	ScreenFit.fit(card, 270, 78, { fx = 0.45, fy = 0.2 })
 	corner(card, UDim.new(0, 16))
 	local cardStroke = stroke(card, 4, GOLD)
 	local cardText = label(card, {
@@ -685,9 +687,14 @@ local function runTour(myToken)
 		ring.Size = UDim2.fromOffset(w + grow * 2, h + grow * 2)
 		ringStroke.Transparency = 0.1 + 0.4 * (0.5 + 0.5 * math.sin(t * 6))
 
-		-- Caption beside the target, on whichever side has room.
+		-- Caption beside the target, on whichever side has room (below it
+		-- when the menu runs along the top, as on phones).
 		local cy = y + h / 2
-		if x + w / 2 < screen.X / 2 then
+		local layout = target.Parent and target.Parent:FindFirstChildOfClass("UIListLayout")
+		if layout and layout.FillDirection == Enum.FillDirection.Horizontal then
+			card.AnchorPoint = Vector2.new(0, 0)
+			card.Position = UDim2.fromOffset(math.max(8, x), y + h + 16)
+		elseif x + w / 2 < screen.X / 2 then
 			card.AnchorPoint = Vector2.new(0, 0.5)
 			card.Position = UDim2.fromOffset(x + w + 16, cy)
 		else
@@ -932,7 +939,9 @@ local function showPrompt()
 		ZIndex = 41,
 	})
 
-	TweenService:Create(scale, TweenInfo.new(0.4, Enum.EasingStyle.Back), { Scale = 1 }):Play()
+	local camera = workspace.CurrentCamera
+	local fitted = camera and ScreenFit.scaleFor(camera.ViewportSize, 440, 300, { fx = 0.7, fy = 0.7 }) or 1
+	TweenService:Create(scale, TweenInfo.new(0.4, Enum.EasingStyle.Back), { Scale = fitted }):Play()
 	local bob = RunService.RenderStepped:Connect(function()
 		icon.Position = UDim2.new(0.5, 0, 0, 18 + math.sin(os.clock() * 3) * 5)
 	end)
