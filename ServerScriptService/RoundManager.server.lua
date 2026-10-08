@@ -487,7 +487,8 @@ end)
 
 -- Floating tag over the player's head: their name, rank and Sense, as
 -- outlined text with no background. It replaces Roblox's own name label so
--- the two don't overlap, and everyone in the server can see it.
+-- the two don't overlap. It's sized in studs so distant tags shrink, and
+-- NameTagClient shows only the closest few so a full lobby stays readable.
 local function attachSenseTag(player, character)
 	local head = character:WaitForChild("Head", 10)
 	if not head then
@@ -501,9 +502,9 @@ local function attachSenseTag(player, character)
 	local tag = Instance.new("BillboardGui")
 	tag.Name = "SenseTag"
 	tag.Adornee = head
-	tag.Size = UDim2.new(0, 200, 0, 66)
-	tag.StudsOffsetWorldSpace = Vector3.new(0, 3, 0)
-	tag.MaxDistance = 120
+	tag.Size = UDim2.new(6, 0, 2, 0)
+	tag.StudsOffsetWorldSpace = Vector3.new(0, 2.6, 0)
+	tag.MaxDistance = 60
 	tag.LightInfluence = 0
 	tag.Parent = head
 

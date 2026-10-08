@@ -98,6 +98,9 @@
         },
         "OnboardingClient": {
           "$path": "StarterPlayer/StarterPlayerScripts/OnboardingClient.client.lua"
+        },
+        "NameTagClient": {
+          "$path": "StarterPlayer/StarterPlayerScripts/NameTagClient.client.lua"
         }
       }
     }
