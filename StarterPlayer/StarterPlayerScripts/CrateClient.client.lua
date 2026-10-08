@@ -132,7 +132,7 @@ CrateEvent.OnClientEvent:Connect(function(kind, data)
 			string.upper(data.rarity) .. " PET CRATE FALLING!",
 			string.format("A mystery %s pet  -  only %d copies. Find the light beam!", data.rarity, data.copies),
 			color,
-			8
+			5
 		)
 	elseif kind == "opened" then
 		show(
