@@ -202,4 +202,71 @@ Kit.BLACK = Kit.rgb(25, 25, 30)
 Kit.WHITE = Kit.rgb(245, 245, 245)
 Kit.NEON = Enum.Material.Neon
 
+-- Four-legged body with legs, head, ears and tail. Options:
+-- len, bodyH, legH, width, color, belly, headLen, headH, neck (rise of the
+-- head above the back), ear = {w, h}, tail (length), snout (color),
+-- horns (color), mane (color), hump (height), stripes (color).
+function Kit.quad(m, o)
+	local len, bh, lh, w = o.len, o.bodyH, o.legH, o.width
+	local lw = o.legW or w * 0.3
+	local color = o.color
+	for _, x in ipairs({ -len / 2 + lw * 0.7, len / 2 - lw * 0.7 }) do
+		for _, z in ipairs({ -w / 2 + lw / 2, w / 2 - lw / 2 }) do
+			Kit.box(m, Vector3.new(lw, lh, lw), Vector3.new(x, lh / 2, z), o.legColor or color)
+		end
+	end
+	Kit.box(m, Vector3.new(len, bh, w), Vector3.new(0, lh + bh / 2, 0), color)
+	if o.belly then
+		Kit.box(m, Vector3.new(len * 0.8, bh * 0.35, w * 1.02), Vector3.new(0, lh + bh * 0.2, 0), o.belly)
+	end
+	if o.stripes then
+		for i = -2, 2 do
+			Kit.box(m, Vector3.new(len * 0.07, bh * 1.02, w * 1.02), Vector3.new(i * len * 0.17, lh + bh / 2, 0), o.stripes)
+		end
+	end
+	if o.hump then
+		Kit.box(m, Vector3.new(len * 0.28, o.hump, w * 0.8), Vector3.new(len * 0.05, lh + bh + o.hump / 2, 0), color)
+	end
+	local hl, hh = o.headLen, o.headH
+	local neck = o.neck or 0
+	local hx = -len / 2 - hl * 0.35
+	local hy = lh + bh + neck - hh * 0.1
+	if neck > 0 then
+		Kit.beam(m, Vector3.new(-len / 2 + len * 0.1, lh + bh * 0.8, 0), Vector3.new(hx + hl * 0.3, hy, 0), w * 0.55, color)
+	end
+	Kit.box(m, Vector3.new(hl, hh, w * 0.75), Vector3.new(hx, hy, 0), color)
+	if o.snout then
+		Kit.box(m, Vector3.new(hl * 0.35, hh * 0.55, w * 0.6), Vector3.new(hx - hl * 0.45, hy - hh * 0.2, 0), o.snout)
+		Kit.box(m, Vector3.new(hl * 0.08, hh * 0.15, w * 0.3), Vector3.new(hx - hl * 0.66, hy - hh * 0.1, 0), Kit.BLACK)
+	end
+	if o.mane then
+		Kit.box(m, Vector3.new(hl * 0.8, hh * 1.25, w * 0.95), Vector3.new(hx + hl * 0.55, hy, 0), o.mane)
+	end
+	local ear = o.ear or { w * 0.18, hh * 0.45 }
+	for _, z in ipairs({ -w * 0.22, w * 0.22 }) do
+		Kit.box(m, Vector3.new(ear[1], ear[2], ear[1]), Vector3.new(hx + hl * 0.2, hy + hh / 2 + ear[2] / 2, z), o.earColor or color)
+		if o.horns then
+			Kit.beam(m, Vector3.new(hx + hl * 0.1, hy + hh / 2, z * 1.2), Vector3.new(hx - hl * 0.1, hy + hh / 2 + ear[2] * 1.6, z * 1.8), w * 0.08, o.horns)
+		end
+	end
+	Kit.box(m, Vector3.new(hl * 0.12, hh * 0.18, 0.05 * w), Vector3.new(hx - hl * 0.25, hy + hh * 0.18, -w * 0.38), Kit.BLACK)
+	local tl = o.tail or len * 0.25
+	Kit.beam(m, Vector3.new(len / 2, lh + bh * 0.85, 0), Vector3.new(len / 2 + tl * 0.7, lh + bh * 0.85 - tl * 0.5, 0), w * 0.12, o.tailColor or color)
+	return lh + bh -- shoulder height
+end
+
+-- Torpedo-shaped swimmer facing -X with fins.
+function Kit.swimmer(m, len, thick, color, belly, finH)
+	local y = thick * 0.8
+	Kit.box(m, Vector3.new(len * 0.5, thick, thick * 0.9), Vector3.new(0, y, 0), color)
+	Kit.box(m, Vector3.new(len * 0.25, thick * 0.8, thick * 0.8), Vector3.new(-len * 0.34, y - thick * 0.05, 0), color)
+	Kit.box(m, Vector3.new(len * 0.18, thick * 0.55, thick * 0.55), Vector3.new(-len * 0.5, y - thick * 0.1, 0), color)
+	Kit.box(m, Vector3.new(len * 0.3, thick * 0.65, thick * 0.7), Vector3.new(len * 0.38, y + thick * 0.05, 0), color)
+	Kit.box(m, Vector3.new(len * 0.5, thick * 0.45, thick * 0.92), Vector3.new(-len * 0.02, y - thick * 0.3, 0), belly)
+	Kit.wedge(m, Vector3.new(thick * 0.1, finH, len * 0.16), CFrame.new(-len * 0.02, y + thick / 2 + finH / 2, 0) * CFrame.Angles(0, math.pi / 2, 0), color)
+	Kit.box(m, Vector3.new(len * 0.1, thick * 0.12, thick * 1.1), Vector3.new(len * 0.5, y + thick * 0.15, 0), color)
+	Kit.box(m, Vector3.new(len * 0.14, thick * 0.1, thick * 1.3), Vector3.new(-len * 0.18, y - thick * 0.45, 0), color)
+	Kit.box(m, Vector3.new(thick * 0.08, thick * 0.08, 0.1), Vector3.new(-len * 0.4, y + thick * 0.15, -thick * 0.4), Kit.BLACK)
+end
+
 return Kit

@@ -4,8 +4,8 @@
 
 	Expands the hand-written rounds by pairing up objects that already
 	appear in them: every pair of objects within the same category whose
-	sizes differ by 1.25x to 50x becomes a round (the slider covers
-	0.02x-50x). Facts are written from the sizes, so they stay accurate.
+	sizes differ by 1.25x to 50x can become a round (the slider covers
+	0.02x-50x); each object joins at most MAX_PAIRS_PER_OBJECT of them. Facts are written from the sizes, so they stay accurate.
 	No new models are needed -- only objects that already have rounds are
 	used -- and a pair that already exists in either order is skipped.
 ]]
@@ -14,6 +14,11 @@ local RoundGenerator = {}
 
 local MIN_RATIO = 1.25
 local MAX_RATIO = 50
+-- Each object joins at most this many generated rounds, so a category with
+-- lots of objects (Animals) doesn't swamp the mixed rounds. Objects that
+-- would end up with fewer than MIN_PAIRS still get that many.
+local MAX_PAIRS_PER_OBJECT = 40
+local MIN_PAIRS = 4
 
 local function withCommas(n)
 	local formatted = tostring(math.floor(n + 0.5)):reverse():gsub("(%d%d%d)", "%1,"):reverse()
@@ -44,15 +49,20 @@ local function formatTimes(ratio)
 	return trimZero(string.format("%.1f", ratio))
 end
 
--- Stable 0/1 per pair so the same pair always gets the same orientation.
-local function coin(a, b)
+-- Stable hash of a pair, used for its orientation and its place in line.
+local function pairHash(a, b)
 	local sum = 0
 	for _, text in ipairs({ a, b }) do
 		for i = 1, #text do
 			sum = (sum * 31 + string.byte(text, i)) % 1000003
 		end
 	end
-	return sum % 2
+	return sum
+end
+
+-- Stable 0/1 per pair so the same pair always gets the same orientation.
+local function coin(a, b)
+	return pairHash(a, b) % 2
 end
 
 local function writeFact(reference, target)
@@ -127,27 +137,54 @@ function RoundGenerator.expand(rounds, extras)
 		table.sort(list, function(a, b)
 			return a.name < b.name
 		end)
+		local candidates = {}
 		for i = 1, #list - 1 do
 			for j = i + 1, #list do
 				local a, b = list[i], list[j]
 				local ratio = math.max(a.height, b.height) / math.min(a.height, b.height)
 				if ratio >= MIN_RATIO and ratio <= MAX_RATIO and not existing[a.name .. "|" .. b.name] then
-					local reference, target = a, b
-					if coin(a.name, b.name) == 1 then
-						reference, target = b, a
-					end
-					table.insert(rounds, {
-						referenceName = reference.name,
-						referenceIcon = reference.icon,
-						referenceHeight = reference.height,
-						targetName = target.name,
-						targetIcon = target.icon,
-						targetHeight = target.height,
-						category = category,
-						fact = writeFact(reference, target),
-					})
-					added += 1
+					table.insert(candidates, { a = a, b = b, order = pairHash(b.name, a.name) })
 				end
+			end
+		end
+		-- A stable shuffle, so the cap spreads partners evenly.
+		table.sort(candidates, function(x, y)
+			if x.order ~= y.order then
+				return x.order < y.order
+			end
+			return x.a.name .. x.b.name < y.a.name .. y.b.name
+		end)
+		local used = {}
+		local taken = {}
+		local function take(pair)
+			local a, b = pair.a, pair.b
+			local reference, target = a, b
+			if coin(a.name, b.name) == 1 then
+				reference, target = b, a
+			end
+			table.insert(rounds, {
+				referenceName = reference.name,
+				referenceIcon = reference.icon,
+				referenceHeight = reference.height,
+				targetName = target.name,
+				targetIcon = target.icon,
+				targetHeight = target.height,
+				category = category,
+				fact = writeFact(reference, target),
+			})
+			used[a.name] = (used[a.name] or 0) + 1
+			used[b.name] = (used[b.name] or 0) + 1
+			taken[pair] = true
+			added += 1
+		end
+		for _, pair in ipairs(candidates) do
+			if (used[pair.a.name] or 0) < MAX_PAIRS_PER_OBJECT and (used[pair.b.name] or 0) < MAX_PAIRS_PER_OBJECT then
+				take(pair)
+			end
+		end
+		for _, pair in ipairs(candidates) do
+			if not taken[pair] and ((used[pair.a.name] or 0) < MIN_PAIRS or (used[pair.b.name] or 0) < MIN_PAIRS) then
+				take(pair)
 			end
 		end
 	end

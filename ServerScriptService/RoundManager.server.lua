@@ -197,8 +197,8 @@ local function isEligible(round, categoryFilter)
 end
 
 -- Picks a round for this player: first a difficulty, weighted by their
--- Sense (more Sense = harder mix), then a random unseen round of that
--- difficulty. Pass a categoryFilter string, or nil for "any category".
+-- Sense (more Sense = harder mix), then (for mixed rounds) a category, then
+-- a random unseen round of that difficulty. Pass a categoryFilter string, or nil for "any category".
 local function pickRoundIndex(player, categoryFilter)
 	local history = playerHistory[player] or {}
 	local recent = {}
@@ -223,7 +223,22 @@ local function pickRoundIndex(player, categoryFilter)
 	end
 	local level = Difficulty.choose(counts, player:GetAttribute("Sense") or 0)
 	if level then
-		return fresh[level][math.random(1, #fresh[level])]
+		local pool = fresh[level]
+		if categoryFilter == nil then
+			-- Mixed rounds: pick a category evenly first, so a category
+			-- with lots of rounds (Animals) doesn't crowd out the rest.
+			local byCategory, names = {}, {}
+			for _, index in ipairs(pool) do
+				local category = ScaleData.Rounds[index].category
+				if not byCategory[category] then
+					byCategory[category] = {}
+					table.insert(names, category)
+				end
+				table.insert(byCategory[category], index)
+			end
+			pool = byCategory[names[math.random(1, #names)]]
+		end
+		return pool[math.random(1, #pool)]
 	end
 
 	-- Everything eligible was seen recently (tiny category): allow repeats.

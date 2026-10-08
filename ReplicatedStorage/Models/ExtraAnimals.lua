@@ -14,71 +14,7 @@ local box, ball, beam, vcyl = Kit.box, Kit.ball, Kit.beam, Kit.vcyl
 local rgb, BLACK, WHITE = Kit.rgb, Kit.BLACK, Kit.WHITE
 local V = Vector3.new
 
--- Four-legged body with legs, head, ears and tail. Options:
--- len, bodyH, legH, width, color, belly, headLen, headH, neck (rise of the
--- head above the back), ear = {w, h}, tail (length), snout (color),
--- horns (color), mane (color), hump (height), stripes (color).
-local function quad(m, o)
-	local len, bh, lh, w = o.len, o.bodyH, o.legH, o.width
-	local lw = o.legW or w * 0.3
-	local color = o.color
-	for _, x in ipairs({ -len / 2 + lw * 0.7, len / 2 - lw * 0.7 }) do
-		for _, z in ipairs({ -w / 2 + lw / 2, w / 2 - lw / 2 }) do
-			box(m, V(lw, lh, lw), V(x, lh / 2, z), o.legColor or color)
-		end
-	end
-	box(m, V(len, bh, w), V(0, lh + bh / 2, 0), color)
-	if o.belly then
-		box(m, V(len * 0.8, bh * 0.35, w * 1.02), V(0, lh + bh * 0.2, 0), o.belly)
-	end
-	if o.stripes then
-		for i = -2, 2 do
-			box(m, V(len * 0.07, bh * 1.02, w * 1.02), V(i * len * 0.17, lh + bh / 2, 0), o.stripes)
-		end
-	end
-	if o.hump then
-		box(m, V(len * 0.28, o.hump, w * 0.8), V(len * 0.05, lh + bh + o.hump / 2, 0), color)
-	end
-	local hl, hh = o.headLen, o.headH
-	local neck = o.neck or 0
-	local hx = -len / 2 - hl * 0.35
-	local hy = lh + bh + neck - hh * 0.1
-	if neck > 0 then
-		beam(m, V(-len / 2 + len * 0.1, lh + bh * 0.8, 0), V(hx + hl * 0.3, hy, 0), w * 0.55, color)
-	end
-	box(m, V(hl, hh, w * 0.75), V(hx, hy, 0), color)
-	if o.snout then
-		box(m, V(hl * 0.35, hh * 0.55, w * 0.6), V(hx - hl * 0.45, hy - hh * 0.2, 0), o.snout)
-		box(m, V(hl * 0.08, hh * 0.15, w * 0.3), V(hx - hl * 0.66, hy - hh * 0.1, 0), BLACK)
-	end
-	if o.mane then
-		box(m, V(hl * 0.8, hh * 1.25, w * 0.95), V(hx + hl * 0.55, hy, 0), o.mane)
-	end
-	local ear = o.ear or { w * 0.18, hh * 0.45 }
-	for _, z in ipairs({ -w * 0.22, w * 0.22 }) do
-		box(m, V(ear[1], ear[2], ear[1]), V(hx + hl * 0.2, hy + hh / 2 + ear[2] / 2, z), o.earColor or color)
-		if o.horns then
-			beam(m, V(hx + hl * 0.1, hy + hh / 2, z * 1.2), V(hx - hl * 0.1, hy + hh / 2 + ear[2] * 1.6, z * 1.8), w * 0.08, o.horns)
-		end
-	end
-	box(m, V(hl * 0.12, hh * 0.18, 0.05 * w), V(hx - hl * 0.25, hy + hh * 0.18, -w * 0.38), BLACK)
-	local tl = o.tail or len * 0.25
-	beam(m, V(len / 2, lh + bh * 0.85, 0), V(len / 2 + tl * 0.7, lh + bh * 0.85 - tl * 0.5, 0), w * 0.12, o.tailColor or color)
-end
-
--- Torpedo-shaped swimmer facing -X with fins.
-local function swimmer(m, len, thick, color, belly, finH)
-	local y = thick * 0.8
-	box(m, V(len * 0.5, thick, thick * 0.9), V(0, y, 0), color)
-	box(m, V(len * 0.25, thick * 0.8, thick * 0.8), V(-len * 0.34, y - thick * 0.05, 0), color)
-	box(m, V(len * 0.18, thick * 0.55, thick * 0.55), V(-len * 0.5, y - thick * 0.1, 0), color)
-	box(m, V(len * 0.3, thick * 0.65, thick * 0.7), V(len * 0.38, y + thick * 0.05, 0), color)
-	box(m, V(len * 0.5, thick * 0.45, thick * 0.92), V(-len * 0.02, y - thick * 0.3, 0), belly)
-	Kit.wedge(m, V(thick * 0.1, finH, len * 0.16), CFrame.new(-len * 0.02, y + thick / 2 + finH / 2, 0) * CFrame.Angles(0, math.pi / 2, 0), color)
-	box(m, V(len * 0.1, thick * 0.12, thick * 1.1), V(len * 0.5, y + thick * 0.15, 0), color)
-	box(m, V(len * 0.14, thick * 0.1, thick * 1.3), V(-len * 0.18, y - thick * 0.45, 0), color)
-	box(m, V(thick * 0.08, thick * 0.08, 0.1), V(-len * 0.4, y + thick * 0.15, -thick * 0.4), BLACK)
-end
+local quad, swimmer = Kit.quad, Kit.swimmer
 
 return function(builders)
 	builders["Labrador Dog"] = function(m)
