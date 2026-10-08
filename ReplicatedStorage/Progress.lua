@@ -205,8 +205,9 @@ function Progress.buildIndex(rounds)
 		table.insert(byCategory[category], name)
 	end
 	for _, round in ipairs(rounds) do
-		note(round.referenceName, round.referenceIcon, round.referenceHeight, round.category)
-		note(round.targetName, round.targetIcon, round.targetHeight, round.category)
+		-- Cross-category ("Mixed") rounds carry each object's own category.
+		note(round.referenceName, round.referenceIcon, round.referenceHeight, round.referenceCategory or round.category)
+		note(round.targetName, round.targetIcon, round.targetHeight, round.targetCategory or round.category)
 	end
 	local categories = {}
 	for category, names in pairs(byCategory) do

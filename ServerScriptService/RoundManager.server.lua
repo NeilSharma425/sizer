@@ -13,6 +13,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
 local ScaleData = require(ReplicatedStorage:WaitForChild("ScaleData"))
+local RoundGenerator = require(ReplicatedStorage:WaitForChild("RoundGenerator"))
 local Difficulty = require(ReplicatedStorage:WaitForChild("Difficulty"))
 local Progress = require(ReplicatedStorage:WaitForChild("Progress"))
 local Ranks = require(ReplicatedStorage:WaitForChild("Ranks"))
@@ -233,6 +234,9 @@ local function pickRoundIndex(player, categoryFilter)
 				if not byCategory[category] then
 					byCategory[category] = {}
 					table.insert(names, category)
+					if category == RoundGenerator.MIXED then
+						table.insert(names, category) -- cross-category rounds come up twice as often
+					end
 				end
 				table.insert(byCategory[category], index)
 			end
