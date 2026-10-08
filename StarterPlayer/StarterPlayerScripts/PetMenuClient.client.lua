@@ -174,6 +174,7 @@ gui.Enabled = false
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.Parent = playerGui
 
+local TOP_BAR = 80 -- more than Roblox's top bar inset on any device
 local dim = Instance.new("TextButton")
 dim.Name = "Dim"
 dim.Text = ""
@@ -181,7 +182,9 @@ dim.AutoButtonColor = false
 dim.BorderSizePixel = 0
 dim.BackgroundColor3 = Color3.new(0, 0, 0)
 dim.BackgroundTransparency = 0.45
-dim.Size = UDim2.fromScale(1, 1)
+-- Reach up over the top bar too, so the shade covers the whole screen.
+dim.Position = UDim2.fromOffset(0, -TOP_BAR)
+dim.Size = UDim2.new(1, 0, 1, TOP_BAR)
 dim.Parent = gui
 
 local window = frame(gui, {

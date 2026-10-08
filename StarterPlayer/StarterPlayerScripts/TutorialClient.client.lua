@@ -675,7 +675,8 @@ local function runTour(myToken)
 		local pad = 8
 		local x, y = target.AbsolutePosition.X - pad, target.AbsolutePosition.Y - pad
 		local w, h = target.AbsoluteSize.X + pad * 2, target.AbsoluteSize.Y + pad * 2
-		blockers[1].Position, blockers[1].Size = UDim2.fromOffset(0, 0), UDim2.fromOffset(screen.X, math.max(0, y))
+		-- The top shade reaches up over Roblox's top bar so no strip is left bright.
+		blockers[1].Position, blockers[1].Size = UDim2.fromOffset(0, -80), UDim2.fromOffset(screen.X, math.max(0, y) + 80)
 		blockers[2].Position, blockers[2].Size = UDim2.fromOffset(0, y + h), UDim2.fromOffset(screen.X, math.max(0, screen.Y - y - h))
 		blockers[3].Position, blockers[3].Size = UDim2.fromOffset(0, y), UDim2.fromOffset(math.max(0, x), h)
 		blockers[4].Position, blockers[4].Size = UDim2.fromOffset(x + w, y), UDim2.fromOffset(math.max(0, screen.X - x - w), h)
