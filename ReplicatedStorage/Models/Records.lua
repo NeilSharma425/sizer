@@ -2,7 +2,7 @@
 	Records.lua
 	ModuleScript: ReplicatedStorage.Models.Records
 
-	Record breakers for ObjectModels: the tiniest and biggest living things,
+	Record breakers (the CRAZY category) for ObjectModels: the tiniest and biggest living things,
 	prehistoric giants, huge machines, Earth's extremes and space giants.
 	Side-on builders face -X like the animals; rings, galaxies and flyers
 	face the camera. Every builder returns `measure`: the model-unit length
