@@ -4,8 +4,8 @@
 
 	Shows the pet-crate announcements from CrateManager: a banner when a
 	crate starts falling (only the rarity, e.g. "LEGENDARY PET CRATE
-	FALLING!" - the pet is a surprise), one when it lands and breaks open
-	(now the pet is revealed), and one if the leftover pets vanish. Claims
+	FALLING!" - the pet is a surprise) and one if the leftover pets vanish.
+	Breaking open has no banner; the spilled pets speak for themselves. Claims
 	don't get a banner. The crate, its light beam and the spilled pets are
 	real parts in the world.
 ]]
@@ -79,11 +79,20 @@ end
 local titleLabel = makeLabel({ Position = UDim2.new(0, 14, 0, 6), Size = UDim2.new(1, -28, 0, 34) })
 local subLabel = makeLabel({ Position = UDim2.new(0, 14, 0, 42), Size = UDim2.new(1, -28, 0, 26), TextColor3 = Color3.fromRGB(215, 220, 240) })
 
+-- True while the player is in a round (the game panel is showing).
+local function inGame()
+	local hud = playerGui:FindFirstChild("SizerHUD")
+	local panel = hud and hud:FindFirstChild("GamePanel")
+	return panel ~= nil and panel.Visible
+end
+
 local function updateScale()
 	local camera = workspace.CurrentCamera
 	if camera then
-		-- At most ~60% of the width and ~13% of the height (small on phones).
-		scale.Scale = ScreenFit.scaleFor(camera.ViewportSize, 480, 76, { fx = 0.6, fy = 0.13 })
+		-- At most ~60% of the width and ~13% of the height (small on phones),
+		-- and smaller still while playing a round.
+		local value = ScreenFit.scaleFor(camera.ViewportSize, 480, 76, { fx = 0.6, fy = 0.13 })
+		scale.Scale = inGame() and value * 0.65 or value
 	end
 end
 updateScale()
@@ -96,7 +105,7 @@ local function bannerTop()
 	if promptFrame and promptFrame.AbsoluteSize then
 		return promptFrame.AbsolutePosition.Y + promptFrame.AbsoluteSize.Y + 8
 	end
-	return 12
+	return inGame() and 2 or 12
 end
 
 local function show(title, sub, color, seconds)
@@ -133,13 +142,6 @@ CrateEvent.OnClientEvent:Connect(function(kind, data)
 		show(
 			string.upper(data.rarity) .. " PET CRATE FALLING!",
 			string.format("A mystery %s pet  -  only %d copies. Find the light beam!", data.rarity, data.copies),
-			color,
-			5
-		)
-	elseif kind == "opened" then
-		show(
-			"THE CRATE BROKE OPEN!",
-			string.format("%d %s %s pets spilled out - touch one to claim it!", 3, string.upper(data.rarity), string.upper(data.name)),
 			color,
 			5
 		)

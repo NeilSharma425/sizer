@@ -16,6 +16,7 @@ local RunService = game:GetService("RunService")
 
 local LOOP = 6 -- seconds per slap
 local VIEW_DISTANCE = 170
+local TEXT_DISTANCE = 45 -- SLAP! / AAAAH! only within this many studs
 
 local demos = {}
 
@@ -62,10 +63,11 @@ end
 
 local function makeBillboard(adornee, text, color)
 	local gui = Instance.new("BillboardGui")
-	gui.Size = UDim2.new(0, 160, 0, 60)
+	-- Sized in studs so it shrinks with distance, and only shown up close.
+	gui.Size = UDim2.new(5, 0, 1.9, 0)
 	gui.StudsOffset = Vector3.new(0, 4, 0)
-	gui.AlwaysOnTop = true
-	gui.MaxDistance = VIEW_DISTANCE
+	gui.AlwaysOnTop = false
+	gui.MaxDistance = TEXT_DISTANCE
 	gui.LightInfluence = 0
 	gui.Enabled = false
 	local label = Instance.new("TextLabel")
