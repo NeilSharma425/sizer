@@ -150,23 +150,12 @@ return function(builders)
 		return 5.4
 	end
 
-	builders["Bacteriophage"] = function(m)
-		local gray = rgb(150, 140, 190)
-		ell(m, V(2.4, 2.8, 2.4), V(0, 7.2, 0), gray)
-		box(m, V(1.2, 0.4, 1.2), V(0, 5.8, 0), rgb(110, 100, 150))
-		rod(m, V(0, 5.6, 0), V(0, 2.4, 0), 0.35, rgb(120, 110, 160))
-		box(m, V(1.8, 0.3, 1.8), V(0, 2.2, 0), rgb(110, 100, 150))
-		for i = 0, 5 do
-			local a = i * math.pi / 3
-			local hip = V(math.cos(a) * 0.8, 2.2, math.sin(a) * 0.8)
-			local knee = V(math.cos(a) * 2, 2.6, math.sin(a) * 2)
-			rod(m, hip, knee, 0.08, gray)
-			rod(m, knee, V(math.cos(a) * 2.6, 0.05, math.sin(a) * 2.6), 0.08, gray)
-		end
-		return 8.6
+	builders["Grain of Salt"] = function(m)
+		box(m, V(2.4, 2.4, 2.4), CFrame.new(0, 1.3, 0) * CFrame.Angles(0.15, 0.6, 0.1), rgb(245, 248, 252), Enum.Material.Glass)
+		return 2.4
 	end
 
-	builders["E. coli Bacterium"] = function(m)
+	builders["Bacteria"] = function(m)
 		local green = rgb(110, 175, 95)
 		ell(m, V(6, 2, 2), V(0, 1.4, 0), green)
 		for i = 1, 4 do
@@ -200,10 +189,12 @@ return function(builders)
 		return 4
 	end
 
-	builders["Fairyfly"] = function(m)
-		local measure = insect(m, { len = 4, h = 0.8, legH = 0.6, color = rgb(80, 60, 40), wings = rgb(230, 235, 245), wingLen = 2.8, antenna = 1.6 })
-		for i = 1, 6 do
-			rod(m, V(0.2 + i * 0.35, 2.4 + i * 0.1, 0), V(0.4 + i * 0.35, 3.1 + i * 0.15, 0), 0.03, rgb(200, 205, 215))
+	builders["Flea"] = function(m)
+		local brown = rgb(120, 70, 40)
+		local measure = insect(m, { len = 4, h = 2, legH = 0.6, color = brown, headFrac = 0.18, thoraxFrac = 0.3, abdomen = rgb(140, 85, 50), legColor = brown, antenna = 0.4 })
+		for _, s in ipairs({ -1, 1 }) do
+			beam(m, V(0.6, 1.2, s * 0.6), V(1.8, 2.6, s * 0.8), 0.3, brown)
+			beam(m, V(1.8, 2.6, s * 0.8), V(2.4, 0.1, s * 0.8), 0.22, brown)
 		end
 		return measure
 	end
@@ -241,11 +232,11 @@ return function(builders)
 		return 3
 	end
 
-	builders["Paedophryne Frog"] = function(m)
+	builders["Smallest Frog"] = function(m)
 		return frog(m, 1, rgb(110, 80, 55), rgb(85, 60, 40))
 	end
 
-	builders["Nano-Chameleon"] = function(m)
+	builders["Smallest Lizard"] = function(m)
 		local measure = lizard(m, { len = 2.6, h = 1.4, legH = 0.5, w = 0.9, tail = 2, head = { 1.3, 1.2 }, color = rgb(160, 120, 80), eye = rgb(240, 140, 40) })
 		ball(m, 0.9, V(3.1, 0.5, 0), rgb(160, 120, 80))
 		return measure
@@ -277,7 +268,7 @@ return function(builders)
 		return measure
 	end
 
-	builders["Etruscan Shrew"] = function(m)
+	builders["Tiny Shrew"] = function(m)
 		local measure = critter(m, { len = 3.2, h = 1.3, color = rgb(140, 115, 95), head = 1, ear = { 0.35, 0.3 }, tail = { 2, -10, 0.12 }, nose = rgb(230, 160, 160) })
 		beam(m, V(-2, 1.2, 0), V(-2.8, 1.05, 0), 0.3, rgb(160, 130, 110))
 		return measure
@@ -287,7 +278,7 @@ return function(builders)
 		return bird(m, { legH = 0.3, body = { 1.8, 0.9, 0.8 }, tilt = 30, color = rgb(60, 140, 200), belly = rgb(225, 225, 225), neck = 0.1, head = 0.7, headColor = rgb(230, 50, 90), beak = { 0.9, BLACK, -0.1, 0.12 }, tail = { 0.7, -30, 0.5 }, legColor = BLACK, measure = "length" })
 	end
 
-	builders["Mouse Lemur"] = function(m)
+	builders["Tiny Lemur"] = function(m)
 		local measure = critter(m, { len = 2.6, h = 1.5, color = rgb(170, 120, 80), belly = rgb(230, 215, 190), head = 1.3, ear = { 0.6, 0.7 }, tail = { 3, 30, 0.2 }, nose = rgb(90, 60, 50) })
 		for _, s in ipairs({ -1, 1 }) do
 			ball(m, 0.45, V(-1.65, 2.1, s * 0.4), rgb(255, 200, 60))
@@ -296,7 +287,7 @@ return function(builders)
 		return measure
 	end
 
-	builders["Pygmy Marmoset"] = function(m)
+	builders["Finger Monkey"] = function(m)
 		local fur = rgb(150, 125, 85)
 		local measure = critter(m, { len = 3, h = 1.8, color = fur, head = 1.6, ear = { 0.3, 0.3 }, nose = BLACK })
 		for i = 0, 7 do
@@ -306,7 +297,7 @@ return function(builders)
 		return measure
 	end
 
-	builders["Thumbelina the Horse"] = function(m)
+	builders["Smallest Horse"] = function(m)
 		return quad(m, { len = 5, bodyH = 2.6, legH = 2, width = 2.2, color = rgb(120, 70, 45), headLen = 2.2, headH = 1.6, neck = 1.6, snout = rgb(90, 55, 35), mane = rgb(60, 35, 25), ear = { 0.4, 0.6 }, tail = 2.4, tailColor = rgb(60, 35, 25) })
 	end
 
@@ -325,7 +316,7 @@ return function(builders)
 		return measure
 	end
 
-	builders["Goliath Frog"] = function(m)
+	builders["Biggest Frog"] = function(m)
 		return frog(m, 1.6, rgb(95, 120, 70), rgb(75, 95, 55))
 	end
 
@@ -401,7 +392,7 @@ return function(builders)
 		return octopus(m, rgb(190, 80, 60))
 	end
 
-	builders["Reticulated Python"] = function(m)
+	builders["Longest Snake"] = function(m)
 		return snake(m, { len = 30, thick = 1.2, color = rgb(170, 140, 80), pattern = rgb(60, 50, 35) })
 	end
 
@@ -409,7 +400,7 @@ return function(builders)
 		return squid(m, rgb(170, 60, 60), 12)
 	end
 
-	builders["Lion's Mane Jellyfish"] = function(m)
+	builders["Biggest Jellyfish"] = function(m)
 		local bell = ell(m, V(7, 3.4, 7), V(0, 31, 0), rgb(220, 110, 60))
 		bell.Transparency = 0.15
 		for i = -6, 6 do
@@ -421,7 +412,7 @@ return function(builders)
 		return 32.7
 	end
 
-	builders["Rafflesia"] = function(m)
+	builders["Biggest Flower"] = function(m)
 		local red, spot = rgb(180, 50, 40), rgb(240, 220, 210)
 		local base = tilted(2.4)
 		for i = 0, 4 do
@@ -437,7 +428,7 @@ return function(builders)
 		return 8.2
 	end
 
-	builders["Titan Arum"] = function(m)
+	builders["Corpse Flower"] = function(m)
 		Kit.vcyl(m, 2, 0.7, V(0, 1, 0), rgb(80, 120, 60))
 		Kit.cone(m, 4.6, 3, 2.2, V(0, 1.6, 0), rgb(120, 30, 60), nil, 5)
 		taper(m, V(0, 2, 0), V(0, 12, 0), 0.9, 0.4, 5, rgb(230, 200, 90))
@@ -455,7 +446,7 @@ return function(builders)
 		return 10
 	end
 
-	builders["Coco de Mer Seed"] = function(m)
+	builders["Biggest Seed"] = function(m)
 		for _, s in ipairs({ -1, 1 }) do
 			ell(m, V(3, 4.4, 2.6), V(s * 1.3, 2.2, 0), rgb(110, 70, 40))
 		end
@@ -474,18 +465,18 @@ return function(builders)
 		return 30
 	end
 
-	builders["General Sherman Tree"] = function(m)
+	builders["Biggest Tree"] = function(m)
 		return tree(m, 30, 3.2, 1.4, 16, 32, 13, rgb(140, 70, 50), rgb(60, 110, 60))
 	end
 
-	builders["Hyperion Tree"] = function(m)
+	builders["Tallest Tree"] = function(m)
 		return tree(m, 42, 1.6, 0.5, 24, 44, 9, rgb(150, 75, 50), rgb(55, 105, 60))
 	end
 
 	--======================================================================
 	-- Prehistoric giants
 	--======================================================================
-	builders["Argentinosaurus"] = function(m)
+	builders["Biggest Dinosaur"] = function(m)
 		local green = rgb(120, 130, 100)
 		for _, x in ipairs({ -3.4, 3.4 }) do
 			for _, z in ipairs({ -1.6, 1.6 }) do
@@ -500,21 +491,21 @@ return function(builders)
 		return 36.2
 	end
 
-	builders["Titanoboa"] = function(m)
+	builders["Biggest Snake Ever"] = function(m)
 		return snake(m, { len = 40, thick = 2.6, color = rgb(80, 85, 60), pattern = rgb(45, 45, 35) })
 	end
 
-	builders["Quetzalcoatlus"] = function(m)
+	builders["Giant Pterodactyl"] = function(m)
 		local measure = flyer(m, { span = 30, bodyL = 3.4, bodyW = 1.6, color = rgb(220, 210, 190), wing = rgb(180, 120, 90), chord = 3, tipChord = 1.4, sweep = 1.4, head = 1.4, beak = { 4, rgb(230, 210, 170) } })
 		beam(m, V(0, 6.8, 0), V(0, 5.6, 0.4), 0.5, rgb(200, 80, 60))
 		return measure
 	end
 
-	builders["Paraceratherium"] = function(m)
+	builders["Biggest Land Mammal Ever"] = function(m)
 		return quad(m, { len = 9, bodyH = 5, legH = 9, width = 3.4, color = rgb(150, 135, 120), headLen = 3.4, headH = 2.2, neck = 2.4, snout = rgb(130, 115, 100), ear = { 0.5, 0.8 }, tail = 2 })
 	end
 
-	builders["Gigantopithecus"] = function(m)
+	builders["Prehistoric Giant Ape"] = function(m)
 		return ape(m, { h = 9, color = rgb(160, 90, 45), skin = rgb(100, 70, 55) })
 	end
 
@@ -522,7 +513,7 @@ return function(builders)
 		return bird(m, { legH = 5.4, body = { 5, 4.4, 3.8 }, tilt = 10, color = rgb(110, 85, 60), neck = 3.4, head = 1.2, beak = { 0.8, rgb(90, 80, 70) }, tail = { 0.6, -40 }, legColor = rgb(120, 110, 100) })
 	end
 
-	builders["Irish Elk"] = function(m)
+	builders["Giant Ice Age Deer"] = function(m)
 		local o = { len = 8, bodyH = 3.6, legH = 6, width = 2.6, color = rgb(140, 100, 65), legColor = rgb(110, 80, 55), headLen = 2.8, headH = 1.8, neck = 2.6, snout = rgb(90, 65, 45), mane = rgb(100, 70, 45), ear = { 0.4, 0.8 }, tail = 0.8 }
 		local measure = quad(m, o)
 		local hx, hy = Body.quadHead(o)
@@ -536,7 +527,7 @@ return function(builders)
 		return measure
 	end
 
-	builders["Arthropleura"] = function(m)
+	builders["Prehistoric Giant Millipede"] = function(m)
 		local brown = rgb(150, 90, 50)
 		for i = 0, 15 do
 			ell(m, V(1, 0.9, 2.2), V(-7.5 + i * 1, 0.8, 0), i % 2 == 0 and brown or rgb(120, 70, 40))
@@ -549,16 +540,16 @@ return function(builders)
 		return 17.4
 	end
 
-	builders["Meganeura"] = function(m)
+	builders["Prehistoric Giant Dragonfly"] = function(m)
 		local measure = flyer(m, { span = 14, bodyL = 9, bodyW = 0.8, color = rgb(70, 120, 90), wing = rgb(200, 220, 230), chord = 1.6, tipChord = 1.3, sweep = 0.2, head = 1.2, headColor = rgb(90, 160, 120) })
 		return measure
 	end
 
-	builders["Sarcosuchus"] = function(m)
+	builders["SuperCroc"] = function(m)
 		return lizard(m, { len = 9, h = 2.2, legH = 1, w = 3.4, tail = 9, head = { 6, 1.2 }, color = rgb(85, 95, 65), belly = rgb(190, 185, 150), spikes = rgb(60, 70, 45) })
 	end
 
-	builders["Basilosaurus"] = function(m)
+	builders["Prehistoric Whale"] = function(m)
 		swimmer(m, 30, 3, rgb(90, 100, 115), rgb(200, 205, 210), 0.4)
 		return 30
 	end
@@ -570,7 +561,7 @@ return function(builders)
 	--======================================================================
 	-- Giant machines and buildings
 	--======================================================================
-	builders["Seawise Giant"] = function(m)
+	builders["Longest Ship Ever"] = function(m)
 		box(m, V(40, 2.4, 6), V(0, 1.2, 0), rgb(150, 40, 40))
 		box(m, V(40, 2, 6), V(0, 3.4, 0), rgb(40, 45, 60))
 		Kit.wedge(m, V(6, 4.4, 3), CFrame.new(-21.5, 2.2, 0) * CFrame.Angles(0, -math.pi / 2, 0), rgb(40, 45, 60))
@@ -580,7 +571,7 @@ return function(builders)
 		return 43
 	end
 
-	builders["Antonov An-225"] = function(m)
+	builders["Biggest Plane Ever"] = function(m)
 		local white = rgb(235, 235, 240)
 		ell(m, V(2.6, 22, 2.4), V(0, 12, 0), white)
 		for _, s in ipairs({ -1, 1 }) do
@@ -606,7 +597,7 @@ return function(builders)
 		return 30
 	end
 
-	builders["Bagger 293"] = function(m)
+	builders["Biggest Digging Machine"] = function(m)
 		local gray = rgb(150, 150, 140)
 		for _, x in ipairs({ -3, 3 }) do
 			box(m, V(5, 1.6, 6), V(x, 0.8, 0), rgb(60, 60, 60))
@@ -627,7 +618,7 @@ return function(builders)
 		return 30
 	end
 
-	builders["BelAZ 75710"] = function(m)
+	builders["Biggest Dump Truck"] = function(m)
 		local yellow = rgb(240, 190, 40)
 		for _, x in ipairs({ -3.4, 1.6, 3.6 }) do
 			Kit.wheel(m, V(x, 1.6, -1.6), 1.6, 1.2, BLACK, rgb(120, 120, 120))
@@ -639,7 +630,7 @@ return function(builders)
 		return 10
 	end
 
-	builders["Starship Rocket"] = function(m)
+	builders["SpaceX Starship"] = function(m)
 		local steel = rgb(200, 205, 212)
 		Kit.vcyl(m, 14, 1.8, V(0, 7, 0), steel)
 		for i = 0, 3 do
@@ -654,7 +645,7 @@ return function(builders)
 		return 25
 	end
 
-	builders["Kingda Ka"] = function(m)
+	builders["Tallest Roller Coaster"] = function(m)
 		local green = rgb(70, 190, 80)
 		for _, z in ipairs({ -0.6, 0.6 }) do
 			box(m, V(0.4, 26, 0.4), V(-2.6, 13, z), green)
@@ -674,7 +665,7 @@ return function(builders)
 		return 29.6
 	end
 
-	builders["Ain Dubai"] = function(m)
+	builders["Biggest Ferris Wheel"] = function(m)
 		local hub = V(0, 13, 0)
 		Kit.ring(m, hub, 11, 0.5, 0.6, 32, rgb(230, 230, 235))
 		for i = 0, 11 do
@@ -688,12 +679,12 @@ return function(builders)
 		return 25
 	end
 
-	builders["Statue of Unity"] = function(m)
+	builders["Tallest Statue"] = function(m)
 		box(m, V(8, 1.6, 8), V(0, 0.8, 0), rgb(190, 185, 170))
 		return figure(m, 18, 1.6, rgb(150, 120, 70), rgb(140, 110, 60)) - 1.6 -- the statue itself, not the base
 	end
 
-	builders["Three Gorges Dam"] = function(m)
+	builders["Biggest Dam"] = function(m)
 		box(m, V(30, 4, 2.4), V(0, 2, 0), rgb(200, 200, 195))
 		for i = -6, 6 do
 			box(m, V(0.9, 2.6, 0.1), V(i * 1.6, 2, -1.25), rgb(150, 150, 150))
@@ -711,7 +702,7 @@ return function(builders)
 		return 16.5
 	end
 
-	builders["Peel P50"] = function(m)
+	builders["Smallest Car"] = function(m)
 		ell(m, V(4, 2.2, 2.6), V(0, 1.6, 0), rgb(220, 40, 40))
 		ell(m, V(1.6, 1, 2.3), V(-0.6, 2.3, 0), rgb(150, 200, 230))
 		for _, p in ipairs({ V(-1.2, 0.5, -1.2), V(-1.2, 0.5, 1.2), V(1.4, 0.5, 0) }) do
@@ -734,7 +725,7 @@ return function(builders)
 		return 12
 	end
 
-	builders["Mauna Kea"] = function(m)
+	builders["Tallest Mountain from the Sea Floor"] = function(m)
 		Kit.cone(m, 12, 14, 1.2, V(0, 0, 0), rgb(120, 85, 65), nil, 8)
 		Kit.cone(m, 2, 2.6, 0.8, V(0, 10, 0), WHITE, nil, 3)
 		local sea = box(m, V(32, 6.6, 30), V(0, 3.3, 0), rgb(40, 110, 190))
@@ -742,7 +733,7 @@ return function(builders)
 		return 12
 	end
 
-	builders["Angel Falls"] = function(m)
+	builders["Tallest Waterfall"] = function(m)
 		box(m, V(8, 14, 6), V(2, 7, 0), rgb(110, 85, 60))
 		box(m, V(8.2, 0.8, 6.2), V(2, 14.4, 0), rgb(70, 140, 60))
 		local fall = box(m, V(1.6, 14, 0.4), V(-2.2, 7, -1), rgb(220, 240, 255))
@@ -773,7 +764,7 @@ return function(builders)
 		return 20
 	end
 
-	builders["Iceberg B-15"] = function(m)
+	builders["Biggest Iceberg"] = function(m)
 		box(m, V(20, 2.6, 8), V(0, 2.8, 0), rgb(235, 245, 250))
 		box(m, V(20.2, 0.4, 8.2), V(0, 4.1, 0), WHITE)
 		local sea = box(m, V(24, 1.6, 10), V(0, 0.8, 0), rgb(50, 110, 170))
@@ -800,7 +791,7 @@ return function(builders)
 		return 20
 	end
 
-	builders["Naica Giant Crystal"] = function(m)
+	builders["Biggest Crystal"] = function(m)
 		local function crystal(len, w, cf)
 			local p = box(m, V(len, w, w), cf, rgb(235, 240, 245), Enum.Material.Glass)
 			p.Transparency = 0.2
@@ -812,14 +803,14 @@ return function(builders)
 		return 14
 	end
 
-	builders["Cullinan Diamond"] = function(m)
+	builders["Biggest Diamond"] = function(m)
 		local ice = rgb(225, 240, 250)
 		Kit.cone(m, 1.6, 1.8, 0.4, V(0, 1.8, 0), ice, Enum.Material.Glass, 4)
 		Kit.cone(m, 1.8, 0.2, 1.8, V(0, 0, 0), ice, Enum.Material.Glass, 4)
 		return 3.4
 	end
 
-	builders["Chicxulub Asteroid"] = function(m)
+	builders["Dinosaur-Killing Asteroid"] = function(m)
 		lumpy(m, V(0, 3, 0), 5, rgb(110, 105, 100), 7, 3)
 		for i = 1, 4 do
 			ball(m, 0.9, V(-2.2, 2 + i * 0.6, (i - 2.5) * 0.9), rgb(80, 75, 70))
@@ -838,13 +829,13 @@ return function(builders)
 		return 4
 	end
 
-	builders["Olympus Mons"] = function(m)
+	builders["Biggest Volcano (Mars)"] = function(m)
 		Kit.cone(m, 3, 20, 4, V(0, 0, 0), rgb(190, 100, 60), nil, 5)
 		Kit.vcyl(m, 0.3, 3, V(0, 3, 0), rgb(120, 60, 40))
 		return 3
 	end
 
-	builders["Valles Marineris"] = function(m)
+	builders["Biggest Canyon (Mars)"] = function(m)
 		for _, s in ipairs({ -1, 1 }) do
 			box(m, V(30, 2, 3), V(0, 1, s * 2.4), rgb(190, 100, 60))
 		end
@@ -852,7 +843,7 @@ return function(builders)
 		return 30
 	end
 
-	builders["Vesta"] = function(m)
+	builders["Giant Asteroid"] = function(m)
 		lumpy(m, V(0, 3.2, 0), 5.6, rgb(150, 145, 140), 6, 4)
 		ball(m, 1.6, V(-2.4, 3.6, -1.4), rgb(110, 105, 100))
 		return 6.4
@@ -878,7 +869,7 @@ return function(builders)
 		return 22
 	end
 
-	builders["Sagittarius A*"] = function(m)
+	builders["Milky Way's Black Hole"] = function(m)
 		local center = V(0, 7, 0)
 		ball(m, 4, center, BLACK)
 		ellipseRing(m, center, 4, 1.2, 0.8, 40, rgb(255, 160, 60), NEON)
@@ -894,7 +885,7 @@ return function(builders)
 		return 6
 	end
 
-	builders["UY Scuti"] = function(m)
+	builders["Biggest Star"] = function(m)
 		ball(m, 6, V(0, 3, 0), rgb(255, 90, 50), NEON)
 		for i = 1, 5 do
 			ball(m, 1, V(-2.5, 1.6 + i * 0.6, (i - 3) * 1), rgb(220, 60, 30))
@@ -902,7 +893,7 @@ return function(builders)
 		return 6
 	end
 
-	builders["TON 618"] = function(m)
+	builders["Biggest Black Hole"] = function(m)
 		local center = V(0, 9, 0)
 		ball(m, 4, center, BLACK)
 		ellipseRing(m, center, 6, 1.8, 1.2, 40, rgb(190, 110, 255), NEON)
@@ -975,11 +966,11 @@ return function(builders)
 		return 8.3
 	end
 
-	builders["Zeus the Tallest Dog"] = function(m)
+	builders["Tallest Dog"] = function(m)
 		return quad(m, { len = 6.4, bodyH = 2.6, legH = 5, width = 2, color = rgb(90, 95, 110), headLen = 2.6, headH = 2, neck = 1.8, snout = rgb(60, 60, 70), ear = { 0.5, 0.9 }, tail = 3.2 })
 	end
 
-	builders["Darius the Giant Rabbit"] = function(m)
+	builders["Biggest Rabbit"] = function(m)
 		local measure = critter(m, { len = 6, h = 3.4, color = rgb(160, 130, 100), belly = rgb(220, 205, 185), head = 2.4, ear = { 0.8, 3.2 }, tail = { 0.8, 30, 0.6 }, tailColor = WHITE })
 		return measure
 	end
@@ -994,11 +985,11 @@ return function(builders)
 		return 10
 	end
 
-	builders["Asian Giant Hornet"] = function(m)
+	builders["Murder Hornet"] = function(m)
 		return insect(m, { len = 5, h = 1.6, color = rgb(230, 150, 40), headColor = rgb(240, 170, 50), abdomen = rgb(240, 170, 50), stripes = rgb(60, 40, 30), wings = rgb(220, 225, 235), wingLen = 2.8 })
 	end
 
-	builders["Titan Beetle"] = function(m)
+	builders["Longest Beetle"] = function(m)
 		local measure = insect(m, { len = 6.4, h = 1.8, legH = 0.8, color = rgb(80, 50, 35), headFrac = 0.14, thoraxFrac = 0.26, abdomen = rgb(110, 70, 45), antenna = 2.4 })
 		for _, s in ipairs({ -1, 1 }) do
 			beam(m, V(-3, 1.6, s * 0.3), V(-4, 1.2, s * 0.5), 0.3, BLACK)
