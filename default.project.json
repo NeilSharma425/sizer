@@ -39,6 +39,9 @@
       },
       "ScreenFit": {
         "$path": "ReplicatedStorage/ScreenFit.lua"
+      },
+      "Icons": {
+        "$path": "ReplicatedStorage/Icons.lua"
       }
     },
     "ServerScriptService": {
