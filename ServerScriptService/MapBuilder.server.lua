@@ -615,7 +615,7 @@ local function buildDecor()
 	end
 	for _, f in ipairs({
 		{ -50, 74 }, { -72, 76 }, { 50, 74 }, { 72, 76 }, { -30, -70 }, { 30, -70 },
-		{ -27, 18 }, { 27, -34 }, { 80, -2 }, { -84, 40 }, { -26, 48 }, { 26, 48 },
+		{ -27, 18 }, { 27, -34 }, { 80, -2 }, { -84, 40 }, { 26, 48 },
 	}) do
 		flowerPatch(Vector3.new(f[1], 0, f[2]), decor)
 	end
@@ -678,7 +678,7 @@ end
 local STATIONS = {
 	{ category = "Animals", label = "ANIMALS", icon = "🐘", color = Color3.fromRGB(255, 140, 40), pos = Vector3.new(-15, 0, 32) },
 	{ category = "Landmarks", label = "LANDMARKS", icon = "🗽", color = Color3.fromRGB(60, 150, 255), pos = Vector3.new(15, 0, 32) },
-	-- The tiniest and biggest things (Everyday Objects now only come up in MIXED).
+	-- The tiniest and biggest things.
 	{ category = "Crazy", label = "CRAZY", icon = "🤯", color = Color3.fromRGB(255, 85, 155), pos = Vector3.new(-15, 0, 2), subtitle = "TINIEST & BIGGEST" },
 	{ category = "Space", label = "SPACE", icon = "🪐", color = Color3.fromRGB(150, 95, 255), pos = Vector3.new(15, 0, 2) },
 	{ category = "", label = "60s CHALLENGE", icon = "⏱️", color = Color3.fromRGB(255, 200, 40), pos = Vector3.new(-15, 0, -28), mode = "timed", subtitle = "BEAT THE CLOCK" },
@@ -704,6 +704,15 @@ local STATIONS = {
 		pos = Vector3.new(26, 0, 72),
 		facing = Vector3.new(0, 0, -1),
 		subtitle = "& CONTINENTS",
+	},
+	-- Between the left station row and the DUELS stand, facing the spawn.
+	{
+		category = "Everyday Objects",
+		label = "EVERYDAY",
+		icon = "☕",
+		color = Color3.fromRGB(60, 170, 230),
+		pos = Vector3.new(-26, 0, 52),
+		facing = Vector3.new(0, 0, -1),
 	},
 }
 

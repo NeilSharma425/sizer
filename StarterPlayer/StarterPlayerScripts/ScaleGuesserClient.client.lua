@@ -596,7 +596,7 @@ local dragHint = label(panel, {
 	AnchorPoint = Vector2.new(0.5, 1),
 	Position = UDim2.new(0.5, 0, 0, -10),
 	Size = UDim2.new(0, 520, 0, 30),
-	Text = "TIP: drag the objects onto each other to compare!",
+	Text = "TIP: drag the objects onto or above each other to compare!",
 	TextColor3 = Color3.fromRGB(255, 225, 120),
 	Visible = false,
 })
@@ -831,7 +831,8 @@ local function makeObject(name, color)
 	textStroke(text, 3)
 	-- x/size: where it stands now; homeX: its side-by-side spot; slide: how
 	-- far (0-1) the player has dragged it toward the other object.
-	return { color = color, anchor = anchor, label = text, model = nil, measure = 1, x = 0, homeX = 0, size = Vector3.one, slide = 0 }
+	-- raise: how far (studs) the player has lifted it off the floor.
+	return { color = color, anchor = anchor, label = text, model = nil, measure = 1, x = 0, homeX = 0, size = Vector3.one, slide = 0, raise = 0, lift = 0 }
 end
 
 local reference = makeObject("Reference", Color3.fromRGB(60, 120, 230))
@@ -881,21 +882,27 @@ local function scaleObject(obj, measuredSize)
 	return size
 end
 
--- Stand the model on the floor with its bounding box centered on centerX
--- (and z studs toward or away from the camera).
-local function positionObject(obj, centerX, z)
+-- Stand the model on the floor (or `lift` studs above it) with its bounding
+-- box centered on centerX, z studs toward or away from the camera.
+local function positionObject(obj, centerX, z, lift)
 	local model = obj.model
 	local boxCFrame, size = model:GetBoundingBox()
 	local offset = boxCFrame.Position - model:GetPivot().Position
 	local bottom = offset.Y - size.Y / 2
-	model:PivotTo(CFrame.new(SCENE + Vector3.new(centerX - offset.X, -bottom, -offset.Z + (z or 0))))
-	obj.anchor.Position = SCENE + Vector3.new(centerX, size.Y, z or 0)
-	obj.x, obj.size = centerX, size
+	lift = lift or 0
+	model:PivotTo(CFrame.new(SCENE + Vector3.new(centerX - offset.X, -bottom + lift, -offset.Z + (z or 0))))
+	obj.anchor.Position = SCENE + Vector3.new(centerX, size.Y + lift, z or 0)
+	obj.x, obj.size, obj.lift = centerX, size, lift
 end
 
--- Drag-to-compare: each object can be slid onto the other. A dragged object
--- moves in front of the other one and turns see-through, so both outlines
--- show where they overlap.
+-- Drag-to-compare: each object can be slid onto the other, and raised (up
+-- to the top of the taller one) to line up tops or stack them. A dragged
+-- object moves in front of the other one and turns see-through, so both
+-- outlines show where they overlap.
+local function maxLift(obj)
+	return math.max(0, framing.height - obj.size.Y)
+end
+
 local function applySlide(obj, other)
 	if not obj.model then
 		return
@@ -903,7 +910,7 @@ local function applySlide(obj, other)
 	local f = obj.slide
 	local x = obj.homeX + (other.homeX - obj.homeX) * f
 	local z = -f * (obj.size.Z + other.size.Z) * 0.55
-	positionObject(obj, x, z)
+	positionObject(obj, x, z, math.clamp(obj.raise or 0, 0, maxLift(obj)))
 	local fade = f > 0.05 and math.min(0.55, f * 0.8) or 0
 	for _, d in ipairs(obj.model:GetDescendants()) do
 		if d:IsA("BasePart") then
@@ -965,6 +972,7 @@ local function placeParts(ratio)
 	reference.homeX, target.homeX = refX, targetX
 	positionObject(reference, refX)
 	positionObject(target, targetX)
+	framing.height = tallest
 	applySlide(reference, target)
 	applySlide(target, reference)
 
@@ -1219,7 +1227,8 @@ local function grabbed(obj, x, y)
 		return false
 	end
 	local half = math.max(obj.size.X / 2, framing.width * 0.04)
-	return math.abs(x - obj.x) <= half * 1.1 and y >= -1 and y <= obj.size.Y * 1.08 + 1
+	local bottom = obj.lift or 0
+	return math.abs(x - obj.x) <= half * 1.1 and y >= bottom - 1 and y <= bottom + obj.size.Y * 1.08 + 1
 end
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
@@ -1241,7 +1250,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	local obj = grabbed(first, x, y) and first or grabbed(second, x, y) and second or nil
 	if obj then
 		local other = obj == target and reference or target
-		compareDrag = { obj = obj, other = other, grabOffset = x - obj.x }
+		compareDrag = { obj = obj, other = other, grabOffset = x - obj.x, grabOffsetY = y - (obj.lift or 0) }
 		dragHintShown = true
 		if dragHint then
 			dragHint.Visible = false
@@ -1253,16 +1262,16 @@ UserInputService.InputChanged:Connect(function(input)
 	if not compareDrag or (input.UserInputType ~= Enum.UserInputType.MouseMovement and input.UserInputType ~= Enum.UserInputType.Touch) then
 		return
 	end
-	local x = stagePoint(input.Position)
+	local x, y = stagePoint(input.Position)
 	if not x then
 		return
 	end
 	local obj, other = compareDrag.obj, compareDrag.other
 	local span = other.homeX - obj.homeX
-	if math.abs(span) < 1e-4 then
-		return
+	if math.abs(span) > 1e-4 then
+		obj.slide = math.clamp((x - compareDrag.grabOffset - obj.homeX) / span, 0, 1)
 	end
-	obj.slide = math.clamp((x - compareDrag.grabOffset - obj.homeX) / span, 0, 1)
+	obj.raise = math.clamp(y - compareDrag.grabOffsetY, 0, maxLift(obj))
 	applySlide(obj, other)
 end)
 
@@ -1475,6 +1484,7 @@ RequestRound.OnClientEvent:Connect(function(roundInfo)
 	end
 	local ok, err = xpcall(function()
 		reference.slide, target.slide = 0, 0
+		reference.raise, target.raise = 0, 0
 		compareDrag = nil
 		setModel(reference, roundInfo.referenceName, roundInfo.referenceIcon)
 		setModel(target, roundInfo.targetName, roundInfo.targetIcon)
