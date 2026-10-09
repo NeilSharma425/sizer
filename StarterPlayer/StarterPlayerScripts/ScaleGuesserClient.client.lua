@@ -596,7 +596,7 @@ local dragHint = label(panel, {
 	AnchorPoint = Vector2.new(0.5, 1),
 	Position = UDim2.new(0.5, 0, 0, -10),
 	Size = UDim2.new(0, 520, 0, 30),
-	Text = "TIP: drag the objects onto or above each other to compare!",
+	Text = "TIP: drag the objects onto each other - scroll or pinch to zoom",
 	TextColor3 = Color3.fromRGB(255, 225, 120),
 	Visible = false,
 })
@@ -919,9 +919,13 @@ local function applySlide(obj, other)
 	end
 end
 
--- Camera that frames both objects so the taller one fills most of the
--- screen, leaving the bottom clear for the game panel.
-local function cameraFor(f)
+-- The player's zoom (1 = the automatic framing) and how far they've panned
+-- the view (studs, relative to that framing). Reset every round.
+local zoom = { level = 1, offX = 0, offY = 0 }
+
+-- The automatic framing: aim point (relative to SCENE), camera distance and
+-- the visible height, before any zoom.
+local function baseView(f)
 	local camera = workspace.CurrentCamera
 	local viewport = camera.ViewportSize
 	local aspect = viewport.X / math.max(viewport.Y, 1)
@@ -929,8 +933,17 @@ local function cameraFor(f)
 	local dist = math.max(f.height / 0.68 / (2 * t), f.width / 0.86 / (2 * t * aspect)) + f.depth / 2
 	local viewHeight = 2 * dist * t
 	local aimY = math.max(f.height * 0.5 - viewHeight * 0.1, 0)
-	local aim = SCENE + Vector3.new(f.cx, aimY, 0)
-	local eye = SCENE + Vector3.new(f.cx, aimY + dist * 0.1, -dist)
+	return f.cx, aimY, dist, viewHeight
+end
+
+-- Camera that frames both objects so the taller one fills most of the
+-- screen, leaving the bottom clear for the game panel, then applies the
+-- player's zoom and pan. Returns the unzoomed visible height too.
+local function cameraFor(f)
+	local aimX, aimY, dist, viewHeight = baseView(f)
+	local d = dist / zoom.level
+	local aim = SCENE + Vector3.new(aimX + zoom.offX, aimY + zoom.offY, 0)
+	local eye = aim + Vector3.new(0, d * 0.1, -d)
 	return CFrame.lookAt(eye, aim), viewHeight
 end
 
@@ -1228,6 +1241,63 @@ local function grabbed(obj, x, y)
 	return math.abs(x - obj.x) <= half * 1.1 and y >= bottom - 1 and y <= bottom + obj.size.Y * 1.08 + 1
 end
 
+--==========================================================================
+-- Zoom (mouse wheel, pinch or the + / - buttons) and panning while zoomed
+--==========================================================================
+
+local ZOOM_MIN, ZOOM_MAX = 0.7, 8
+local panDrag = nil -- { last = screen position } while dragging empty space
+
+-- Panning is allowed only as far as zooming has narrowed the view.
+local function clampPan()
+	local room = math.max(0, 1 - 1 / zoom.level)
+	local halfW = framing.width * 0.6 + 2
+	zoom.offX = math.clamp(zoom.offX, -halfW * room, halfW * room)
+	zoom.offY = math.clamp(zoom.offY, -framing.height * 0.5 * room, framing.height * room)
+end
+
+-- Zoom to `level`, keeping the stage point (px, py) still on screen (or the
+-- middle of the view when no point is given).
+local function setZoom(level, px, py)
+	level = math.clamp(level, ZOOM_MIN, ZOOM_MAX)
+	local aimX, aimY = baseView(framing)
+	local ax, ay = aimX + zoom.offX, aimY + zoom.offY
+	if px then
+		local k = zoom.level / level
+		ax, ay = px + (ax - px) * k, py + (ay - py) * k
+	end
+	zoom.level = level
+	zoom.offX, zoom.offY = ax - aimX, ay - aimY
+	clampPan()
+end
+
+local function resetZoom()
+	zoom.level, zoom.offX, zoom.offY = 1, 0, 0
+	panDrag = nil
+end
+
+UserInputService.InputChanged:Connect(function(input, gameProcessed)
+	if input.UserInputType ~= Enum.UserInputType.MouseWheel or gameProcessed or not inViewer then
+		return
+	end
+	local x, y = stagePoint(input.Position)
+	setZoom(zoom.level * 1.18 ^ input.Position.Z, x, y)
+end)
+
+local pinchStart = 1
+UserInputService.TouchPinch:Connect(function(touchPositions, scale, _, state, gameProcessed)
+	if gameProcessed or not inViewer or #touchPositions < 2 then
+		return
+	end
+	if state == Enum.UserInputState.Begin then
+		pinchStart = zoom.level
+		compareDrag, panDrag = nil, nil
+	end
+	local mid = (touchPositions[1] + touchPositions[2]) / 2
+	local x, y = stagePoint(mid)
+	setZoom(pinchStart * scale, x, y)
+end)
+
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed or not inViewer or not currentRound or isDragging then
 		return
@@ -1245,6 +1315,10 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		first, second = reference, target
 	end
 	local obj = grabbed(first, x, y) and first or grabbed(second, x, y) and second or nil
+	if not obj and zoom.level > 1.02 then
+		panDrag = { last = input.Position } -- drag empty space to look around
+		return
+	end
 	if obj then
 		local other = obj == target and reference or target
 		compareDrag = { obj = obj, other = other, grabOffset = x - obj.x, grabOffsetY = y - (obj.lift or 0) }
@@ -1256,7 +1330,22 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-	if not compareDrag or (input.UserInputType ~= Enum.UserInputType.MouseMovement and input.UserInputType ~= Enum.UserInputType.Touch) then
+	if input.UserInputType ~= Enum.UserInputType.MouseMovement and input.UserInputType ~= Enum.UserInputType.Touch then
+		return
+	end
+	if panDrag then
+		local camera = workspace.CurrentCamera
+		local _, _, _, viewHeight = baseView(framing)
+		local studsPerPixel = viewHeight / zoom.level / math.max(camera.ViewportSize.Y, 1)
+		local delta = input.Position - panDrag.last
+		panDrag.last = input.Position
+		-- Screen-right is world -X here, so the view follows the finger.
+		zoom.offX += delta.X * studsPerPixel
+		zoom.offY += delta.Y * studsPerPixel
+		clampPan()
+		return
+	end
+	if not compareDrag then
 		return
 	end
 	local x, y = stagePoint(input.Position)
@@ -1275,7 +1364,33 @@ end)
 UserInputService.InputEnded:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 		compareDrag = nil
+		panDrag = nil
 	end
+end)
+
+-- + / - buttons (handy on touch screens), shown while playing.
+local zoomButtons = frame(hud, {
+	Name = "ZoomButtons",
+	AnchorPoint = Vector2.new(1, 0.5),
+	Position = UDim2.new(1, -14, 0.42, 0),
+	Size = UDim2.new(0, 56, 0, 124),
+	BackgroundTransparency = 1,
+	Visible = false,
+})
+for i, def in ipairs({ { "+", 1.4 }, { "-", 1 / 1.4 } }) do
+	local b = button(zoomButtons, def[1], Color3.fromRGB(95, 105, 140), {
+		Name = def[1] == "+" and "ZoomIn" or "ZoomOut",
+		Position = UDim2.new(0, 0, 0, (i - 1) * 66),
+		Size = UDim2.new(0, 56, 0, 56),
+	})
+	b.MouseButton1Click:Connect(function()
+		setZoom(zoom.level * def[2])
+	end)
+end
+responsive(zoomButtons)
+updateHudScale()
+panel:GetPropertyChangedSignal("Visible"):Connect(function()
+	zoomButtons.Visible = panel.Visible
 end)
 
 --==========================================================================
@@ -1322,6 +1437,7 @@ local function stopSession()
 	currentRound = nil
 	isDragging = false
 	compareDrag = nil
+	resetZoom()
 	if dragHint then
 		dragHint.Visible = false
 	end
@@ -1482,6 +1598,7 @@ RequestRound.OnClientEvent:Connect(function(roundInfo)
 	local ok, err = xpcall(function()
 		reference.slide, target.slide = 0, 0
 		reference.raise, target.raise = 0, 0
+		resetZoom()
 		compareDrag = nil
 		setModel(reference, roundInfo.referenceName, roundInfo.referenceIcon)
 		setModel(target, roundInfo.targetName, roundInfo.targetIcon)
