@@ -29,6 +29,7 @@ local playerGui = player:WaitForChild("PlayerGui")
 
 local TutorialDoneRemote = ReplicatedStorage:WaitForChild("ScaleGameRemotes"):WaitForChild("TutorialDone")
 local ScreenFit = require(ReplicatedStorage:WaitForChild("ScreenFit"))
+local Icons = require(ReplicatedStorage:WaitForChild("Icons"))
 
 local FONT = Enum.Font.FredokaOne
 local INK = Color3.fromRGB(25, 20, 35)
@@ -325,11 +326,10 @@ local function startGuide(station)
 	keyScale.Parent = keyCap
 	keyLabel.ZIndex = 2
 
-	local arrow = label(billboard, {
+	local arrow = Icons.image(billboard, "arrow_down", {
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.new(0.5, 0, 0, 90),
 		Size = UDim2.new(0, 90, 0, 90),
-		Text = "⬇️",
 	})
 
 	-- Dotted trail from the player to the podium.
@@ -396,10 +396,9 @@ local function showSliderDemo(ui)
 	corner(ghost, UDim.new(1, 0))
 	stroke(ghost, 3, GOLD)
 
-	local hand = label(gui, {
+	local hand = Icons.image(gui, "point_up", {
 		AnchorPoint = Vector2.new(0.5, 0),
 		Size = UDim2.fromOffset(64, 64),
-		Text = "👆",
 		ZIndex = 22,
 	})
 
@@ -440,7 +439,9 @@ local function showSliderDemo(ui)
 		ghost.Position = UDim2.fromOffset(x, y)
 		ghost.BackgroundTransparency = 1 - 0.75 * shown
 		hand.Position = UDim2.fromOffset(x, y + (pressed and 6 or 14))
-		hand.TextTransparency = 1 - shown
+		for k, v in pairs(Icons.fade(hand, 1 - shown)) do
+			hand[k] = v
+		end
 		hand.Size = pressed and UDim2.fromOffset(58, 58) or UDim2.fromOffset(66, 66)
 	end)
 end
@@ -457,10 +458,9 @@ local function showLockHint(ui)
 	corner(ring, UDim.new(0, 18))
 	local ringStroke = stroke(ring, 5, GOLD)
 
-	local hand = label(gui, {
+	local hand = Icons.image(gui, "point_down", {
 		AnchorPoint = Vector2.new(0.5, 1),
 		Size = UDim2.fromOffset(64, 64),
-		Text = "👇",
 		ZIndex = 22,
 	})
 	addCleanup(function()
@@ -487,14 +487,14 @@ end
 --==========================================================================
 
 local function celebrate()
-	local pieces = { "🎉", "⭐", "✨", "🌟", "🎊" }
+	local pieces = { "party", "star", "sparkles", "glowing_star", "confetti" }
 	local rng = Random.new()
 	for i = 1, 26 do
-		local piece = label(gui, {
+		local side = rng:NextInteger(36, 64)
+		local piece = Icons.image(gui, pieces[(i % #pieces) + 1], {
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromScale(0.5, 0.45),
-			Size = UDim2.fromOffset(rng:NextInteger(36, 64), rng:NextInteger(36, 64)),
-			Text = pieces[(i % #pieces) + 1],
+			Size = UDim2.fromOffset(side, side),
 			ZIndex = 30,
 		})
 		local angle = rng:NextNumber(0, math.pi * 2)
@@ -504,11 +504,10 @@ local function celebrate()
 			0.45 + math.sin(angle) * distance + rng:NextNumber(0.05, 0.2)
 		)
 		local info = TweenInfo.new(rng:NextNumber(1.1, 1.8), Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-		TweenService:Create(piece, info, {
-			Position = target,
-			Rotation = rng:NextInteger(-200, 200),
-			TextTransparency = 1,
-		}):Play()
+		local goal = Icons.fade(piece, 1)
+		goal.Position = target
+		goal.Rotation = rng:NextInteger(-200, 200)
+		TweenService:Create(piece, info, goal):Play()
 		task.delay(2, function()
 			piece:Destroy()
 		end)
@@ -911,11 +910,10 @@ local function showPrompt()
 	scale.Scale = 0
 	scale.Parent = card
 
-	local icon = label(card, {
+	local icon = Icons.image(card, "grad_cap", {
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 18),
-		Size = UDim2.new(0, 96, 0, 96),
-		Text = "🎓",
+		Position = UDim2.new(0.5, 0, 0, 14),
+		Size = UDim2.new(0, 104, 0, 104),
 		ZIndex = 41,
 	})
 	local title = label(card, {

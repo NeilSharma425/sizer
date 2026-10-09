@@ -15,6 +15,7 @@ local Players = game:GetService("Players")
 local ScaleData = require(ReplicatedStorage:WaitForChild("ScaleData"))
 local RoundGenerator = require(ReplicatedStorage:WaitForChild("RoundGenerator"))
 local Difficulty = require(ReplicatedStorage:WaitForChild("Difficulty"))
+local Icons = require(ReplicatedStorage:WaitForChild("Icons"))
 local Progress = require(ReplicatedStorage:WaitForChild("Progress"))
 local Ranks = require(ReplicatedStorage:WaitForChild("Ranks"))
 local Pets = require(ReplicatedStorage:WaitForChild("Pets"))
@@ -528,10 +529,10 @@ local function attachSenseTag(player, character)
 	tag.LightInfluence = 0
 	tag.Parent = head
 
-	local function line(position, height, font, color)
+	local function line(position, height, font, color, left)
 		local text = Instance.new("TextLabel")
-		text.Position = UDim2.fromScale(0, position)
-		text.Size = UDim2.fromScale(1, height)
+		text.Position = UDim2.fromScale(left or 0, position)
+		text.Size = UDim2.fromScale(1 - (left or 0), height)
 		text.BackgroundTransparency = 1
 		text.Font = font
 		text.TextScaled = true
@@ -545,16 +546,23 @@ local function attachSenseTag(player, character)
 		return text
 	end
 	local nameText = line(0, 0.36, Enum.Font.GothamBold, Color3.fromRGB(255, 255, 255))
-	local rankText = line(0.36, 0.32, Enum.Font.GothamBlack, Color3.fromRGB(255, 255, 255))
-	local senseText = line(0.68, 0.32, Enum.Font.GothamBlack, Color3.fromRGB(255, 215, 70))
+	-- The rank badge sits to the left of the rank and Sense lines.
+	local rankIcon = Icons.image(tag, "sprout", {
+		Position = UDim2.fromScale(0.02, 0.36),
+		Size = UDim2.fromScale(0.64, 0.64),
+		SizeConstraint = Enum.SizeConstraint.RelativeYY,
+	})
+	local rankText = line(0.36, 0.32, Enum.Font.GothamBlack, Color3.fromRGB(255, 255, 255), 0.24)
+	local senseText = line(0.68, 0.32, Enum.Font.GothamBlack, Color3.fromRGB(255, 215, 70), 0.24)
 	nameText.Text = player.DisplayName
 
 	local function refresh()
 		local sense = player:GetAttribute("Sense") or 0
 		local info = Ranks.forSense(sense)
-		rankText.Text = info.rank.icon .. " " .. string.upper(info.rank.name)
+		Icons.set(rankIcon, info.rank.icon)
+		rankText.Text = string.upper(info.rank.name)
 		rankText.TextColor3 = info.rank.color
-		senseText.Text = string.format("📏 %d SENSE", sense)
+		senseText.Text = string.format("%d SENSE", sense)
 	end
 	refresh()
 	player:GetAttributeChangedSignal("Sense"):Connect(function()

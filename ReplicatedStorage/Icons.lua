@@ -2,9 +2,8 @@
 	Icons.lua
 	ModuleScript: ReplicatedStorage.Icons
 
-	Bright 3D cartoon icons (Microsoft Fluent Emoji 3D, MIT licence - see
-	assets/IconSheet-LICENSE.txt) packed into one 1024x1024 image,
-	assets/IconSheet.png, in 128-pixel cells.
+	Bright cartoon icons in the Roblox simulator style, packed into one
+	1024x1024 image, assets/IconSheet.png, in 170-pixel cells (6 per row).
 
 	To turn them on, upload assets/IconSheet.png once (Studio: View > Asset
 	Manager > Bulk Import, then right-click the image > Copy Asset ID) and
@@ -22,43 +21,41 @@
 local Icons = {}
 
 local SHEET_ID = 0 -- paste the uploaded IconSheet.png's asset ID here
-local CELL = 128
+local CELL = 170
 
 -- key = { x, y, emoji } (pixel offset of the icon's cell on the sheet)
 local CELLS = {
 	sprout = { 0, 0, "🌱" },
-	eyes = { 128, 0, "👀" },
-	target = { 256, 0, "🎯" },
-	ruler = { 384, 0, "📏" },
-	triangle_ruler = { 512, 0, "📐" },
-	scales = { 640, 0, "⚖" },
-	brain = { 768, 0, "🧠" },
-	medal = { 896, 0, "🏅" },
-	crown = { 0, 128, "👑" },
-	glowing_star = { 128, 128, "🌟" },
-	elephant = { 256, 128, "🐘" },
-	statue = { 384, 128, "🗽" },
-	mind_blown = { 512, 128, "🤯" },
-	planet = { 640, 128, "🪐" },
-	stopwatch = { 768, 128, "⏱" },
-	dice = { 896, 128, "🎲" },
-	globe = { 0, 256, "🌍" },
-	swords = { 128, 256, "⚔" },
-	fire = { 256, 256, "🔥" },
-	paw = { 384, 256, "🐾" },
-	trophy = { 512, 256, "🏆" },
-	calendar = { 640, 256, "📅" },
-	star = { 768, 256, "⭐" },
-	sparkles = { 896, 256, "✨" },
-	party = { 0, 384, "🎉" },
-	confetti = { 128, 384, "🎊" },
-	check = { 256, 384, "✅" },
-	grad_cap = { 384, 384, "🎓" },
-	arrow_down = { 512, 384, "⬇" },
-	point_up = { 640, 384, "👆" },
-	point_down = { 768, 384, "👇" },
-	gift = { 896, 384, "🎁" },
-	coffee = { 0, 512, "☕" },
+	eyes = { 170, 0, "👀" },
+	target = { 340, 0, "🎯" },
+	ruler = { 510, 0, "📏" },
+	triangle_ruler = { 680, 0, "📐" },
+	scales = { 850, 0, "⚖" },
+	brain = { 0, 170, "🧠" },
+	medal = { 170, 170, "🏅" },
+	crown = { 340, 170, "👑" },
+	glowing_star = { 510, 170, "🌟" },
+	elephant = { 680, 170, "🐘" },
+	statue = { 850, 170, "🗽" },
+	mind_blown = { 0, 340, "🤯" },
+	planet = { 170, 340, "🪐" },
+	stopwatch = { 340, 340, "⏱" },
+	dice = { 510, 340, "🎲" },
+	globe = { 680, 340, "🌍" },
+	swords = { 850, 340, "⚔" },
+	fire = { 0, 510, "🔥" },
+	paw = { 170, 510, "🐾" },
+	trophy = { 340, 510, "🏆" },
+	calendar = { 510, 510, "📅" },
+	star = { 680, 510, "⭐" },
+	sparkles = { 850, 510, "✨" },
+	party = { 0, 680, "🎉" },
+	confetti = { 170, 680, "🎊" },
+	check = { 340, 680, "✅" },
+	grad_cap = { 510, 680, "🎓" },
+	arrow_down = { 680, 680, "⬇" },
+	point_up = { 850, 680, "👆" },
+	point_down = { 0, 850, "👇" },
 }
 
 -- Emoji -> key, so data that still stores an emoji (rank icons, station

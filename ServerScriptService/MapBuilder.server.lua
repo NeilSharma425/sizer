@@ -41,6 +41,7 @@ local rng = Random.new(425)
 
 local Progress = require(ReplicatedStorage:WaitForChild("Progress"))
 local Ranks = require(ReplicatedStorage:WaitForChild("Ranks"))
+local Icons = require(ReplicatedStorage:WaitForChild("Icons"))
 
 -- Remove the Baseplate template's floor/spawn and any terrain.
 local templateBaseplate = workspace:FindFirstChild("Baseplate")
@@ -952,10 +953,9 @@ local function buildStation(def, index, parent)
 		Parent = station,
 	})
 	local panelGui = surfaceGui(panel, 30)
-	textLabel(panelGui, {
+	Icons.image(panelGui, def.icon, {
 		Size = UDim2.fromScale(0.7, 0.62),
 		Position = UDim2.fromScale(0.15, 0.06),
-		Text = def.icon,
 	})
 	stroke(textLabel(panelGui, {
 		Size = UDim2.fromScale(0.9, 0.22),
@@ -1107,27 +1107,45 @@ end
 -- board shows each player's rank icon.
 local function refreshLeaderboard(list, kind)
 	for _, child in ipairs(list:GetChildren()) do
-		if child:IsA("TextLabel") then
+		if child:IsA("GuiObject") then
 			child:Destroy()
 		end
 	end
 	local entries = PlayerData.getTop(kind, 8)
 	for i, entry in ipairs(entries) do
-		textLabel(list, {
-			LayoutOrder = i,
-			Size = UDim2.fromScale(1, 0.115),
+		local color = (i == 1 and Color3.fromRGB(255, 210, 70))
+			or (i == 2 and Color3.fromRGB(210, 220, 235))
+			or (i == 3 and Color3.fromRGB(230, 150, 90))
+			or C.white
+		-- A row: place number, the rank icon (Sense board only), then the
+		-- name and score.
+		local row = Instance.new("Frame")
+		row.Name = "Row"
+		row.LayoutOrder = i
+		row.Size = UDim2.fromScale(1, 0.115)
+		row.BackgroundTransparency = 1
+		row.Parent = list
+		textLabel(row, {
+			Size = UDim2.fromScale(0.08, 1),
 			TextXAlignment = Enum.TextXAlignment.Left,
-			TextColor3 = (i == 1 and Color3.fromRGB(255, 210, 70))
-				or (i == 2 and Color3.fromRGB(210, 220, 235))
-				or (i == 3 and Color3.fromRGB(230, 150, 90))
-				or C.white,
-			Text = string.format(
-				"%d.  %s%s  -  %s",
-				i,
-				kind == "Sense" and (Ranks.forSense(entry.value).rank.icon .. " ") or "",
-				entry.name,
-				withCommas(entry.value)
-			),
+			TextColor3 = color,
+			Text = i .. ".",
+		})
+		local nameX = 0.08
+		if kind == "Sense" then
+			Icons.image(row, Ranks.forSense(entry.value).rank.icon, {
+				Position = UDim2.fromScale(0.08, 0),
+				Size = UDim2.fromScale(1, 1),
+				SizeConstraint = Enum.SizeConstraint.RelativeYY,
+			})
+			nameX = 0.17
+		end
+		textLabel(row, {
+			Position = UDim2.fromScale(nameX, 0),
+			Size = UDim2.fromScale(1 - nameX, 1),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextColor3 = color,
+			Text = string.format("%s  -  %s", entry.name, withCommas(entry.value)),
 		})
 	end
 	if #entries == 0 then
@@ -1148,10 +1166,14 @@ local function buildBoards()
 	local main = darkBoard("Leaderboard", Vector3.new(0, TILE_TOP, -84), lookTarget, Vector3.new(16, 11, 0.2), boards)
 	local gui = surfaceGui(main, 40)
 	stroke(textLabel(gui, {
-		Size = UDim2.fromScale(1, 0.16),
-		Text = "🏆 TOP GUESSERS",
+		Size = UDim2.fromScale(0.72, 0.16),
+		Position = UDim2.fromScale(0.14, 0),
+		Text = "TOP GUESSERS",
 		TextColor3 = Color3.fromRGB(255, 210, 70),
 	}), 3)
+	for _, x in ipairs({ 0.03, 0.86 }) do
+		Icons.image(gui, "trophy", { Position = UDim2.fromScale(x, 0.005), Size = UDim2.fromScale(0.11, 0.155) })
+	end
 	textLabel(gui, {
 		Size = UDim2.fromScale(0.5, 0.06),
 		Position = UDim2.fromScale(0.25, 0.165),
@@ -1180,10 +1202,14 @@ local function buildBoards()
 	local records = darkBoard("TimedRecords", Vector3.new(21, TILE_TOP, -67), lookTarget, Vector3.new(13, 9, 0.2), boards)
 	local recordsGui = surfaceGui(records, 40)
 	stroke(textLabel(recordsGui, {
-		Size = UDim2.fromScale(1, 0.18),
-		Text = "⏱️ 60s RECORDS",
+		Size = UDim2.fromScale(0.72, 0.16),
+		Position = UDim2.fromScale(0.14, 0.01),
+		Text = "60s RECORDS",
 		TextColor3 = Color3.fromRGB(255, 200, 40),
 	}), 3)
+	for _, x in ipairs({ 0.02, 0.855 }) do
+		Icons.image(recordsGui, "stopwatch", { Position = UDim2.fromScale(x, 0.005), Size = UDim2.fromScale(0.125, 0.165) })
+	end
 	local resetLabel = textLabel(recordsGui, {
 		Size = UDim2.fromScale(0.7, 0.06),
 		Position = UDim2.fromScale(0.15, 0.165),

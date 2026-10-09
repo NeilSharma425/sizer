@@ -436,10 +436,8 @@ local function openQuestion(data)
 	lockedNote.Visible = false
 	header.Text = "LIVE ROUND!"
 	questionText.Text = string.format(
-		"How big is %s %s compared to %s %s?",
-		data.targetIcon or "",
+		"How big is %s compared to %s?",
 		string.upper(data.targetName),
-		data.referenceIcon or "",
 		string.upper(data.referenceName)
 	)
 	setRatio(1)

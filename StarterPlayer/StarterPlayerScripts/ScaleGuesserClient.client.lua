@@ -52,6 +52,7 @@ bus.Parent = player:WaitForChild("PlayerGui")
 
 local ObjectModels = require(ReplicatedStorage:WaitForChild("ObjectModels"))
 local ScreenFit = require(ReplicatedStorage:WaitForChild("ScreenFit"))
+local Icons = require(ReplicatedStorage:WaitForChild("Icons"))
 
 local stationsFolder = workspace:WaitForChild("Map"):WaitForChild("Stations")
 
@@ -464,10 +465,15 @@ local timerCard = frame(hud, {
 })
 corner(timerCard, UDim.new(0, 16))
 stroke(timerCard, 3, GOLD)
+Icons.image(timerCard, "stopwatch", {
+	Position = UDim2.new(0, 8, 0, 2),
+	Size = UDim2.fromOffset(54, 54),
+	Rotation = -10,
+})
 local timerText = label(timerCard, {
-	Size = UDim2.new(1, -20, 0, 50),
-	Position = UDim2.new(0, 10, 0, 4),
-	Text = "⏱️ 1:00",
+	Size = UDim2.new(1, -78, 0, 50),
+	Position = UDim2.new(0, 66, 0, 4),
+	Text = "1:00",
 	TextColor3 = WHITE,
 })
 textStroke(timerText, 3)
@@ -502,6 +508,13 @@ local comboPopup = label(hud, {
 	ZIndex = 10,
 })
 textStroke(comboPopup, 3)
+-- Fireball above the combo text; fades out with it.
+local comboIcon = Icons.image(comboPopup, "fire", {
+	AnchorPoint = Vector2.new(0.5, 1),
+	Position = UDim2.new(0.5, 0, 0, 4),
+	Size = UDim2.fromOffset(58, 58),
+	ZIndex = 10,
+})
 
 --==========================================================================
 -- Game panel
@@ -721,10 +734,17 @@ gloss(dailyCard, Color3.fromRGB(40, 45, 75))
 textStroke(label(dailyCard, {
 	Size = UDim2.new(1, -40, 0, 56),
 	Position = UDim2.new(0, 20, 0, 16),
-	Text = "📅 DAILY COMPLETE!",
+	Text = "DAILY COMPLETE!",
 	TextColor3 = DAILY_BLUE:Lerp(WHITE, 0.4),
 	ZIndex = 6,
 }), 4)
+-- Calendar sticker on the card's top-left corner.
+Icons.image(dailyCard, "calendar", {
+	Position = UDim2.new(0, -26, 0, -26),
+	Size = UDim2.fromOffset(78, 78),
+	Rotation = -12,
+	ZIndex = 7,
+})
 local dailyScoreText = label(dailyCard, {
 	Size = UDim2.new(1, -40, 0, 56),
 	Position = UDim2.new(0, 20, 0, 84),
@@ -1457,7 +1477,7 @@ local function beginTimedRun()
 	timedEnded = false
 	timedEndsAt = nil
 	timedScoreText.Text = "CHALLENGE SCORE: 0"
-	timerText.Text = "⏱️ 1:00"
+	timerText.Text = "1:00"
 	timerCard.Visible = true
 	endCard.Visible = false
 	panel.Visible = true
@@ -1581,7 +1601,7 @@ RunService.Heartbeat:Connect(function()
 			sfx("tick", { speed = 1 + (5 - whole) * 0.08 })
 		end
 	end
-	timerText.Text = string.format("⏱️ %d:%02d", math.floor(whole / 60), whole % 60)
+	timerText.Text = string.format("%d:%02d", math.floor(whole / 60), whole % 60)
 	timerText.TextColor3 = remaining <= 10 and Color3.fromRGB(255, 110, 110) or WHITE
 	if remaining <= 0 and not guessLocked then
 		guessLocked = true
@@ -1646,12 +1666,15 @@ local function showCombo(result)
 		comboPopup.Visible = false
 		return
 	end
-	local text = string.format("🔥 COMBO x%d", combo)
+	local text = string.format("COMBO x%d", combo)
 	if (result.comboBonus or 0) > 0 then
 		text ..= string.format("   +%d SENSE", result.comboBonus)
 	end
 	comboPopup.Text = text
 	comboPopup.TextTransparency = 0
+	for k, v in pairs(Icons.fade(comboIcon, 0)) do
+		comboIcon[k] = v
+	end
 	comboPopup.Position = UDim2.fromScale(0.5, 0.47)
 	comboPopup.Visible = true
 	local stroke = comboPopup:FindFirstChildOfClass("UIStroke")
@@ -1661,6 +1684,7 @@ local function showCombo(result)
 	bump(comboPopup)
 	local info = TweenInfo.new(1.6, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
 	TweenService:Create(comboPopup, info, { Position = UDim2.fromScale(0.5, 0.42), TextTransparency = 1 }):Play()
+	TweenService:Create(comboIcon, info, Icons.fade(comboIcon, 1)):Play()
 	if stroke then
 		TweenService:Create(stroke, info, { Transparency = 1 }):Play()
 	end
@@ -1842,7 +1866,7 @@ RunService.Heartbeat:Connect(function()
 	local text
 	if done then
 		local resetIn = (bus:GetAttribute("DailyResetIn") or 0) - (os.clock() - (bus:GetAttribute("DailyStatusAt") or os.clock()))
-		text = "✅ " .. formatCountdown(resetIn)
+		text = formatCountdown(resetIn)
 	elseif answered > 0 then
 		text = string.format("%d/%d", answered, total)
 	else
