@@ -260,7 +260,7 @@ local function setRatio(ratio)
 	local a = (math.log(current.ratio) - LOG_MIN) / (LOG_MAX - LOG_MIN)
 	handle.Position = UDim2.fromScale(a, 0.5)
 	fill.Size = UDim2.fromScale(a, 1)
-	guessText.Text = string.format("YOUR GUESS: %s  (%s)", formatRatio(current.ratio), formatMeters(current.referenceHeight * current.ratio))
+	guessText.Text = string.format("YOUR GUESS: %s", formatRatio(current.ratio))
 end
 
 local function sendGuess()
@@ -436,12 +436,11 @@ local function openQuestion(data)
 	lockedNote.Visible = false
 	header.Text = "LIVE ROUND!"
 	questionText.Text = string.format(
-		"How big is %s %s compared to %s %s (%s)?",
+		"How big is %s %s compared to %s %s?",
 		data.targetIcon or "",
 		string.upper(data.targetName),
 		data.referenceIcon or "",
-		string.upper(data.referenceName),
-		formatMeters(data.referenceHeight)
+		string.upper(data.referenceName)
 	)
 	setRatio(1)
 	sfx("start")

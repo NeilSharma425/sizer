@@ -1158,11 +1158,8 @@ local function setRatio(ratio)
 	sliderHandle.Position = UDim2.fromScale(alpha, 0.5)
 	placeParts(currentRatio)
 	if currentRound then
-		guessText.Text = string.format(
-			"Guess: %s  (%.2fx)",
-			formatHeight(currentRound.referenceHeight * currentRatio),
-			currentRatio
-		)
+		-- Only the ratio before the reveal; real sizes show after guessing.
+		guessText.Text = string.format("Your guess: %.2fx the size of the %s", currentRatio, currentRound.referenceName)
 	end
 end
 
@@ -1491,7 +1488,7 @@ RequestRound.OnClientEvent:Connect(function(roundInfo)
 		if dragHint then
 			dragHint.Visible = not dragHintShown
 		end
-		reference.label.Text = string.format("%s\n%s", roundInfo.referenceName, formatHeight(roundInfo.referenceHeight))
+		reference.label.Text = roundInfo.referenceName
 		target.label.Text = roundInfo.targetName .. "\n???"
 		questionText.Text = string.format("How big is a %s next to a %s?", roundInfo.targetName, roundInfo.referenceName)
 		showDifficulty(roundInfo.difficulty)
@@ -1580,6 +1577,7 @@ RoundResult.OnClientEvent:Connect(function(result)
 	-- Reveal: snap the target to its true size; the camera re-frames smoothly.
 	placeParts(result.trueTargetHeight / currentRound.referenceHeight)
 	target.label.Text = string.format("%s\n%s", currentRound.targetName, formatHeight(result.trueTargetHeight))
+	reference.label.Text = string.format("%s\n%s", currentRound.referenceName, formatHeight(currentRound.referenceHeight))
 
 	local verdict = result.score >= 90 and "PERFECT!" or result.score >= 70 and "GREAT!" or result.score >= 40 and "CLOSE!" or "WAY OFF!"
 	resultText.Text = string.format(
