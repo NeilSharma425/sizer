@@ -20,7 +20,7 @@
 
 local Icons = {}
 
-local SHEET_ID = 0 -- paste the uploaded IconSheet.png's asset ID here
+local SHEET_ID = 72109873353372 -- the uploaded assets/IconSheet.png
 local CELL = 170
 
 -- key = { x, y, emoji } (pixel offset of the icon's cell on the sheet)
@@ -86,6 +86,7 @@ end
 
 function Icons.set(icon, key)
 	local k = resolve(key)
+	icon:SetAttribute("Icon", k) -- which icon it shows (handy when debugging)
 	if icon:IsA("ImageLabel") then
 		if k then
 			icon.ImageRectOffset = Vector2.new(CELLS[k][1], CELLS[k][2])
