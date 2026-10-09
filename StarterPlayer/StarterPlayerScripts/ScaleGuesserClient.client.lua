@@ -286,8 +286,16 @@ sideLayout.Padding = UDim.new(0, 8)
 sideLayout.SortOrder = Enum.SortOrder.LayoutOrder
 sideLayout.Parent = sideMenu
 
--- Icons are drawn from simple shapes (no emoji).
+-- Menu icons: a cartoon picture from the icon sheet when there is one,
+-- otherwise drawn from simple shapes (no emoji).
 local function drawIcon(parent, kind, color)
+	if Icons.enabled() and Icons.resolve(kind) then
+		return Icons.image(parent, kind, {
+			AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.new(0.5, 0, 0, 2),
+			Size = UDim2.fromOffset(54, 54),
+		})
+	end
 	local box = frame(parent, {
 		Name = "Icon",
 		AnchorPoint = Vector2.new(0.5, 0),
