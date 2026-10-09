@@ -293,11 +293,11 @@ rowScale.Parent = row
 local function updateScale()
 	local camera = workspace.CurrentCamera
 	if camera then
-		-- Phones: about 13% of the screen's height. Computers: at least 1.35x
-		-- its original size (up to 1.6x on big screens).
+		-- Phones: about 13% of the screen's height. Computers: 0.9x-1.15x its
+		-- original size.
 		local opts = { fx = 0.36, fy = 0.13, min = 0.45, max = 1.4 }
 		if not ScreenFit.isCompact(camera.ViewportSize) then
-			opts = { fx = 0.4, fy = 0.16, min = 1.35, max = 1.6 }
+			opts = { fx = 0.3, fy = 0.1, min = 0.9, max = 1.15 }
 		end
 		local value = ScreenFit.scaleFor(camera.ViewportSize, 290, 76, opts)
 		cardScale.Scale = value
