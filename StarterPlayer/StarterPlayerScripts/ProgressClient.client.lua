@@ -38,6 +38,7 @@ local RoundResult = remotes:WaitForChild("RoundResult")
 local Ranks = require(ReplicatedStorage:WaitForChild("Ranks"))
 local Progress = require(ReplicatedStorage:WaitForChild("Progress"))
 local ScreenFit = require(ReplicatedStorage:WaitForChild("ScreenFit"))
+local Icons = require(ReplicatedStorage:WaitForChild("Icons"))
 
 local FONT = Enum.Font.FredokaOne
 local INK = Color3.fromRGB(25, 20, 35)
@@ -218,10 +219,9 @@ local rankBadge = frame(rankCard, {
 corner(rankBadge, UDim.new(1, 0))
 stroke(rankBadge, 3)
 gloss(rankBadge, GOLD)
-local rankIcon = label(rankBadge, {
-	Size = UDim2.fromScale(0.68, 0.68),
-	Position = UDim2.fromScale(0.16, 0.16),
-	Text = "🌱",
+local rankIcon = Icons.image(rankBadge, "sprout", {
+	Size = UDim2.fromScale(0.86, 0.86),
+	Position = UDim2.fromScale(0.07, 0.07),
 })
 
 local rankName = label(rankCard, {
@@ -327,7 +327,7 @@ local function updateRankCard(sense, animate)
 	local rank = info.rank
 	rankName.Text = string.upper(rank.name)
 	rankName.TextColor3 = rank.color
-	rankIcon.Text = rank.icon
+	Icons.set(rankIcon, rank.icon)
 	rankBadge.BackgroundColor3 = rank.color
 	rankStroke.Color = rank.color
 	barFill.BackgroundColor3 = rank.color
@@ -346,14 +346,14 @@ local function updateRankCard(sense, animate)
 end
 
 local function celebrate(center)
-	local pieces = { "🎉", "⭐", "✨", "🌟", "🎊" }
+	local pieces = { "party", "star", "sparkles", "glowing_star", "confetti" }
 	local rng = Random.new()
 	for i = 1, 24 do
-		local piece = label(gui, {
+		local side = rng:NextInteger(34, 58)
+		local piece = Icons.image(gui, pieces[(i % #pieces) + 1], {
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = center,
-			Size = UDim2.fromOffset(rng:NextInteger(34, 58), rng:NextInteger(34, 58)),
-			Text = pieces[(i % #pieces) + 1],
+			Size = UDim2.fromOffset(side, side),
 			ZIndex = 30,
 		})
 		local angle = rng:NextNumber(0, math.pi * 2)
@@ -362,11 +362,10 @@ local function celebrate(center)
 			center.X.Scale + math.cos(angle) * distance * 0.9,
 			center.Y.Scale + math.sin(angle) * distance + rng:NextNumber(0.04, 0.16)
 		)
-		TweenService:Create(piece, TweenInfo.new(rng:NextNumber(1.1, 1.8), Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Position = target,
-			Rotation = rng:NextInteger(-200, 200),
-			TextTransparency = 1,
-		}):Play()
+		local goal = Icons.fade(piece, 1)
+		goal.Position = target
+		goal.Rotation = rng:NextInteger(-200, 200)
+		TweenService:Create(piece, TweenInfo.new(rng:NextNumber(1.1, 1.8), Enum.EasingStyle.Quad, Enum.EasingDirection.Out), goal):Play()
 		task.delay(2, function()
 			piece:Destroy()
 		end)
@@ -386,10 +385,9 @@ corner(rankBanner, UDim.new(0, 22))
 local bannerStroke = stroke(rankBanner, 5, GOLD)
 local bannerScale = Instance.new("UIScale")
 bannerScale.Parent = rankBanner
-local bannerIcon = label(rankBanner, {
-	Position = UDim2.new(0, 18, 0.5, -48),
-	Size = UDim2.new(0, 96, 0, 96),
-	Text = "🌱",
+local bannerIcon = Icons.image(rankBanner, "sprout", {
+	Position = UDim2.new(0, 14, 0.5, -52),
+	Size = UDim2.new(0, 104, 0, 104),
 	ZIndex = 21,
 })
 local bannerTitle = label(rankBanner, {
@@ -415,7 +413,7 @@ local function showRankUp(info)
 	sfx("rankUp")
 	bannerToken += 1
 	local myToken = bannerToken
-	bannerIcon.Text = info.rank.icon
+	Icons.set(bannerIcon, info.rank.icon)
 	bannerName.Text = string.upper(info.rank.name)
 	bannerName.TextColor3 = info.rank.color
 	bannerStroke.Color = info.rank.color
@@ -459,7 +457,8 @@ toastLayout.Parent = toastHolder
 local toastCount = 0
 local MAX_TOASTS = 4
 
-function toast(text, color, seconds)
+-- icon: an Icons key shown at the left end of the pill (optional).
+function toast(text, color, seconds, icon)
 	sfx("toast")
 	toastCount += 1
 	local order = toastCount
@@ -483,13 +482,26 @@ function toast(text, color, seconds)
 	corner(pill, UDim.new(1, 0))
 	local pillStroke = stroke(pill, 3, color or GOLD)
 	pillStroke.Transparency = 1
+	local inset = icon and 58 or 14
 	local message = label(pill, {
-		Size = UDim2.new(1, -28, 0.68, 0),
-		Position = UDim2.new(0, 14, 0.16, 0),
+		Size = UDim2.new(1, -inset - 14, 0.68, 0),
+		Position = UDim2.new(0, inset, 0.16, 0),
 		Text = text,
 		TextTransparency = 1,
 	})
 	textStroke(message, 2)
+	local iconImage = icon and Icons.image(pill, icon, {
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, 4, 0.5, 0),
+		Size = UDim2.fromOffset(52, 52),
+		Rotation = -8,
+	})
+	if iconImage then
+		for k, v in pairs(Icons.fade(iconImage, 1)) do
+			iconImage[k] = v
+		end
+		TweenService:Create(iconImage, TweenInfo.new(0.25), Icons.fade(iconImage, 0)):Play()
+	end
 
 	TweenService:Create(pill, TweenInfo.new(0.25), { BackgroundTransparency = 0.08 }):Play()
 	TweenService:Create(pillStroke, TweenInfo.new(0.25), { Transparency = 0 }):Play()
@@ -501,6 +513,9 @@ function toast(text, color, seconds)
 			local fade = TweenInfo.new(0.3)
 			TweenService:Create(pill, fade, { BackgroundTransparency = 1 }):Play()
 			TweenService:Create(pillStroke, fade, { Transparency = 1 }):Play()
+			if iconImage then
+				TweenService:Create(iconImage, fade, Icons.fade(iconImage, 1)):Play()
+			end
 			local out = TweenService:Create(message, fade, { TextTransparency = 1 })
 			out:Play()
 			out.Completed:Connect(function()
@@ -562,20 +577,20 @@ ProgressEvent.OnClientEvent:Connect(function(kind, payload)
 		-- Day 1 (a first login, or a streak that just restarted) gets no
 		-- streak toast; from day 2 on it's worth celebrating.
 		if (payload.count or 0) >= 2 then
-			toast(string.format("🔥 DAY %d STREAK  +%d SENSE", payload.count, payload.reward), Color3.fromRGB(255, 140, 40), 4)
+			toast(string.format("DAY %d STREAK  +%d SENSE", payload.count, payload.reward), Color3.fromRGB(255, 140, 40), 4, "fire")
 			if payload.pet then
 				sfx("pet")
-				toast("🐾 NEW PET UNLOCKED!", Color3.fromRGB(255, 120, 200), 5)
+				toast("NEW PET UNLOCKED!", Color3.fromRGB(255, 120, 200), 5, "paw")
 			end
 		end
 		task.defer(refresh)
 	elseif kind == "weekly" then
-		toast(string.format("🏆 LAST WEEK'S #%d  +%d SENSE", payload.place, payload.reward), GOLD, 5)
+		toast(string.format("LAST WEEK'S #%d  +%d SENSE", payload.place, payload.reward), GOLD, 5, "trophy")
 	elseif kind == "pet" then
 		sfx("pet")
-		toast("🐾 NEW PET: " .. string.upper(payload.name or "PET"), Color3.fromRGB(255, 120, 200), 5)
+		toast("NEW PET: " .. string.upper(payload.name or "PET"), Color3.fromRGB(255, 120, 200), 5, "paw")
 	elseif kind == "dailyDone" then
-		toast("📅 TODAY'S DAILY IS ALREADY DONE", Color3.fromRGB(70, 150, 255), 3)
+		toast("TODAY'S DAILY IS ALREADY DONE", Color3.fromRGB(70, 150, 255), 3, "calendar")
 	end
 end)
 
@@ -583,10 +598,10 @@ RoundResult.OnClientEvent:Connect(function(result)
 	local dex = result.dex
 	if dex then
 		for _, up in ipairs(dex.starUps or {}) do
-			toast(string.format("%s %s  +%d SENSE", string.rep("⭐", up.to), string.upper(up.name), up.reward), GOLD)
+			toast(string.format("%s %s  +%d SENSE", string.rep("★", up.to), string.upper(up.name), up.reward), GOLD, nil, "star")
 		end
 		for _, category in ipairs(dex.categories or {}) do
-			toast(string.format("🏆 %s COMPLETE  +%d SENSE", string.upper(category), Progress.CATEGORY_SENSE), Color3.fromRGB(255, 225, 120), 4.5)
+			toast(string.format("%s COMPLETE  +%d SENSE", string.upper(category), Progress.CATEGORY_SENSE), Color3.fromRGB(255, 225, 120), 4.5, "trophy")
 		end
 	end
 	-- Pick up the new daily status.
