@@ -293,8 +293,8 @@ rowScale.Parent = row
 local function updateScale()
 	local camera = workspace.CurrentCamera
 	if camera then
-		-- About a tenth of the screen's height, so it stays small on phones.
-		local value = ScreenFit.scaleFor(camera.ViewportSize, 290, 76, { fx = 0.3, fy = 0.1, min = 0.4, max = 1.1 })
+		-- Up to about 13% of the screen's height (roughly 1.3x its old size).
+		local value = ScreenFit.scaleFor(camera.ViewportSize, 290, 76, { fx = 0.36, fy = 0.13, min = 0.45, max = 1.4 })
 		cardScale.Scale = value
 		rowScale.Scale = value
 	end
