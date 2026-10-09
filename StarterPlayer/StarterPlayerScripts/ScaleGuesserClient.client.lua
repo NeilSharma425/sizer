@@ -590,17 +590,6 @@ local questionText = label(panel, {
 })
 textStroke(questionText)
 
--- Shown above the panel until the player first drags an object.
-local dragHint = label(panel, {
-	Name = "DragHint",
-	AnchorPoint = Vector2.new(0.5, 1),
-	Position = UDim2.new(0.5, 0, 0, -10),
-	Size = UDim2.new(0, 520, 0, 30),
-	Text = "TIP: drag the objects onto each other - scroll or pinch to zoom",
-	TextColor3 = Color3.fromRGB(255, 225, 120),
-	Visible = false,
-})
-textStroke(dragHint, 2.5)
 
 local guessText = label(panel, {
 	Size = UDim2.new(1, -44, 0, 28),
@@ -1218,7 +1207,6 @@ end)
 --==========================================================================
 
 local compareDrag = nil -- { obj, other, grabOffset } while dragging an object
-local dragHintShown = false
 
 -- Where a screen point lands on the stage's vertical plane (x, y from SCENE).
 local function stagePoint(position)
@@ -1322,10 +1310,6 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if obj then
 		local other = obj == target and reference or target
 		compareDrag = { obj = obj, other = other, grabOffset = x - obj.x, grabOffsetY = y - (obj.lift or 0) }
-		dragHintShown = true
-		if dragHint then
-			dragHint.Visible = false
-		end
 	end
 end)
 
@@ -1438,9 +1422,6 @@ local function stopSession()
 	isDragging = false
 	compareDrag = nil
 	resetZoom()
-	if dragHint then
-		dragHint.Visible = false
-	end
 	fadeThrough(function()
 		exitViewer()
 		panel.Visible = false
@@ -1602,9 +1583,6 @@ RequestRound.OnClientEvent:Connect(function(roundInfo)
 		compareDrag = nil
 		setModel(reference, roundInfo.referenceName, roundInfo.referenceIcon)
 		setModel(target, roundInfo.targetName, roundInfo.targetIcon)
-		if dragHint then
-			dragHint.Visible = not dragHintShown
-		end
 		reference.label.Text = roundInfo.referenceName
 		target.label.Text = roundInfo.targetName .. "\n???"
 		questionText.Text = string.format("How big is a %s next to a %s?", roundInfo.targetName, roundInfo.referenceName)
