@@ -4,10 +4,9 @@
 
 	Shows the pet-crate announcements from CrateManager: a banner when a
 	crate starts falling (only the rarity, e.g. "LEGENDARY PET CRATE
-	FALLING!" - the pet is a surprise) and one if the leftover pets vanish.
-	Breaking open has no banner; the spilled pets speak for themselves. Claims
-	don't get a banner. The crate, its light beam and the spilled pets are
-	real parts in the world.
+	FALLING!" - the pet is a surprise). Breaking open and the leftover pets
+	vanishing have no banner (just a sound), and neither do claims. The
+	crate, its light beam and the spilled pets are real parts in the world.
 ]]
 
 local Players = game:GetService("Players")
@@ -147,7 +146,6 @@ CrateEvent.OnClientEvent:Connect(function(kind, data)
 		)
 	elseif kind == "expired" then
 		sfx("crateGone")
-		show("THE PET CRATE VANISHED", "Nobody grabbed it in time.", Color3.fromRGB(200, 205, 225), 3.5)
 	elseif kind == "done" then
 		sfx("crateGone")
 	elseif kind == "owned" then
