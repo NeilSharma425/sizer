@@ -705,15 +705,6 @@ local STATIONS = {
 		facing = Vector3.new(0, 0, -1),
 		subtitle = "& CONTINENTS",
 	},
-	-- Between the left station row and the DUELS stand, facing the spawn.
-	{
-		category = "Everyday Objects",
-		label = "EVERYDAY",
-		icon = "☕",
-		color = Color3.fromRGB(60, 170, 230),
-		pos = Vector3.new(-26, 0, 52),
-		facing = Vector3.new(0, 0, -1),
-	},
 }
 
 -- "Coming soon" stands: built like stations but not playable (they live in

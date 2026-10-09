@@ -48,6 +48,10 @@ local FALL_SECONDS = 7
 local LIFETIME = 90 -- seconds a landed crate waits before vanishing
 local FIRST_DROP = RunService:IsStudio() and { 20, 30 } or { 90, 180 }
 local GAP = { 1800, 3600 } -- 30-60 minutes between drops: 1-2 crates an hour
+-- Live rounds (LiveRoundManager) must not overlap a crate: a drop waits if
+-- one is running, ended under LIVE_BUFFER seconds ago, or starts within the
+-- crate's whole fall + lifetime (plus LIVE_BUFFER).
+local LIVE_BUFFER = 30
 local MAP_HALF_X, MAP_HALF_Z = 85, 80 -- keep drops on the platform
 local DROP_HEIGHT = 170
 
@@ -285,6 +289,8 @@ local function drop()
 	local finished = false
 	local copies = {}
 
+	workspace:SetAttribute("CrateActive", true)
+
 	-- Only the rarity is announced; which pet is inside is a surprise until
 	-- the crate lands and breaks open.
 	CrateEvent:FireAllClients("incoming", {
@@ -299,6 +305,7 @@ local function drop()
 			return
 		end
 		finished = true
+		workspace:SetAttribute("CrateActive", false)
 		CrateEvent:FireAllClients(kind, { rarity = pet.rarity })
 		task.delay(kind == "done" and 1 or 0, function()
 			dropFolder:Destroy()
@@ -386,12 +393,31 @@ end
 -- Schedule
 --------------------------------------------------------------------------
 
+-- True while a live round is on, just ended, or due before this crate
+-- would be gone.
+local function nearLiveRound()
+	local now = workspace:GetServerTimeNow()
+	if workspace:GetAttribute("LiveRoundActive") then
+		return true
+	end
+	local endedAt = workspace:GetAttribute("LiveRoundEndedAt")
+	if endedAt and now - endedAt < LIVE_BUFFER then
+		return true
+	end
+	local nextAt = workspace:GetAttribute("NextLiveRoundAt")
+	return nextAt ~= nil and nextAt > now and nextAt - now < FALL_SECONDS + LIFETIME + LIVE_BUFFER
+end
+
 task.spawn(function()
 	task.wait(rng:NextNumber(FIRST_DROP[1], FIRST_DROP[2]))
 	while true do
+		while nearLiveRound() do
+			task.wait(5)
+		end
 		if #Players:GetPlayers() > 0 then
 			local ok, err = pcall(drop)
 			if not ok then
+				workspace:SetAttribute("CrateActive", false)
 				warn("[Sizer] Crate drop failed:", err)
 			end
 		end

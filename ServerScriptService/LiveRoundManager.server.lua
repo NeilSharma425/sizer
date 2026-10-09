@@ -2,7 +2,8 @@
 	LiveRoundManager.server.lua
 	Script: ServerScriptService.LiveRoundManager
 
-	Live lobby rounds: every few minutes everyone in the lobby is offered the
+	Live lobby rounds: every half hour (the first one 10 minutes after the
+	server starts) everyone in the lobby is offered the
 	same question at once (LiveRound "soon" -> "start"; players opt in with
 	the JOIN prompt), has GUESS_SECONDS to set the slider, and then sees a shared reveal with a top-3 podium
 	("results"). Points pay double and the podium earns bonus Sense, plus
@@ -10,6 +11,11 @@
 
 	Players in a game session or the tutorial simply skip it (client side).
 	In Studio the first round comes after ~45 seconds for testing.
+
+	Crate drops (CrateManager) steer clear of live rounds: this script
+	publishes the next round's time as the workspace attribute
+	NextLiveRoundAt (server time) and LiveRoundActive while one runs, and
+	waits for a crate that is already out (CrateActive) to finish.
 ]]
 
 local Players = game:GetService("Players")
@@ -41,8 +47,9 @@ LiveRound.Parent = remotes
 local WARNING_SECONDS = 5
 local GUESS_SECONDS = 15
 local GRACE = 0.6
-local FIRST_ROUND = RunService:IsStudio() and { 45, 55 } or { 150, 240 }
-local GAP = { 300, 480 }
+local FIRST_ROUND = RunService:IsStudio() and 45 or 600 -- 10 minutes after the server starts
+local GAP = 1800 -- then every 30 minutes
+local CRATE_WAIT_LIMIT = 180 -- never hold a round back longer than this for a crate
 
 local rng = Random.new()
 local active = nil -- { id, endsAt, trueRatio, guesses }
@@ -139,16 +146,37 @@ local function runRound()
 	end
 end
 
+local function setActive(value)
+	workspace:SetAttribute("LiveRoundActive", value)
+	if not value then
+		workspace:SetAttribute("LiveRoundEndedAt", workspace:GetServerTimeNow())
+	end
+end
+
 task.spawn(function()
-	task.wait(rng:NextNumber(FIRST_ROUND[1], FIRST_ROUND[2]))
+	local nextAt = workspace:GetServerTimeNow() + FIRST_ROUND
 	while true do
+		workspace:SetAttribute("NextLiveRoundAt", nextAt)
+		task.wait(math.max(nextAt - workspace:GetServerTimeNow(), 0))
+		-- A crate already falling or waiting on the ground gets to finish first.
+		local waited = 0
+		while workspace:GetAttribute("CrateActive") and waited < CRATE_WAIT_LIMIT do
+			task.wait(2)
+			waited += 2
+		end
 		if #Players:GetPlayers() > 0 then
+			setActive(true)
 			local ok, err = pcall(runRound)
 			if not ok then
 				active = nil
 				warn("[Sizer] Live round failed:", err)
 			end
+			setActive(false)
 		end
-		task.wait(rng:NextNumber(GAP[1], GAP[2]))
+		nextAt += GAP
+		-- Skip any slots already missed (e.g. a long crate wait).
+		while nextAt <= workspace:GetServerTimeNow() do
+			nextAt += GAP
+		end
 	end
 end)
