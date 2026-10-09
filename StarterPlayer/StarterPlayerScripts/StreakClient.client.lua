@@ -625,23 +625,25 @@ RunService.RenderStepped:Connect(function()
 	hintCard.Position = UDim2.fromOffset(pos.X + size.X + pad + 18, pos.Y + size.Y / 2)
 end)
 
-local function showHint()
-	hideHint()
-	hintShown = true
-	hintGui.Enabled = true
-	local myToken = hintToken
-	task.delay(20, function()
-		if hintToken == myToken then
-			hideHint() -- not marked as seen, so it comes back next time
-		end
-	end)
-end
-
 local function markSeen()
 	if player:GetAttribute("StreakHintSeen") ~= true then
 		player:SetAttribute("StreakHintSeen", true)
 		MarkHint:FireServer("streak")
 	end
+end
+
+-- Shown once ever: it counts as seen as soon as it appears.
+local function showHint()
+	hideHint()
+	hintShown = true
+	hintGui.Enabled = true
+	markSeen()
+	local myToken = hintToken
+	task.delay(20, function()
+		if hintToken == myToken then
+			hideHint()
+		end
+	end)
 end
 
 if bus then

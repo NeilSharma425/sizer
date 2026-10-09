@@ -10,7 +10,8 @@
 	  3. then: "YOU UNLOCKED A PET!" pointing at the PETS tile (the server
 	     gives the starter pet for finishing the first daily; the player
 	     equips it there)
-	Each step is remembered on the server (MarkHint) so it only shows once.
+	Each step is remembered on the server (MarkHint) as soon as it shows, so
+	it only ever appears once, even if the player ignores it.
 ]]
 
 local Players = game:GetService("Players")
@@ -226,6 +227,7 @@ local function startDailyStep()
 	end
 	sfx("toast")
 	point("DailyButton", "YOUR FIRST DAILY CHALLENGE!", "Tap DAILY to play today's challenge!", BLUE)
+	markSeen("dailyIntro", "DailyIntroSeen")
 end
 
 -- Tapping DAILY (or finishing the first daily anywhere) completes the step.
@@ -277,6 +279,7 @@ local function startPetStep()
 	local info = Pets.get(id)
 	sfx("pet")
 	point("PetsButton", "YOU UNLOCKED A PET!", string.format("Your %s is here. Tap PETS to equip it!", info and info.name or petName or "new pet"), PINK, id)
+	markSeen("petIntro", "PetIntroSeen")
 end
 
 task.spawn(function()
