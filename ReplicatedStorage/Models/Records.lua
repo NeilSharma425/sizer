@@ -499,7 +499,7 @@ return function(builders)
 	--======================================================================
 	-- Giant machines and buildings
 	--======================================================================
-	builders["Seawise Giant (Ship)"] = function(m)
+	builders["Seawise Giant"] = function(m)
 		box(m, V(40, 2.4, 6), V(0, 1.2, 0), rgb(150, 40, 40))
 		box(m, V(40, 2, 6), V(0, 3.4, 0), rgb(40, 45, 60))
 		Kit.wedge(m, V(6, 4.4, 3), CFrame.new(-21.5, 2.2, 0) * CFrame.Angles(0, -math.pi / 2, 0), rgb(40, 45, 60))
@@ -535,7 +535,7 @@ return function(builders)
 		return 30
 	end
 
-	builders["Bagger 293 (Excavator)"] = function(m)
+	builders["Bagger 293"] = function(m)
 		local gray = rgb(150, 150, 140)
 		for _, x in ipairs({ -3, 3 }) do
 			box(m, V(5, 1.6, 6), V(x, 0.8, 0), rgb(60, 60, 60))
@@ -556,7 +556,7 @@ return function(builders)
 		return 30
 	end
 
-	builders["BelAZ 75710 (Dump Truck)"] = function(m)
+	builders["BelAZ 75710"] = function(m)
 		local yellow = rgb(240, 190, 40)
 		for _, x in ipairs({ -3.4, 1.6, 3.6 }) do
 			Kit.wheel(m, V(x, 1.6, -1.6), 1.6, 1.2, BLACK, rgb(120, 120, 120))
@@ -583,7 +583,7 @@ return function(builders)
 		return 25
 	end
 
-	builders["Kingda Ka (Roller Coaster)"] = function(m)
+	builders["Kingda Ka"] = function(m)
 		local green = rgb(70, 190, 80)
 		for _, z in ipairs({ -0.6, 0.6 }) do
 			box(m, V(0.4, 26, 0.4), V(-2.6, 13, z), green)
@@ -603,7 +603,7 @@ return function(builders)
 		return 29.6
 	end
 
-	builders["Ain Dubai (Ferris Wheel)"] = function(m)
+	builders["Ain Dubai"] = function(m)
 		local hub = V(0, 13, 0)
 		Kit.ring(m, hub, 11, 0.5, 0.6, 32, rgb(230, 230, 235))
 		for i = 0, 11 do
@@ -640,7 +640,7 @@ return function(builders)
 		return 16.5
 	end
 
-	builders["Peel P50 (Car)"] = function(m)
+	builders["Peel P50"] = function(m)
 		ell(m, V(4, 2.2, 2.6), V(0, 1.6, 0), rgb(220, 40, 40))
 		ell(m, V(1.6, 1, 2.3), V(-0.6, 2.3, 0), rgb(150, 200, 230))
 		for _, p in ipairs({ V(-1.2, 0.5, -1.2), V(-1.2, 0.5, 1.2), V(1.4, 0.5, 0) }) do
@@ -773,7 +773,7 @@ return function(builders)
 		return 3
 	end
 
-	builders["Valles Marineris (Mars Canyon)"] = function(m)
+	builders["Valles Marineris"] = function(m)
 		for _, s in ipairs({ -1, 1 }) do
 			box(m, V(30, 2, 3), V(0, 1, s * 2.4), rgb(190, 100, 60))
 		end
@@ -781,7 +781,7 @@ return function(builders)
 		return 30
 	end
 
-	builders["Vesta (Asteroid)"] = function(m)
+	builders["Vesta"] = function(m)
 		lumpy(m, V(0, 3.2, 0), 5.6, rgb(150, 145, 140), 6, 4)
 		ball(m, 1.6, V(-2.4, 3.6, -1.4), rgb(110, 105, 100))
 		return 6.4
@@ -807,7 +807,7 @@ return function(builders)
 		return 22
 	end
 
-	builders["Sagittarius A* (Black Hole)"] = function(m)
+	builders["Sagittarius A*"] = function(m)
 		local center = V(0, 7, 0)
 		ball(m, 4, center, BLACK)
 		ellipseRing(m, center, 4, 1.2, 0.8, 40, rgb(255, 160, 60), NEON)
@@ -823,7 +823,7 @@ return function(builders)
 		return 6
 	end
 
-	builders["UY Scuti (Star)"] = function(m)
+	builders["UY Scuti"] = function(m)
 		ball(m, 6, V(0, 3, 0), rgb(255, 90, 50), NEON)
 		for i = 1, 5 do
 			ball(m, 1, V(-2.5, 1.6 + i * 0.6, (i - 3) * 1), rgb(220, 60, 30))
@@ -831,7 +831,7 @@ return function(builders)
 		return 6
 	end
 
-	builders["TON 618 (Black Hole)"] = function(m)
+	builders["TON 618"] = function(m)
 		local center = V(0, 9, 0)
 		ball(m, 4, center, BLACK)
 		ellipseRing(m, center, 6, 1.8, 1.2, 40, rgb(190, 110, 255), NEON)
