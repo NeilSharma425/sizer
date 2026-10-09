@@ -293,13 +293,28 @@ rowScale.Parent = row
 local function updateScale()
 	local camera = workspace.CurrentCamera
 	if camera then
-		-- Up to about 13% of the screen's height (roughly 1.3x its old size).
-		local value = ScreenFit.scaleFor(camera.ViewportSize, 290, 76, { fx = 0.36, fy = 0.13, min = 0.45, max = 1.4 })
+		-- Phones: about 13% of the screen's height. Computers: at least 1.35x
+		-- its original size (up to 1.6x on big screens).
+		local opts = { fx = 0.36, fy = 0.13, min = 0.45, max = 1.4 }
+		if not ScreenFit.isCompact(camera.ViewportSize) then
+			opts = { fx = 0.4, fy = 0.16, min = 1.35, max = 1.6 }
+		end
+		local value = ScreenFit.scaleFor(camera.ViewportSize, 290, 76, opts)
 		cardScale.Scale = value
 		rowScale.Scale = value
 	end
 end
-updateScale()
+-- Re-fit whenever the screen size is known or changes (at startup the
+-- camera can still report a tiny viewport).
+local function hookCamera()
+	local camera = workspace.CurrentCamera
+	if camera then
+		camera:GetPropertyChangedSignal("ViewportSize"):Connect(updateScale)
+	end
+	updateScale()
+end
+workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(hookCamera)
+hookCamera()
 
 --==========================================================================
 -- Rank card updates and the rank-up banner

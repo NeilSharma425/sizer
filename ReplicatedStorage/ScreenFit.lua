@@ -12,10 +12,15 @@
 
 local ScreenFit = {}
 
--- Phone-sized: a short landscape screen or a narrow one.
+-- Phone-sized: a touch screen that is short (landscape) or narrow. A small
+-- window on a computer (e.g. Studio with panels open) keeps the desktop layout.
 function ScreenFit.isCompact(viewport)
 	viewport = viewport or (workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize)
 	if not viewport then
+		return false
+	end
+	local UserInputService = game:GetService("UserInputService")
+	if not UserInputService.TouchEnabled or UserInputService.KeyboardEnabled then
 		return false
 	end
 	return viewport.Y < 540 or viewport.X < 700
