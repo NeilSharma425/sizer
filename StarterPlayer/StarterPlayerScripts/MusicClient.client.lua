@@ -18,7 +18,7 @@ local TRACKS = {
 	139127004857974,
 	1839825760,
 }
-local VOLUME = 0.25
+local VOLUME = 0.12
 
 if #TRACKS == 0 then
 	return
