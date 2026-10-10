@@ -1440,8 +1440,12 @@ for i, def in ipairs({ { "+", 1.4 }, { "-", 1 / 1.4 } }) do
 end
 responsive(zoomButtons)
 updateHudScale()
+-- Phones (touch screens) zoom by pinching, so no + / - buttons there.
+local function isMobile()
+	return UserInputService.TouchEnabled
+end
 panel:GetPropertyChangedSignal("Visible"):Connect(function()
-	zoomButtons.Visible = panel.Visible
+	zoomButtons.Visible = panel.Visible and not isMobile()
 end)
 
 local zoomScale = zoomButtons:FindFirstChildOfClass("UIScale")
