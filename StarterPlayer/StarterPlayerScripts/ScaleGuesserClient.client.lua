@@ -191,7 +191,12 @@ local function updateHudScale()
 	if not camera then
 		return
 	end
-	local value = math.clamp(camera.ViewportSize.Y / 900, 0.55, 1.1)
+	local viewport = camera.ViewportSize
+	-- Fit the height, and on tall narrow (portrait) screens the width too, so
+	-- the game panel never runs off the sides.
+	local value = math.clamp(math.min(viewport.Y / 900, (viewport.X - 16) / 620), 0.4, 1.1)
+	local portrait = viewport.Y > viewport.X
+	hud:SetAttribute("Portrait", portrait)
 	for _, scale in ipairs(responsiveScales) do
 		scale.Scale = value
 	end
@@ -867,6 +872,7 @@ local stageDisc = scenePart({ Name = "StageDisc", Shape = Enum.PartType.Cylinder
 local function makeObject(name, color)
 	local anchor = scenePart({ Name = name .. "Tag", Size = Vector3.new(0.1, 0.1, 0.1), Transparency = 1 })
 	local billboard = Instance.new("BillboardGui")
+	billboard.Name = "NameTag"
 	billboard.Size = UDim2.new(0, 280, 0, 64)
 	billboard.SizeOffset = Vector2.new(0, 0.6)
 	billboard.LightInfluence = 0
@@ -1438,6 +1444,27 @@ panel:GetPropertyChangedSignal("Visible"):Connect(function()
 	zoomButtons.Visible = panel.Visible
 end)
 
+-- Portrait (e.g. recording for TikTok): smaller object names, zoom buttons
+-- up out of the way, no tip line.
+local function applyOrientation()
+	local portrait = hud:GetAttribute("Portrait") == true
+	local viewport = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1, 1)
+	local tagWidth = portrait and math.clamp(viewport.X * 0.42, 120, 280) or 280
+	for _, obj in ipairs({ reference, target }) do
+		local tag = obj.anchor:FindFirstChild("NameTag")
+		if tag then
+			tag.Size = UDim2.new(0, tagWidth, 0, tagWidth * 64 / 280)
+		end
+	end
+	zoomButtons.AnchorPoint = portrait and Vector2.new(1, 0) or Vector2.new(1, 0.5)
+	zoomButtons.Position = portrait and UDim2.new(1, -8, 0, 64) or UDim2.new(1, -14, 0.42, 0)
+	if dragHint and portrait then
+		dragHint.Visible = false
+	end
+end
+hud:GetAttributeChangedSignal("Portrait"):Connect(applyOrientation)
+applyOrientation()
+
 --==========================================================================
 -- Session flow
 --==========================================================================
@@ -1648,7 +1675,7 @@ RequestRound.OnClientEvent:Connect(function(roundInfo)
 		setModel(reference, roundInfo.referenceName, roundInfo.referenceIcon)
 		setModel(target, roundInfo.targetName, roundInfo.targetIcon)
 		if dragHint then
-			dragHint.Visible = not dragHintShown
+			dragHint.Visible = not dragHintShown and hud:GetAttribute("Portrait") ~= true
 		end
 		reference.label.Text = roundInfo.referenceName
 		target.label.Text = roundInfo.targetName .. "\n???"
