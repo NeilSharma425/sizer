@@ -23,6 +23,7 @@ local RunService = game:GetService("RunService")
 
 local Progress = require(ReplicatedStorage:WaitForChild("Progress"))
 local Pets = require(ReplicatedStorage:WaitForChild("Pets"))
+local Icons = require(ReplicatedStorage:WaitForChild("Icons"))
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -110,8 +111,16 @@ local function textButton(parent, text, color, props)
 	return b
 end
 
--- A gold coin drawn from shapes.
+-- A gold coin: the cartoon picture, or drawn from shapes until the UI icon
+-- sheet is uploaded.
 local function drawCoin(parent, size, position)
+	if Icons.has("coin") then
+		return Icons.image(parent, "coin", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = position,
+			Size = UDim2.fromOffset(size * 1.2, size * 1.2),
+		})
+	end
 	local coin = frame(parent, {
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = position,
@@ -259,6 +268,22 @@ local closeButton = textButton(window, "X", Color3.fromRGB(235, 80, 80), {
 	Size = UDim2.new(0, 44, 0, 44),
 	ZIndex = 4,
 })
+
+-- Cartoon close button once the UI icon sheet is uploaded.
+if Icons.has("close") then
+	closeButton.Text = ""
+	closeButton.BackgroundTransparency = 1
+	for _, child in ipairs(closeButton:GetChildren()) do
+		if child:IsA("UIStroke") or child:IsA("UICorner") then
+			child:Destroy()
+		end
+	end
+	Icons.image(closeButton, "close", {
+		Position = UDim2.fromScale(-0.1, -0.1),
+		Size = UDim2.fromScale(1.2, 1.2),
+		ZIndex = closeButton.ZIndex + 1,
+	})
+end
 local bonusPill = frame(window, {
 	AnchorPoint = Vector2.new(1, 0),
 	Position = UDim2.new(1, -72, 0, 22),

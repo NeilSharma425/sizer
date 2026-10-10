@@ -24,6 +24,7 @@ end
 local RunService = game:GetService("RunService")
 
 local Pets = require(ReplicatedStorage:WaitForChild("Pets"))
+local Icons = require(ReplicatedStorage:WaitForChild("Icons"))
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -229,6 +230,22 @@ local closeButton = textButton(window, "X", Color3.fromRGB(235, 80, 80), {
 	Size = UDim2.new(0, 44, 0, 44),
 	ZIndex = 4,
 })
+
+-- Cartoon close button once the UI icon sheet is uploaded.
+if Icons.has("close") then
+	closeButton.Text = ""
+	closeButton.BackgroundTransparency = 1
+	for _, child in ipairs(closeButton:GetChildren()) do
+		if child:IsA("UIStroke") or child:IsA("UICorner") then
+			child:Destroy()
+		end
+	end
+	Icons.image(closeButton, "close", {
+		Position = UDim2.fromScale(-0.1, -0.1),
+		Size = UDim2.fromScale(1.2, 1.2),
+		ZIndex = closeButton.ZIndex + 1,
+	})
+end
 
 local section = "earned"
 local tabButtons = {}

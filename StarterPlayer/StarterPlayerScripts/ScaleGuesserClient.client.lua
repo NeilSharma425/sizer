@@ -215,6 +215,17 @@ corner(rewardCard, UDim.new(0, 16))
 stroke(rewardCard, 3.5)
 gloss(rewardCard, RED)
 
+-- The playtime gift: the cartoon picture once the UI icon sheet is
+-- uploaded (it sits over the drawn badge, which is then hidden).
+if Icons.has("playtime") then
+	Icons.image(rewardCard, "playtime", {
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, 0, 0.5, -2),
+		Size = UDim2.fromOffset(74, 74),
+		Rotation = -6,
+		ZIndex = 3,
+	})
+end
 local giftBadge = frame(rewardCard, {
 	AnchorPoint = Vector2.new(0, 0.5),
 	Position = UDim2.new(0, 8, 0.5, 0),
@@ -236,6 +247,7 @@ do -- drawn gift box
 	bar(16, 10, 11, 9, RED).Rotation = -25
 	bar(29, 10, 11, 9, RED).Rotation = 25
 end
+giftBadge.Visible = not Icons.has("playtime")
 
 textStroke(label(rewardCard, {
 	Size = UDim2.new(1, -84, 0, 22),
@@ -269,6 +281,15 @@ local quickPlayButton = button(hud, "QUICK PLAY", GREEN, {
 	Position = UDim2.new(0.5, 0, 1, -22),
 	Size = UDim2.new(0, 260, 0, 68),
 })
+-- Play-button sticker on its left end once the UI icon sheet is uploaded.
+if Icons.has("play") then
+	Icons.image(quickPlayButton, "play", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0, 4, 0.5, 0),
+		Size = UDim2.fromOffset(76, 76),
+		ZIndex = quickPlayButton.ZIndex + 1,
+	})
+end
 
 -- Everything else lives in a compact column down the left side.
 local DAILY_BLUE = Color3.fromRGB(70, 150, 255)
@@ -289,7 +310,7 @@ sideLayout.Parent = sideMenu
 -- Menu icons: a cartoon picture from the icon sheet when there is one,
 -- otherwise drawn from simple shapes (no emoji).
 local function drawIcon(parent, kind, color)
-	if Icons.enabled() and Icons.resolve(kind) then
+	if Icons.has(kind) then
 		return Icons.image(parent, kind, {
 			AnchorPoint = Vector2.new(0.5, 0),
 			Position = UDim2.new(0.5, 0, 0, 2),

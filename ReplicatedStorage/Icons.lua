@@ -5,10 +5,11 @@
 	Bright cartoon icons in the Roblox simulator style, packed into one
 	1024x1024 image, assets/IconSheet.png, in 170-pixel cells (6 per row).
 
-	To turn them on, upload assets/IconSheet.png once (Studio: View > Asset
-	Manager > Bulk Import, then right-click the image > Copy Asset ID) and
-	paste the number into SHEET_ID below. Until then every icon shows as its
-	emoji instead, in the same spot.
+	A second sheet, assets/IconSheet2.png, holds the UI button pictures.
+	To turn a sheet on, upload it once (Studio: View > Asset Manager > Bulk
+	Import, then right-click the image > Copy Asset ID) and paste the number
+	into SHEETS below. Until then its icons show as emoji (or drawn shapes).
+	Icons.has(key) says whether key's picture is ready.
 
 	Icons.image(parent, key, props) -> an ImageLabel showing that icon (or a
 	TextLabel with the emoji while there is no sheet). props are applied to
@@ -20,10 +21,16 @@
 
 local Icons = {}
 
-local SHEET_ID = 72109873353372 -- the uploaded assets/IconSheet.png
+-- Uploaded asset IDs of the sheets (0 = not uploaded yet; its icons then
+-- show their emoji, or the menu's drawn shape, instead).
+local SHEETS = {
+	72109873353372, -- assets/IconSheet.png
+	0, -- assets/IconSheet2.png (UI buttons): paste its asset ID here
+}
 local CELL = 170
 
--- key = { x, y, emoji } (pixel offset of the icon's cell on the sheet)
+-- key = { x, y, emoji, sheet } (pixel offset of the icon's cell on its
+-- sheet; sheet 1 when left out)
 local CELLS = {
 	sprout = { 0, 0, "🌱" },
 	eyes = { 170, 0, "👀" },
@@ -56,6 +63,13 @@ local CELLS = {
 	arrow_down = { 680, 680, "⬇" },
 	point_up = { 850, 680, "👆" },
 	point_down = { 0, 850, "👇" },
+	-- sheet 2: UI buttons
+	help = { 0, 0, "❓", 2 },
+	playtime = { 170, 0, "🎁", 2 },
+	coin = { 340, 0, "🪙", 2 },
+	close = { 510, 0, "❌", 2 },
+	play = { 680, 0, "▶", 2 },
+	bolt = { 850, 0, "⚡", 2 },
 }
 
 -- Emoji -> key, so data that still stores an emoji (rank icons, station
@@ -67,7 +81,7 @@ for key, cell in pairs(CELLS) do
 end
 
 function Icons.enabled()
-	return SHEET_ID ~= 0
+	return SHEETS[1] ~= 0
 end
 
 -- Accepts a key ("fire") or an emoji ("🔥").
@@ -79,6 +93,16 @@ local function resolve(key)
 end
 Icons.resolve = resolve
 
+local function sheetOf(k)
+	return SHEETS[CELLS[k][4] or 1] or 0
+end
+
+-- True when key has a picture ready (its sheet is uploaded).
+function Icons.has(key)
+	local k = resolve(key)
+	return k ~= nil and sheetOf(k) ~= 0
+end
+
 function Icons.emoji(key)
 	local k = resolve(key)
 	return k and CELLS[k][3] or key or ""
@@ -88,7 +112,8 @@ function Icons.set(icon, key)
 	local k = resolve(key)
 	icon:SetAttribute("Icon", k) -- which icon it shows (handy when debugging)
 	if icon:IsA("ImageLabel") then
-		if k then
+		if k and sheetOf(k) ~= 0 then
+			icon.Image = "rbxassetid://" .. sheetOf(k)
 			icon.ImageRectOffset = Vector2.new(CELLS[k][1], CELLS[k][2])
 			icon.ImageTransparency = 0
 		else
@@ -109,9 +134,8 @@ end
 
 function Icons.image(parent, key, props)
 	local icon
-	if Icons.enabled() then
+	if Icons.has(key) then
 		icon = Instance.new("ImageLabel")
-		icon.Image = "rbxassetid://" .. SHEET_ID
 		icon.ImageRectSize = Vector2.new(CELL, CELL)
 		icon.ScaleType = Enum.ScaleType.Fit
 	else

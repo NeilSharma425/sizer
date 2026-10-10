@@ -24,6 +24,7 @@ local remotes = ReplicatedStorage:WaitForChild("ScaleGameRemotes")
 local LiveRound = remotes:WaitForChild("LiveRound")
 local ObjectModels = require(ReplicatedStorage:WaitForChild("ObjectModels"))
 local ScreenFit = require(ReplicatedStorage:WaitForChild("ScreenFit"))
+local Icons = require(ReplicatedStorage:WaitForChild("Icons"))
 
 local SoundFX = select(2, pcall(function()
 	return require(ReplicatedStorage:WaitForChild("SoundFX", 10))
@@ -180,6 +181,12 @@ local function updateScale()
 end
 
 local header = label(card, { Position = UDim2.new(0, 20, 0, 12), Size = UDim2.new(1, -150, 0, 38), TextXAlignment = Enum.TextXAlignment.Left, Text = "LIVE ROUND!", TextColor3 = LIVE })
+-- Lightning bolt before the header once the UI icon sheet is uploaded.
+if Icons.has("bolt") then
+	Icons.image(card, "bolt", { Position = UDim2.new(0, 12, 0, 4), Size = UDim2.fromOffset(52, 52), Rotation = -8 })
+	header.Position = UDim2.new(0, 68, 0, 12)
+	header.Size = UDim2.new(1, -198, 0, 38)
+end
 local timerLabel = label(card, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -20, 0, 12), Size = UDim2.new(0, 110, 0, 38), Text = "15", TextColor3 = GOLD })
 
 -- Question view ----------------------------------------------------------
