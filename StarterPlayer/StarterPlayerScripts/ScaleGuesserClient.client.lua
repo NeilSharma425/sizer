@@ -281,15 +281,6 @@ local quickPlayButton = button(hud, "QUICK PLAY", GREEN, {
 	Position = UDim2.new(0.5, 0, 1, -22),
 	Size = UDim2.new(0, 260, 0, 68),
 })
--- Play-button sticker on its left end once the UI icon sheet is uploaded.
-if Icons.has("play") then
-	Icons.image(quickPlayButton, "play", {
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(0, 4, 0.5, 0),
-		Size = UDim2.fromOffset(76, 76),
-		ZIndex = 3,
-	})
-end
 
 -- Everything else lives in a compact column down the left side.
 local DAILY_BLUE = Color3.fromRGB(70, 150, 255)
