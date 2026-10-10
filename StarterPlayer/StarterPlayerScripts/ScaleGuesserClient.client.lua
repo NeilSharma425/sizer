@@ -1836,6 +1836,11 @@ do
 		end
 	end
 	if isDev then
+		-- Let the developer's phone turn to portrait for TikTok recording
+		-- (everyone else stays landscape).
+		pcall(function()
+			player:WaitForChild("PlayerGui").ScreenOrientation = Enum.ScreenOrientation.Sensor
+		end)
 		local devStation = Instance.new("Folder")
 		devStation.Name = "DevPicksStation"
 		devStation:SetAttribute("Category", "DevPicks")
