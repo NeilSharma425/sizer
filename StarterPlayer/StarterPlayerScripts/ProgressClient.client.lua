@@ -721,3 +721,20 @@ game:GetService("MarketplaceService").PromptGamePassPurchaseFinished:Connect(fun
 		end
 	end
 end)
+
+-- On phones the rank card hides while a round is being played, so the
+-- objects get the whole top of the screen.
+task.spawn(function()
+	local hud = playerGui:WaitForChild("SizerHUD", 30)
+	local gamePanel = hud and hud:WaitForChild("GamePanel", 10)
+	if not gamePanel then
+		return
+	end
+	local UserInputService = game:GetService("UserInputService")
+	local function update()
+		local mobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+		rankCard.Visible = not (mobile and gamePanel.Visible)
+	end
+	gamePanel:GetPropertyChangedSignal("Visible"):Connect(update)
+	update()
+end)
