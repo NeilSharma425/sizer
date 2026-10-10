@@ -743,7 +743,7 @@ end
 -- Verity's face is a picture (assets/VerityFace.png, cut from the reference
 -- image) on a plain yellow ball. Upload it and paste its asset ID here;
 -- until then the ball shows a simple drawn face.
-local VERITY_FACE_ID = 0
+local VERITY_FACE_ID = 130800713221385
 
 builders["Verity"] = function(m)
 	local yellow = rgb(255, 214, 28)
