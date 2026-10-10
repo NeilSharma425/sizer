@@ -745,8 +745,6 @@ builders["Verity"] = function(m)
 	local R = 3.5
 	local center = Vector3.new(0, R, 0)
 	ball(m, R * 2, center, yellow)
-	-- Thin dark rim behind the face so it reads as a bold cartoon outline.
-	ball(m, R * 2 + 0.28, center + Vector3.new(0, 0, 0.12), rgb(40, 30, 10))
 
 	-- CFrame sitting on the sphere's front at plane position (x, y), with
 	-- its front face pointing straight out of the surface so flat parts
@@ -778,27 +776,21 @@ builders["Verity"] = function(m)
 	ellipsoid(Vector3.new(0.6, 0.34, 0.16), surfaceCFrame(-0.35, 6.2, -0.02) * CFrame.Angles(0, 0, math.rad(15)), WHITE, 0.4)
 
 	-- Tall oval black eyes with a tiny glint.
-	for _, x in ipairs({ -1.2, 1.2 }) do
-		ellipsoid(Vector3.new(0.9, 1.6, 0.4), surfaceCFrame(x, 5.0, -0.04), BLACK)
-		-- Big shiny catchlight plus a small second one.
-		ellipsoid(Vector3.new(0.38, 0.5, 0.16), surfaceCFrame(x - 0.14, 5.38, 0.1), WHITE)
-		ellipsoid(Vector3.new(0.16, 0.2, 0.14), surfaceCFrame(x + 0.2, 4.62, 0.1), WHITE)
-	end
-	-- Rosy cheeks.
-	for _, x in ipairs({ -2.15, 2.15 }) do
-		ellipsoid(Vector3.new(0.9, 0.5, 0.14), surfaceCFrame(x, 3.25, -0.03), rgb(255, 140, 90), 0.35)
+	-- Small black oval eyes, close together.
+	for _, x in ipairs({ -0.75, 0.75 }) do
+		ellipsoid(Vector3.new(0.55, 0.95, 0.4), surfaceCFrame(x, 5.15, -0.04), BLACK)
 	end
 
 	-- Wide toothy grin: black outline backing with two rows of teeth, laid
 	-- along the curved surface.
 	local function lowerY(x)
-		return 1.35 + 0.2 * x * x
+		return 1.15 + 0.17 * x * x
 	end
 	local function upperY(x)
-		return 2.2 + 0.1 * x * x
+		return 2.55 + 0.05 * x * x
 	end
-	local slot = 0.2
-	local slots = 25
+	local slot = 0.21
+	local slots = 27
 	for i = 1, slots do
 		local x = (i - (slots + 1) / 2) * slot
 		local lo, hi = lowerY(x), upperY(x)
