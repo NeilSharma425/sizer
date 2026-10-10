@@ -12,7 +12,11 @@ local Players = game:GetService("Players")
 local SoundService = game:GetService("SoundService")
 
 local TRACKS = {
-	-- paste Roblox music asset IDs here, e.g. 1234567890,
+	139132289200391,
+	9047883011,
+	87235694180663,
+	139127004857974,
+	1839825760,
 }
 local VOLUME = 0.25
 
