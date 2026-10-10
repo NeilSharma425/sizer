@@ -25,7 +25,7 @@ local Icons = {}
 -- show their emoji, or the menu's drawn shape, instead).
 local SHEETS = {
 	72109873353372, -- assets/IconSheet.png
-	0, -- assets/IconSheet2.png (UI buttons): paste its asset ID here
+	102148871559476, -- assets/IconSheet2.png (UI buttons)
 }
 local CELL = 170
 
