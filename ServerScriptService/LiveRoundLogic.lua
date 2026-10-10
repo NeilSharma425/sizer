@@ -9,7 +9,8 @@
 
 local LiveRoundLogic = {}
 
-LiveRoundLogic.SCORE_SCALE = 140 -- same curve as normal rounds
+LiveRoundLogic.SCORE_SCALE = 100 -- same curve as normal rounds (RoundManager)
+LiveRoundLogic.SCORE_FREE = 0.03 -- within about 3% is a perfect 100
 LiveRoundLogic.MIN_RATIO = 0.02
 LiveRoundLogic.MAX_RATIO = 50
 LiveRoundLogic.SENSE_PER_10 = 2 -- live rounds pay double: 2 Sense per 10 points
@@ -17,7 +18,8 @@ LiveRoundLogic.PODIUM_BONUS = { 50, 30, 15 }
 
 function LiveRoundLogic.score(trueRatio, guessedRatio)
 	local logError = math.abs(math.log(guessedRatio) - math.log(trueRatio))
-	return math.floor(math.clamp(100 - logError * LiveRoundLogic.SCORE_SCALE, 0, 100) + 0.5)
+	local over = math.max(logError - LiveRoundLogic.SCORE_FREE, 0)
+	return math.floor(math.clamp(100 - over * LiveRoundLogic.SCORE_SCALE, 0, 100) + 0.5)
 end
 
 function LiveRoundLogic.validGuess(ratio)

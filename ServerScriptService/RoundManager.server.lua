@@ -63,8 +63,11 @@ end
 -- How many previous rounds (per player) to avoid repeating.
 local HISTORY_LENGTH = 4
 
--- Log-scale scoring constant: score = clamp(100 - logError * SCORE_SCALE, 0, 100)
-local SCORE_SCALE = 140
+-- Log-scale scoring: score = clamp(100 - (logError - SCORE_FREE) * SCORE_SCALE, 0, 100).
+-- Within about 3% is a perfect 100; 10% off scores ~94, 25% off ~81,
+-- 50% off ~62, twice the size ~34, three times 0.
+local SCORE_SCALE = 100
+local SCORE_FREE = 0.03
 
 local PLAYTIME_REWARD_INTERVAL = 600 -- 10 minutes of playtime
 local PLAYTIME_REWARD_SENSE = 25
@@ -357,7 +360,7 @@ local function onSubmitGuess(player, guessedTargetHeight)
 	local guessedRatio = guessedTargetHeight / round.referenceHeight
 
 	local logError = math.abs(math.log(guessedRatio) - math.log(trueRatio))
-	local score = math.clamp(100 - logError * SCORE_SCALE, 0, 100)
+	local score = math.clamp(100 - math.max(logError - SCORE_FREE, 0) * SCORE_SCALE, 0, 100)
 	score = math.floor(score + 0.5)
 
 	local senseBase = math.floor(score / 10)
