@@ -740,76 +740,25 @@ builders["Skibidi Toilet"] = function(m)
 	vcyl(m, 0.15, 1.9, Vector3.new(0, 3.1, -0.2), rgb(120, 190, 240), Enum.Material.Glass)
 end
 
+-- Verity's face is a picture (assets/VerityFace.png, cut from the reference
+-- image) on a plain yellow ball. Upload it and paste its asset ID here;
+-- until then the ball shows a simple drawn face.
+local VERITY_FACE_ID = 0
+
 builders["Verity"] = function(m)
 	local yellow = rgb(255, 214, 28)
 	local R = 3.5
-	local center = Vector3.new(0, R, 0)
-	ball(m, R * 2, center, yellow)
-
-	-- CFrame sitting on the sphere's front at plane position (x, y), with
-	-- its front face pointing straight out of the surface so flat parts
-	-- hug the curve instead of sticking out at the sides.
-	local function surfaceCFrame(x, y, lift)
-		local dy = y - center.Y
-		local z = -math.sqrt(math.max(R * R - x * x - dy * dy, 0.25))
-		local normal = Vector3.new(x, dy, z).Unit
-		local pos = center + normal * (R + lift)
-		return CFrame.lookAt(pos, pos + normal)
-	end
-
-	-- Squashed sphere (Part + SpecialMesh) for ovals; local -Z is outward.
-	local function ellipsoid(size, cf, color, transparency)
-		local p = Instance.new("Part")
-		p.Size = size
-		p.CFrame = cf
-		local mesh = Instance.new("SpecialMesh")
-		mesh.MeshType = Enum.MeshType.Sphere
-		mesh.Parent = p
-		Kit.add(m, p, color)
-		p.Transparency = transparency or 0
-		p.CastShadow = false
-		return p
-	end
-
-	-- Gloss: soft highlights up and to the left.
-	ellipsoid(Vector3.new(1.7, 0.9, 0.22), surfaceCFrame(-1.3, 5.75, -0.02) * CFrame.Angles(0, 0, math.rad(35)), WHITE, 0.55)
-	ellipsoid(Vector3.new(0.6, 0.34, 0.16), surfaceCFrame(-0.35, 6.2, -0.02) * CFrame.Angles(0, 0, math.rad(15)), WHITE, 0.4)
-
-	-- Tall oval black eyes with a tiny glint.
-	-- Small black oval eyes, close together.
-	for _, x in ipairs({ -0.75, 0.75 }) do
-		ellipsoid(Vector3.new(0.55, 0.95, 0.4), surfaceCFrame(x, 5.15, -0.04), BLACK)
-	end
-
-	-- Wide toothy grin: black outline backing with two rows of teeth, laid
-	-- along the curved surface.
-	local function lowerY(x)
-		return 1.15 + 0.17 * x * x
-	end
-	local function upperY(x)
-		return 2.55 + 0.05 * x * x
-	end
-	local slot = 0.21
-	local slots = 27
-	for i = 1, slots do
-		local x = (i - (slots + 1) / 2) * slot
-		local lo, hi = lowerY(x), upperY(x)
-		local mid = (lo + hi) / 2
-		local height = math.max(hi - lo, 0.2)
-		-- Tilt each slot to follow the curve of the smile.
-		local roll = CFrame.Angles(0, 0, math.atan(0.3 * x))
-		box(m, Vector3.new(slot + 0.04, height + 0.2, 0.12), surfaceCFrame(x, mid, 0.02) * roll, BLACK)
-		local half = (height - 0.06) / 2
-		for _, dir in ipairs({ 1, -1 }) do
-			local ty = mid + dir * (half / 2 + 0.03)
-			box(m, Vector3.new(slot - 0.07, half, 0.12), surfaceCFrame(x, ty, 0.07) * roll, rgb(252, 252, 248))
+	local ballPart = ball(m, R * 2, Vector3.new(0, R, 0), yellow)
+	if VERITY_FACE_ID ~= 0 then
+		local decal = Instance.new("Decal")
+		decal.Face = Enum.NormalId.Front
+		decal.Texture = "rbxassetid://" .. VERITY_FACE_ID
+		decal.Parent = ballPart
+	else
+		for _, x in ipairs({ -0.75, 0.75 }) do
+			ball(m, 0.7, Vector3.new(x, 4.6, -R * 0.93), BLACK)
 		end
-	end
-	-- Rounded mouth corners.
-	for _, sign in ipairs({ -1, 1 }) do
-		local x = sign * (slot * slots / 2 + 0.05)
-		local y = (lowerY(x) + upperY(x)) / 2
-		ellipsoid(Vector3.new(0.4, 0.4, 0.2), surfaceCFrame(x, y, 0.02), BLACK)
+		box(m, Vector3.new(3.6, 0.9, 0.3), Vector3.new(0, 2.6, -R * 0.9), WHITE)
 	end
 end
 
