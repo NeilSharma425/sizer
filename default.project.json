@@ -42,6 +42,9 @@
       },
       "Icons": {
         "$path": "ReplicatedStorage/Icons.lua"
+      },
+      "Shop": {
+        "$path": "ReplicatedStorage/Shop.lua"
       }
     },
     "ServerScriptService": {
@@ -60,6 +63,9 @@
       },
       "PetShop": {
         "$path": "ServerScriptService/PetShop.server.lua"
+      },
+      "ShopManager": {
+        "$path": "ServerScriptService/ShopManager.server.lua"
       },
       "LiveRoundManager": {
         "$path": "ServerScriptService/LiveRoundManager.server.lua"
@@ -80,6 +86,12 @@
         },
         "TutorialClient": {
           "$path": "StarterPlayer/StarterPlayerScripts/TutorialClient.client.lua"
+        },
+        "ShopClient": {
+          "$path": "StarterPlayer/StarterPlayerScripts/ShopClient.client.lua"
+        },
+        "ChatTags": {
+          "$path": "StarterPlayer/StarterPlayerScripts/ChatTags.client.lua"
         },
         "ProgressClient": {
           "$path": "StarterPlayer/StarterPlayerScripts/ProgressClient.client.lua"

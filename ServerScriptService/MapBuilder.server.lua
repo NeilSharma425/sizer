@@ -1177,7 +1177,7 @@ local function buildBoards()
 	textLabel(gui, {
 		Size = UDim2.fromScale(0.5, 0.06),
 		Position = UDim2.fromScale(0.25, 0.165),
-		Text = "ranked by SENSE (rank shown)",
+		Text = "ranked by total SENSE earned",
 		TextColor3 = Color3.fromRGB(150, 160, 190),
 	})
 	local list = Instance.new("Frame")

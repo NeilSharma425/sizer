@@ -354,6 +354,10 @@ local function drawIcon(parent, kind, color)
 		shape(14, 5, 9, 14, WHITE, round)
 		shape(22, 5, 9, 14, WHITE, round)
 		shape(32, 15, 9, 12, WHITE, round)
+	elseif kind == "coin" then
+		shape(4, 4, 36, 36, GOLD, round)
+		shape(11, 11, 22, 22, Color3.fromRGB(255, 225, 120), round)
+		shape(19, 14, 6, 16, Color3.fromRGB(215, 150, 20), UDim.new(0, 2))
 	elseif kind == "book" then
 		shape(3, 8, 19, 30, WHITE, UDim.new(0, 4))
 		shape(22, 8, 19, 30, Color3.fromRGB(225, 225, 240), UDim.new(0, 4))
@@ -402,7 +406,8 @@ end
 local dailyButton = menuTile("DailyButton", 1, "calendar", "DAILY", DAILY_BLUE)
 local challengeButton = menuTile("ChallengeButton", 2, "stopwatch", "60s", GOLD)
 menuTile("PetsButton", 3, "paw", "PETS", Color3.fromRGB(255, 120, 190))
-local helpButton = menuTile("HelpButton", 4, "help", "HELP", Color3.fromRGB(95, 110, 150))
+menuTile("ShopButton", 4, "coin", "SHOP", Color3.fromRGB(80, 200, 120)) -- opened by ShopClient
+local helpButton = menuTile("HelpButton", 5, "help", "HELP", Color3.fromRGB(95, 110, 150))
 -- Only offered until the tutorial has been done.
 local function syncHelp()
 	helpButton.Visible = player:GetAttribute("TutorialDone") ~= true

@@ -368,7 +368,7 @@ local function renderGoal(pet)
 		local sense = player:GetAttribute("Sense") or 0
 		local need = pet.rule.sense
 		fill.Size = UDim2.fromScale(math.clamp(sense / need, 0, 1), 1)
-		amount.Text = string.format("%s / %s SENSE", commas(math.min(sense, need)), commas(need))
+		amount.Text = string.format("%s / %s SENSE EARNED", commas(math.min(sense, need)), commas(need))
 	end
 	updateGoal()
 end
@@ -737,4 +737,28 @@ task.spawn(function()
 	if tile then
 		tile.MouseButton1Click:Connect(open)
 	end
+end)
+
+-- Buying an egg from the SHOP: open this window on the eggs tab and hatch
+-- it here (ShopClient sets the bus attribute ShopHatch = "<eggId>|<time>").
+task.spawn(function()
+	local bus = playerGui:WaitForChild("SizerBus", 30)
+	if not bus then
+		return
+	end
+	bus:GetAttributeChangedSignal("ShopHatch"):Connect(function()
+		local id = tostring(bus:GetAttribute("ShopHatch") or ""):match("^([^|]+)")
+		local egg = id and Pets.getEgg(id)
+		if not egg or hatching then
+			return
+		end
+		open()
+		if not gui.Enabled then
+			return
+		end
+		section = "egg"
+		grid.CanvasPosition = Vector2.new(0, 0)
+		render()
+		hatch(egg)
+	end)
 end)

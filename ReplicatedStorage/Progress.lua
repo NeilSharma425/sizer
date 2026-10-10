@@ -66,7 +66,7 @@ function Progress.newProfile()
 	return {
 		dex = {}, -- [objectName] = { n = seen, t = played as target, b = best score, g = scores of 90+ }
 		cats = {}, -- [category] = true once every object in it has a star
-		streak = { count = 0, best = 0, lastDay = 0 },
+		streak = { count = 0, best = 0, lastDay = 0, lost = 0, lostOn = 0 }, -- lost: a streak that ended on day lostOn (can be bought back that day)
 		pets = {}, -- [petId] = true, unlocked from streak rewards
 		pet = "", -- equipped pet id ("" = none)
 		flags = {}, -- [name] = true, one-time hints already shown
@@ -93,7 +93,7 @@ function Progress.normalize(profile)
 	profile.pets = type(profile.pets) == "table" and profile.pets or {}
 	profile.pet = type(profile.pet) == "string" and profile.pet or ""
 	profile.flags = type(profile.flags) == "table" and profile.flags or {}
-	section("streak", { count = 0, best = 0, lastDay = 0 })
+	section("streak", { count = 0, best = 0, lastDay = 0, lost = 0, lostOn = 0 })
 	section("wallet", { spent = 0, refunded = 0 })
 	section("daily", { day = 0, score = 0, answered = 0, total = 0 })
 	section("weekly", { week = 0, best = 0, rewardWeek = 0 })
@@ -144,8 +144,12 @@ function Progress.merge(base, extra)
 	if extra.streak.lastDay > base.streak.lastDay then
 		base.streak.lastDay = extra.streak.lastDay
 		base.streak.count = extra.streak.count
+		base.streak.lost = extra.streak.lost
+		base.streak.lostOn = extra.streak.lostOn
 	elseif extra.streak.lastDay == base.streak.lastDay then
 		base.streak.count = math.max(base.streak.count, extra.streak.count)
+		-- A streak bought back (lost = 0) stays bought back.
+		base.streak.lost = math.min(base.streak.lost, extra.streak.lost)
 	end
 
 	if extra.daily.day > base.daily.day then
@@ -330,6 +334,29 @@ Progress.STREAK_REWARDS = {
 	{ sense = 500, pet = "rainbowslime" },
 }
 
+-- The streak lost today that can still be bought back (0 if none).
+function Progress.savableStreak(profile, today)
+	local streak = profile.streak
+	if streak.lost > 0 and streak.lostOn == today and streak.lastDay == today then
+		return streak.lost
+	end
+	return 0
+end
+
+-- Buys back today's lost streak: it continues as if no day was missed
+-- (today counts as the next day). Returns the new count, or nil.
+function Progress.saveStreak(profile, today)
+	local lost = Progress.savableStreak(profile, today)
+	if lost == 0 then
+		return nil
+	end
+	local streak = profile.streak
+	streak.count = lost + 1
+	streak.best = math.max(streak.best, streak.count)
+	streak.lost = 0
+	return streak.count
+end
+
 -- Returns { sense, pet? } for streak day `streak` (days past 14 keep paying).
 function Progress.streakReward(streak)
 	local list = Progress.STREAK_REWARDS
@@ -369,7 +396,11 @@ function Progress.updateStreak(profile, today)
 	local broken = streak.lastDay > 0 and streak.lastDay < today - 1
 	if streak.lastDay == today - 1 then
 		streak.count += 1
+		streak.lost = 0
 	else
+		-- Remember a streak worth saving so it can be bought back today.
+		streak.lost = broken and streak.count >= 2 and streak.count or 0
+		streak.lostOn = today
 		streak.count = 1
 	end
 	streak.best = math.max(streak.best, streak.count)

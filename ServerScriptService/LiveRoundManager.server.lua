@@ -25,6 +25,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 local ScaleData = require(ReplicatedStorage:WaitForChild("ScaleData"))
 local Pets = require(ReplicatedStorage:WaitForChild("Pets"))
+local Shop = require(ReplicatedStorage:WaitForChild("Shop"))
 local Logic = require(script.Parent:WaitForChild("LiveRoundLogic"))
 
 local okData, PlayerData = pcall(function()
@@ -124,6 +125,7 @@ local function runRound()
 		if player then
 			local sense = Logic.reward(entry.score, entry.place)
 			sense += math.floor(sense * perkFor(player) + 0.5)
+			sense *= Shop.senseMultiplier(player)
 			player:SetAttribute("Sense", (player:GetAttribute("Sense") or 0) + sense)
 			mine[player] = { score = entry.score, place = entry.place, sense = sense }
 		end

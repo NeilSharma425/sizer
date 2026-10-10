@@ -16,6 +16,7 @@ local ScaleData = require(ReplicatedStorage:WaitForChild("ScaleData"))
 local RoundGenerator = require(ReplicatedStorage:WaitForChild("RoundGenerator"))
 local Difficulty = require(ReplicatedStorage:WaitForChild("Difficulty"))
 local Icons = require(ReplicatedStorage:WaitForChild("Icons"))
+local Shop = require(ReplicatedStorage:WaitForChild("Shop"))
 local Progress = require(ReplicatedStorage:WaitForChild("Progress"))
 local Ranks = require(ReplicatedStorage:WaitForChild("Ranks"))
 local Pets = require(ReplicatedStorage:WaitForChild("Pets"))
@@ -341,6 +342,12 @@ local function onRequestRound(player, categoryFilter)
 	RequestRound:FireClient(player, roundPayload(round, nil))
 end
 
+-- Playtime reward: doubled by VIP and by the 2x Sense pass.
+local function playtimeReward(player)
+	local vip = player:GetAttribute(Shop.attribute("vip")) == true and Shop.VIP_PLAYTIME or 1
+	return PLAYTIME_REWARD_SENSE * vip * Shop.senseMultiplier(player)
+end
+
 local function addSense(player, amount)
 	player:SetAttribute("Sense", (player:GetAttribute("Sense") or 0) + amount)
 end
@@ -381,7 +388,8 @@ local function onSubmitGuess(player, guessedTargetHeight)
 	local profile = PlayerData.getProfile(player)
 	local dex = Progress.recordResult(profile, objectIndex, round.referenceName, round.targetName, score)
 
-	local senseEarned = senseBase + comboBonus + dex.sense
+	-- 2x Sense game pass doubles everything this round paid.
+	local senseEarned = (senseBase + comboBonus + dex.sense) * Shop.senseMultiplier(player)
 	addSense(player, senseEarned)
 
 	-- Daily challenge: tally this answer and pay out when all are done.
@@ -391,7 +399,7 @@ local function onSubmitGuess(player, guessedTargetHeight)
 		local state = Progress.recordDaily(profile, Progress.dayOf(os.time()), score)
 		dailyInfo = { index = dailyQuestion, total = state.total, score = state.score, done = state.done }
 		if state.done then
-			dailyInfo.reward = Progress.dailyReward(state.score)
+			dailyInfo.reward = Progress.dailyReward(state.score) * Shop.senseMultiplier(player)
 			addSense(player, dailyInfo.reward)
 			-- First daily ever: unlock the starter pet. The onboarding
 			-- (OnboardingClient) announces it once the player is back in the
@@ -557,22 +565,29 @@ local function attachSenseTag(player, character)
 	})
 	local rankText = line(0.36, 0.32, Enum.Font.GothamBlack, Color3.fromRGB(255, 255, 255), 0.24)
 	local senseText = line(0.68, 0.32, Enum.Font.GothamBlack, Color3.fromRGB(255, 215, 70), 0.24)
-	nameText.Text = player.DisplayName
-
 	local function refresh()
+		-- Rank comes from all the Sense ever earned; the number shown is
+		-- what the player has left to spend.
 		local sense = player:GetAttribute("Sense") or 0
 		local info = Ranks.forSense(sense)
 		Icons.set(rankIcon, info.rank.icon)
 		rankText.Text = string.upper(info.rank.name)
 		rankText.TextColor3 = info.rank.color
-		senseText.Text = string.format("%d SENSE", sense)
+		local balance = math.max(0, math.floor(sense - (player:GetAttribute("SenseSpent") or 0)))
+		senseText.Text = string.format("%d SENSE", balance)
+		-- VIPs get a gold name.
+		local vip = player:GetAttribute(Shop.attribute("vip")) == true
+		nameText.Text = vip and ("[VIP] " .. player.DisplayName) or player.DisplayName
+		nameText.TextColor3 = vip and Color3.fromRGB(255, 205, 60) or Color3.fromRGB(255, 255, 255)
 	end
 	refresh()
-	player:GetAttributeChangedSignal("Sense"):Connect(function()
-		if tag.Parent then
-			refresh()
-		end
-	end)
+	for _, attribute in ipairs({ "Sense", "SenseSpent", Shop.attribute("vip") }) do
+		player:GetAttributeChangedSignal(attribute):Connect(function()
+			if tag.Parent then
+				refresh()
+			end
+		end)
+	end
 end
 
 --==========================================================================
@@ -632,6 +647,8 @@ local function onDataLoaded(player)
 		PlayerData.markDirty(player)
 		sendProgress(player, "login", streak)
 	end
+	-- A streak that ended today can be bought back in the SHOP.
+	player:SetAttribute("StreakSavable", Progress.savableStreak(profile, today))
 	player:SetAttribute("Pet", profile.pet ~= "" and profile.pet or nil)
 	player:SetAttribute("SenseSpent", Progress.netSpent(profile))
 	for flag, attribute in pairs(HINT_ATTRIBUTES) do
@@ -691,12 +708,12 @@ local function onPlayerAdded(player)
 			local nextAt = workspace:GetServerTimeNow() + PLAYTIME_REWARD_INTERVAL
 			player:SetAttribute("NextRewardAt", nextAt)
 			player:SetAttribute("RewardInterval", PLAYTIME_REWARD_INTERVAL)
-			player:SetAttribute("RewardAmount", PLAYTIME_REWARD_SENSE)
+			player:SetAttribute("RewardAmount", playtimeReward(player))
 			task.wait(PLAYTIME_REWARD_INTERVAL)
 			if not player.Parent then
 				break
 			end
-			addSense(player, PLAYTIME_REWARD_SENSE)
+			addSense(player, playtimeReward(player))
 		end
 	end)
 end

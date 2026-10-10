@@ -39,6 +39,7 @@ local Ranks = require(ReplicatedStorage:WaitForChild("Ranks"))
 local Progress = require(ReplicatedStorage:WaitForChild("Progress"))
 local ScreenFit = require(ReplicatedStorage:WaitForChild("ScreenFit"))
 local Icons = require(ReplicatedStorage:WaitForChild("Icons"))
+local Shop = require(ReplicatedStorage:WaitForChild("Shop"))
 
 local FONT = Enum.Font.FredokaOne
 local INK = Color3.fromRGB(25, 20, 35)
@@ -246,13 +247,26 @@ local barFill = frame(barBack, {
 corner(barFill, UDim.new(1, 0))
 gloss(barFill, GOLD)
 
+-- Left: Sense left to spend. Right: progress to the next rank, which
+-- counts all the Sense ever earned (spending never lowers your rank).
 local senseText = label(rankCard, {
+	Name = "Balance",
 	Position = UDim2.new(0, 76, 0, 54),
-	Size = UDim2.new(1, -90, 0, 16),
+	Size = UDim2.new(0, 94, 0, 16),
 	TextXAlignment = Enum.TextXAlignment.Left,
+	TextColor3 = GOLD,
+	Font = Enum.Font.GothamBlack,
+	Text = "0 SENSE",
+})
+local rankProgressText = label(rankCard, {
+	Name = "RankProgress",
+	AnchorPoint = Vector2.new(1, 0),
+	Position = UDim2.new(1, -14, 0, 54),
+	Size = UDim2.new(0, 104, 0, 16),
+	TextXAlignment = Enum.TextXAlignment.Right,
 	TextColor3 = Color3.fromRGB(200, 205, 230),
 	Font = Enum.Font.GothamBold,
-	Text = "0 / 50 SENSE",
+	Text = "0 / 50",
 })
 
 -- Streak row -------------------------------------------------------
@@ -331,10 +345,12 @@ local function updateRankCard(sense, animate)
 	rankBadge.BackgroundColor3 = rank.color
 	rankStroke.Color = rank.color
 	barFill.BackgroundColor3 = rank.color
+	local balance = math.max(0, math.floor(sense - (player:GetAttribute("SenseSpent") or 0)))
+	senseText.Text = string.format("%s SENSE", withCommas(balance))
 	if info.nextRank then
-		senseText.Text = string.format("%s / %s SENSE", withCommas(sense), withCommas(info.nextRank.sense))
+		rankProgressText.Text = string.format("RANK %s / %s", withCommas(sense), withCommas(info.nextRank.sense))
 	else
-		senseText.Text = string.format("%s SENSE  -  MAX RANK", withCommas(sense))
+		rankProgressText.Text = "MAX RANK"
 	end
 	local fill = UDim2.fromScale(info.progress, 1)
 	if animate then
@@ -591,6 +607,13 @@ ProgressEvent.OnClientEvent:Connect(function(kind, payload)
 		toast("NEW PET: " .. string.upper(payload.name or "PET"), Color3.fromRGB(255, 120, 200), 5, "paw")
 	elseif kind == "dailyDone" then
 		toast("TODAY'S DAILY IS ALREADY DONE", Color3.fromRGB(70, 150, 255), 3, "calendar")
+	elseif kind == "streakSaved" then
+		if payload.sense then
+			toast(string.format("+%d SENSE (STREAK COULDN'T BE SAVED)", payload.sense), GOLD, 5, "coin")
+		else
+			toast(string.format("STREAK SAVED!  DAY %d", payload.count or 0), Color3.fromRGB(255, 140, 40), 5, "fire")
+		end
+		task.defer(refresh)
 	end
 end)
 
@@ -624,6 +647,9 @@ local function onSenseChanged()
 	lastRank = info.index
 end
 player:GetAttributeChangedSignal("Sense"):Connect(onSenseChanged)
+player:GetAttributeChangedSignal("SenseSpent"):Connect(function()
+	updateRankCard(player:GetAttribute("Sense") or 0, false)
+end)
 onSenseChanged()
 
 -- The streak row is only shown out in the lobby.
@@ -669,6 +695,18 @@ task.spawn(function()
 			if left <= 0 then
 				refresh()
 			end
+		end
+	end
+end)
+
+-- Thank-you toast after buying a game pass.
+game:GetService("MarketplaceService").PromptGamePassPurchaseFinished:Connect(function(who, passId, purchased)
+	if who ~= player or not purchased then
+		return
+	end
+	for _, pass in ipairs(Shop.Passes) do
+		if pass.id ~= 0 and pass.id == passId then
+			toast(string.format("THANKS! %s IS NOW YOURS", pass.name), Color3.fromRGB(80, 200, 120), 5, pass.icon)
 		end
 	end
 end)
