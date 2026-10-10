@@ -619,7 +619,7 @@ end
 --==========================================================================
 
 local function findProgressGui()
-	local g = playerGui:FindFirstChild("SizerProgress")
+	local g = playerGui:FindFirstChild("SizerRankCorner")
 	return g and g:FindFirstChild("RankCard")
 end
 

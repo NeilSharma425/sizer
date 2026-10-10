@@ -140,7 +140,7 @@ local COLUMNS, CARD_W, CARD_H, GAP = 4, 152, 186, 10
 local CATEGORIES = {
 	{ title = "EARNED BY PLAYING", color = Color3.fromRGB(255, 120, 190) }, -- every kind not listed below
 	{ title = "SENSE MILESTONES", kinds = { sense = true }, color = Color3.fromRGB(255, 200, 50) },
-	{ title = "EGG PETS", kinds = { egg = true }, color = Color3.fromRGB(255, 190, 60), eggShop = true },
+	{ title = "EGG PETS  -  HATCH EGGS IN THE SHOP", kinds = { egg = true }, color = Color3.fromRGB(255, 190, 60) },
 	{ title = "AIRDROP CRATE PETS", kinds = { crate = true }, color = Color3.fromRGB(190, 100, 255) },
 	{ title = "SHOP EXCLUSIVE", kinds = { pass = true }, color = Color3.fromRGB(80, 200, 120) },
 }
@@ -258,7 +258,6 @@ if Icons.has("close") then
 	})
 end
 
-local eggSectionY = 0 -- where the EGG PETS section starts (the SHOP scrolls there)
 
 local grid = Instance.new("ScrollingFrame")
 grid.Name = "Pets"
@@ -273,7 +272,7 @@ grid.ZIndex = 3
 grid.Parent = window
 local animations = {}
 local owned, equipped = {}, ""
-local render, renderEggShop -- defined below
+local render -- defined below
 local updateGoal -- refreshes the next pet banner's progress bar, if shown
 
 local function commas(n)
@@ -371,7 +370,7 @@ end
 
 
 --==========================================================================
--- Egg shop (EGGS tab): buy eggs with Sense, hatch a random egg pet
+-- Hatching: eggs are bought in the SHOP (ShopClient), which opens this window and hatches the egg here
 --==========================================================================
 
 local function spendable()
@@ -479,52 +478,6 @@ local function hatch(egg)
 	end
 	hatchOk.Visible = true
 	sfx(result.new and "hatch" or "toast")
-end
-
-renderEggShop = function(y)
-	local width = (COLUMNS * CARD_W + (COLUMNS - 1) * GAP - GAP) / 2
-	for i, egg in ipairs(Pets.Eggs) do
-		local cardFrame = frame(grid, {
-			Name = "Egg_" .. egg.id,
-			Position = UDim2.new(0, (i - 1) * (width + GAP), 0, y),
-			Size = UDim2.new(0, width, 0, CARD_H),
-			BackgroundColor3 = TILE,
-			ZIndex = 3,
-		})
-		corner(cardFrame, UDim.new(0, 14))
-		stroke(cardFrame, 3, egg.color)
-		local shape = frame(cardFrame, {
-			Position = UDim2.new(0, 16, 0, 22),
-			Size = UDim2.new(0, 96, 0, 122),
-			BackgroundColor3 = egg.color,
-			ZIndex = 4,
-		})
-		corner(shape, UDim.new(0.5, 0))
-		stroke(shape, 3)
-		label(cardFrame, { Position = UDim2.new(0, 126, 0, 12), Size = UDim2.new(1, -136, 0, 30), TextXAlignment = Enum.TextXAlignment.Left, Text = string.upper(egg.name), TextColor3 = egg.color, ZIndex = 4 })
-		local odds = {}
-		for _, name in ipairs(Pets.AllRarities) do
-			if egg.odds[name] then
-				table.insert(odds, string.format("%d%% %s", egg.odds[name], name))
-			end
-		end
-		label(cardFrame, { Position = UDim2.new(0, 126, 0, 46), Size = UDim2.new(1, -136, 0, 54), TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left, Text = table.concat(odds, "  "), TextColor3 = MUTED, ZIndex = 4 })
-		local affordable = spendable() >= egg.price
-		local buy = textButton(cardFrame, string.format("HATCH  %d", egg.price), affordable and GREEN or Color3.fromRGB(95, 105, 140), {
-			Name = "HatchButton",
-			Position = UDim2.new(0, 126, 1, -56),
-			Size = UDim2.new(1, -140, 0, 44),
-			ZIndex = 4,
-		})
-		buy.MouseButton1Click:Connect(function()
-			if spendable() >= egg.price then
-				sfx("click")
-				hatch(egg)
-			else
-				sfx("bad", { volume = 0.5 })
-			end
-		end)
-	end
 end
 
 -- One pet card at (x, y) in the grid.
@@ -673,15 +626,8 @@ render = function()
 				table.insert(locked, pet)
 			end
 		end
-		if #locked > 0 or category.eggShop then
-			if category.eggShop then
-				eggSectionY = y
-			end
+		if #locked > 0 then
 			header(category.title, category.color)
-			if category.eggShop then
-				renderEggShop(y)
-				y += CARD_H + GAP
-			end
 			cards(locked)
 		end
 	end
@@ -784,7 +730,6 @@ task.spawn(function()
 		if not gui.Enabled then
 			return
 		end
-		grid.CanvasPosition = Vector2.new(0, eggSectionY)
 		hatch(egg)
 	end)
 end)

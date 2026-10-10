@@ -200,10 +200,21 @@ end)
 
 -- Rank card -----------------------------------------------------------------
 
-local rankCard = frame(gui, {
+-- The rank card lives in its own full-screen layer (ignoring Roblox's top
+-- bar inset) so it sits right in the top-right corner, level with the
+-- Roblox menu buttons on the left.
+local cornerGui = Instance.new("ScreenGui")
+cornerGui.Name = "SizerRankCorner"
+cornerGui.ResetOnSpawn = false
+cornerGui.DisplayOrder = 4
+cornerGui.IgnoreGuiInset = true
+cornerGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+cornerGui.Parent = playerGui
+
+local rankCard = frame(cornerGui, {
 	Name = "RankCard",
 	AnchorPoint = Vector2.new(1, 0),
-	Position = UDim2.new(1, -14, 0, 12),
+	Position = UDim2.new(1, -10, 0, 10),
 	Size = UDim2.new(0, 290, 0, 76),
 	BackgroundColor3 = PANEL,
 	BackgroundTransparency = 0.1,
