@@ -1823,6 +1823,31 @@ for _, tile in ipairs(sideMenu:GetChildren()) do
 	end
 end
 
+-- Developer only: a YOUTUBE tile that plays the hand-picked CRAZY matchups
+-- (the server checks too, so nobody else can play them).
+do
+	local isDev = RunService:IsStudio()
+	if not isDev then
+		if game.CreatorType == Enum.CreatorType.User then
+			isDev = player.UserId == game.CreatorId
+		else
+			local ok, rank = pcall(player.GetRankInGroup, player, game.CreatorId)
+			isDev = ok and rank == 255
+		end
+	end
+	if isDev then
+		local devStation = Instance.new("Folder")
+		devStation.Name = "DevPicksStation"
+		devStation:SetAttribute("Category", "DevPicks")
+		devStation:SetAttribute("DisplayName", "YOUTUBE PICKS")
+		devStation:SetAttribute("Color", Color3.fromRGB(255, 60, 60))
+		local devTile = menuTile("DevPicksButton", 6, "target", "YT", Color3.fromRGB(255, 60, 60))
+		devTile.MouseButton1Click:Connect(function()
+			startSession(devStation)
+		end)
+	end
+end
+
 quickPlayButton.MouseButton1Click:Connect(function()
 	local stations = {}
 	for _, station in ipairs(stationsFolder:GetChildren()) do

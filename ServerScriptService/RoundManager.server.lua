@@ -10,6 +10,7 @@
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 
 local ScaleData = require(ReplicatedStorage:WaitForChild("ScaleData"))
@@ -195,6 +196,82 @@ end
 -- are still playable from their own station.
 local EXCLUDED_FROM_MIXED = { Brainrot = true }
 
+--==========================================================================
+-- Developer-only "YouTube picks": hand-picked CRAZY matchups that make good
+-- video moments. Only the game's owner (or anyone in Studio) can play them.
+--==========================================================================
+
+local DEV_CATEGORY = "DevPicks"
+local DEV_PICKS = { -- { reference, target }
+	{ "Peel P50", "BelAZ 75710" },
+	{ "School Bus", "Seawise Giant" },
+	{ "Titanic", "Seawise Giant" },
+	{ "Blue Whale Heart", "Peel P50" },
+	{ "Zeus the Tallest Dog", "Darius the Giant Rabbit" },
+	{ "Banana", "Giraffe Tongue" },
+	{ "Megalodon Tooth", "T. rex Tooth" },
+	{ "Ostrich Egg", "Newborn Panda" },
+	{ "Hummingbird Egg", "Ostrich Egg" },
+	{ "School Bus", "Titanoboa" },
+	{ "Reticulated Python", "Titanoboa" },
+	{ "Statue of Unity", "Empire State Building" },
+	{ "Kingda Ka", "Statue of Unity" },
+	{ "Antonov An-225", "Hindenburg" },
+	{ "Hindenburg", "Titanic" },
+	{ "Argentinosaurus", "Lion's Mane Jellyfish" },
+	{ "General Sherman Tree", "Hyperion Tree" },
+	{ "Hyperion Tree", "Starship Rocket" },
+	{ "Giant Pacific Octopus", "Colossal Squid" },
+	{ "Dodo", "Coconut Crab" },
+	{ "Grain of Salt", "Flea" },
+	{ "Dust Mite", "Tardigrade" },
+	{ "Mauna Kea", "Mariana Trench" },
+	{ "Mauna Kea", "Olympus Mons" },
+	{ "Empire State Building", "Angel Falls" },
+	{ "Vesta", "Great Red Spot" },
+	{ "Betelgeuse", "UY Scuti" },
+	{ "Milky Way", "Andromeda Galaxy" },
+	{ "Banana", "Giant Squid Eye" },
+}
+
+local function isDev(player)
+	if RunService:IsStudio() then
+		return true
+	end
+	if game.CreatorType == Enum.CreatorType.User then
+		return player.UserId == game.CreatorId
+	end
+	local ok, rank = pcall(player.GetRankInGroup, player, game.CreatorId)
+	return ok and rank == 255
+end
+
+-- Builds the picks as extra rounds (category DevPicks, never served
+-- anywhere else) from the objects the normal rounds already know.
+do
+	local objects = {}
+	for _, round in ipairs(ScaleData.Rounds) do
+		objects[round.referenceName] = objects[round.referenceName] or { icon = round.referenceIcon, height = round.referenceHeight }
+		local target = objects[round.targetName] or { icon = round.targetIcon, height = round.targetHeight }
+		target.fact = target.fact or round.fact
+		objects[round.targetName] = target
+	end
+	for _, pick in ipairs(DEV_PICKS) do
+		local a, b = objects[pick[1]], objects[pick[2]]
+		local ratio = a and b and b.height / a.height
+		if ratio and ratio >= 0.02 and ratio <= 50 then
+			table.insert(ScaleData.Rounds, {
+				referenceName = pick[1], referenceIcon = a.icon, referenceHeight = a.height,
+				targetName = pick[2], targetIcon = b.icon, targetHeight = b.height,
+				category = DEV_CATEGORY, difficulty = "Medium", fact = b.fact,
+				referenceCategory = "Crazy", targetCategory = "Crazy",
+			})
+		else
+			warn("[Sizer] YouTube pick skipped (missing object or off the slider):", pick[1], pick[2])
+		end
+	end
+end
+EXCLUDED_FROM_MIXED[DEV_CATEGORY] = true
+
 local function isEligible(round, categoryFilter)
 	if categoryFilter == nil then
 		return not EXCLUDED_FROM_MIXED[round.category]
@@ -328,6 +405,9 @@ local function onRequestRound(player, categoryFilter)
 	if categoryFilter == DAILY_CATEGORY then
 		serveDaily(player)
 		return
+	end
+	if categoryFilter == DEV_CATEGORY and not isDev(player) then
+		categoryFilter = nil
 	end
 	if type(categoryFilter) ~= "string" or not validCategories[categoryFilter] then
 		categoryFilter = nil
