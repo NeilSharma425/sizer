@@ -1441,12 +1441,17 @@ end
 responsive(zoomButtons)
 updateHudScale()
 -- Phones (touch screens) zoom by pinching, so no + / - buttons there.
+-- (Small windows count too, e.g. Studio's phone emulator.)
 local function isMobile()
-	return UserInputService.TouchEnabled
+	local camera = workspace.CurrentCamera
+	local viewport = camera and camera.ViewportSize or Vector2.new(1920, 1080)
+	return UserInputService.TouchEnabled or viewport.X < 800 or viewport.Y < 600
 end
-panel:GetPropertyChangedSignal("Visible"):Connect(function()
+local function updateZoomButtons()
 	zoomButtons.Visible = panel.Visible and not isMobile()
-end)
+end
+panel:GetPropertyChangedSignal("Visible"):Connect(updateZoomButtons)
+hud:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateZoomButtons)
 
 local zoomScale = zoomButtons:FindFirstChildOfClass("UIScale")
 
