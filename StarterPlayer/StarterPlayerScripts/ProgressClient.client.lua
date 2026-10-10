@@ -318,11 +318,13 @@ rowScale.Parent = row
 local function updateScale()
 	local camera = workspace.CurrentCamera
 	if camera then
-		-- Phones: about 13% of the screen's height. Computers: 0.9x-1.15x its
-		-- original size.
-		local opts = { fx = 0.36, fy = 0.13, min = 0.45, max = 1.4 }
-		if not ScreenFit.isCompact(camera.ViewportSize) then
-			opts = { fx = 0.3, fy = 0.1, min = 0.9, max = 1.15 }
+		-- Phones and tablets: small (about 9% of the screen's height, at most
+		-- 0.6x). Computers: 0.9x-1.15x its original size.
+		local UserInputService = game:GetService("UserInputService")
+		local mobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+		local opts = { fx = 0.3, fy = 0.1, min = 0.9, max = 1.15 }
+		if mobile then
+			opts = { fx = 0.28, fy = 0.09, min = 0.35, max = 0.6 }
 		end
 		local value = ScreenFit.scaleFor(camera.ViewportSize, 290, 76, opts)
 		cardScale.Scale = value
