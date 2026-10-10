@@ -52,28 +52,24 @@ gui.ResetOnSpawn = false
 gui.DisplayOrder = 3
 gui.Parent = playerGui
 local button = Instance.new("TextButton")
+button.Name = "MusicToggle"
 button.AnchorPoint = Vector2.new(1, 1)
-button.Position = UDim2.new(1, -14, 1, -22)
-button.Size = UDim2.fromOffset(44, 44)
-button.BackgroundColor3 = Color3.fromRGB(40, 45, 75)
-button.BackgroundTransparency = 0.15
-button.Font = Enum.Font.GothamBlack
-button.TextScaled = true
+button.Position = UDim2.new(1, -10, 1, -10)
+button.Size = UDim2.fromOffset(26, 26)
+button.BackgroundColor3 = Color3.new(0, 0, 0)
+button.BackgroundTransparency = 0.55
+button.AutoButtonColor = true
+button.Font = Enum.Font.GothamBold
+button.TextSize = 14
 button.TextColor3 = Color3.new(1, 1, 1)
 button.Text = "♪"
 button.Parent = gui
 local c = Instance.new("UICorner")
 c.CornerRadius = UDim.new(1, 0)
 c.Parent = button
-local s = Instance.new("UIStroke")
-s.Thickness = 3
-s.Color = Color3.fromRGB(25, 20, 35)
-s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-s.Parent = button
 button.MouseButton1Click:Connect(function()
 	muted = not muted
-	button.Text = muted and "×" or "♪"
-	button.TextColor3 = muted and Color3.fromRGB(150, 155, 180) or Color3.new(1, 1, 1)
+	button.TextTransparency = muted and 0.6 or 0
 	if muted then
 		sound:Pause()
 	else
