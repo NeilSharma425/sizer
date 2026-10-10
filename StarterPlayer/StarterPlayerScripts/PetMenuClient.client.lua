@@ -140,7 +140,7 @@ local COLUMNS, CARD_W, CARD_H, GAP = 4, 152, 186, 10
 local CATEGORIES = {
 	{ title = "EARNED BY PLAYING", color = Color3.fromRGB(255, 120, 190) }, -- every kind not listed below
 	{ title = "SENSE MILESTONES", kinds = { sense = true }, color = Color3.fromRGB(255, 200, 50) },
-	{ title = "EGG PETS  -  HATCH EGGS IN THE SHOP", kinds = { egg = true }, color = Color3.fromRGB(255, 190, 60) },
+	{ title = "EGG PETS", kinds = { egg = true }, color = Color3.fromRGB(255, 190, 60) },
 	{ title = "AIRDROP CRATE PETS", kinds = { crate = true }, color = Color3.fromRGB(190, 100, 255) },
 	{ title = "SHOP EXCLUSIVE", kinds = { pass = true }, color = Color3.fromRGB(80, 200, 120) },
 }
@@ -352,7 +352,7 @@ local function renderGoal(pet, y)
 		Position = UDim2.new(0, 190, 0, 150),
 		Size = UDim2.new(1, -210, 0, 22),
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Text = "Earn Sense from every guess, daily challenges and live rounds!",
+		Text = "",
 		TextColor3 = MUTED,
 		ZIndex = 4,
 	})
@@ -619,7 +619,7 @@ render = function()
 			Size = UDim2.new(0, fullWidth, 0, 30),
 			TextXAlignment = Enum.TextXAlignment.Left,
 			Font = Enum.Font.GothamBold,
-			Text = "No pets yet - unlock them below!",
+			Text = "None yet",
 			TextColor3 = MUTED,
 			ZIndex = 4,
 		})
@@ -650,7 +650,7 @@ render = function()
 	end
 
 	grid.CanvasSize = UDim2.new(0, 0, 0, math.max(y, ROWS * (CARD_H + GAP)))
-	countLabel.Text = string.format("%d / %d UNLOCKED   -   %s SENSE TO SPEND", #mine, total, commas(spendable()))
+	countLabel.Text = string.format("%d / %d UNLOCKED", #mine, total)
 end
 
 local loading = false

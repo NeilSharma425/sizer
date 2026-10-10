@@ -93,6 +93,9 @@
         "ChatTags": {
           "$path": "StarterPlayer/StarterPlayerScripts/ChatTags.client.lua"
         },
+        "MusicClient": {
+          "$path": "StarterPlayer/StarterPlayerScripts/MusicClient.client.lua"
+        },
         "ProgressClient": {
           "$path": "StarterPlayer/StarterPlayerScripts/ProgressClient.client.lua"
         },

@@ -300,7 +300,7 @@ end
 -- Pet eggs (Sense)
 --==========================================================================
 
-heading("PET EGGS - PAY WITH SENSE", GOLD)
+heading("EGGS", GOLD)
 
 local function oddsText(egg)
 	local parts = {}
@@ -333,7 +333,7 @@ end
 
 local function refreshEggs()
 	local balance = spendable()
-	balanceLabel.Text = string.format("YOU HAVE %s SENSE", commas(balance))
+	balanceLabel.Text = string.format("%s SENSE", commas(balance))
 	for _, entry in pairs(eggButtons) do
 		local affordable = balance >= entry.egg.price
 		entry.button.Text = string.format("%s SENSE", commas(entry.egg.price))
@@ -408,11 +408,11 @@ local function refreshRobux()
 		elseif lost >= 2 then
 			streak.button.Text = priceText(streak.product)
 			streak.button.BackgroundColor3 = GREEN
-			streak.detail.Text = string.format("Your %d-day streak ended today. Get it back before midnight!", lost)
+			streak.detail.Text = string.format("Get your %d-day streak back.", lost)
 		else
 			streak.button.Text = "NOT NEEDED"
 			streak.button.BackgroundColor3 = GRAY
-			streak.detail.Text = streak.product.blurb .. " (Only when you miss a day.)"
+			streak.detail.Text = "Only when you miss a day."
 		end
 	end
 end

@@ -27,7 +27,7 @@ local Icons = {}
 local SHEETS = {
 	72109873353372, -- assets/IconSheet.png
 	102148871559476, -- assets/IconSheet2.png (UI buttons)
-	0, -- assets/IconSheet3.png (shop items): paste its asset ID here
+	109211451649395, -- assets/IconSheet3.png (shop items)
 }
 local CELL = 170
 

@@ -258,7 +258,7 @@ local subtitle = label(window, {
 	Position = UDim2.new(0, 24, 0, 56),
 	Size = UDim2.new(1, -160, 0, 24),
 	TextXAlignment = Enum.TextXAlignment.Left,
-	Text = "Play every day. Rewards keep growing!",
+	Text = "",
 	TextColor3 = Color3.fromRGB(205, 210, 235),
 	ZIndex = 3,
 })
@@ -519,9 +519,9 @@ local function render(snapshot)
 		footer.Text = string.format("DAY %d  -  every day now pays +%d SENSE (+500 bonus every 7th day)", count, Progress.streakReward(count + 1).sense)
 	end
 	if count >= 10 then
-		subtitle.Text = "Max streak bonus reached. Keep it going!"
+		subtitle.Text = "Max bonus!"
 	else
-		subtitle.Text = "Play every day. Rewards and your Sense bonus keep growing!"
+		subtitle.Text = ""
 	end
 end
 
