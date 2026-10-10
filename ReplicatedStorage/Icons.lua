@@ -73,11 +73,10 @@ local CELLS = {
 	basicegg = { 680, 0, "🥚", 3 },
 	goldenegg = { 850, 0, "🌕", 3 },
 	shopbag = { 0, 170, "🛍", 3 },
-	-- sheet 2: UI buttons
+	-- sheet 2: UI buttons (its close-button picture is not used)
 	help = { 0, 0, "❓", 2 },
 	playtime = { 170, 0, "🎁", 2 },
 	coin = { 340, 0, "🪙", 2 },
-	close = { 510, 0, "❌", 2 },
 	play = { 680, 0, "▶", 2 },
 	bolt = { 850, 0, "⚡", 2 },
 }
