@@ -1444,6 +1444,8 @@ panel:GetPropertyChangedSignal("Visible"):Connect(function()
 	zoomButtons.Visible = panel.Visible
 end)
 
+local zoomScale = zoomButtons:FindFirstChildOfClass("UIScale")
+
 -- Portrait (e.g. recording for TikTok): smaller object names, zoom buttons
 -- up out of the way, no tip line.
 local function applyOrientation()
@@ -1456,13 +1458,37 @@ local function applyOrientation()
 			tag.Size = UDim2.new(0, tagWidth, 0, tagWidth * 64 / 280)
 		end
 	end
-	zoomButtons.AnchorPoint = portrait and Vector2.new(1, 0) or Vector2.new(1, 0.5)
-	zoomButtons.Position = portrait and UDim2.new(1, -8, 0, 64) or UDim2.new(1, -14, 0.42, 0)
+	-- Small screens: + and - sit side by side on top of the game panel, just
+	-- above the slider, instead of over the objects.
+	local small = portrait or viewport.Y < 600 or viewport.X < 800
+	local zIn, zOut = zoomButtons:FindFirstChild("ZoomIn"), zoomButtons:FindFirstChild("ZoomOut")
+	-- Inside the panel it already scales with the panel, so drop its own scale.
+	zoomScale.Parent = not small and zoomButtons or nil
+	if small then
+		zoomButtons.Parent = panel
+		zoomButtons.AnchorPoint = Vector2.new(1, 1)
+		zoomButtons.Position = UDim2.new(1, -14, 0, -6)
+		zoomButtons.Size = UDim2.new(0, 124, 0, 56)
+		if zIn and zOut then
+			zIn.Position = UDim2.new(0, 68, 0, 0)
+			zOut.Position = UDim2.new(0, 0, 0, 0)
+		end
+	else
+		zoomButtons.Parent = hud
+		zoomButtons.AnchorPoint = Vector2.new(1, 0.5)
+		zoomButtons.Position = UDim2.new(1, -14, 0.42, 0)
+		zoomButtons.Size = UDim2.new(0, 56, 0, 124)
+		if zIn and zOut then
+			zIn.Position = UDim2.new(0, 0, 0, 0)
+			zOut.Position = UDim2.new(0, 0, 0, 66)
+		end
+	end
 	if dragHint and portrait then
 		dragHint.Visible = false
 	end
 end
 hud:GetAttributeChangedSignal("Portrait"):Connect(applyOrientation)
+hud:GetPropertyChangedSignal("AbsoluteSize"):Connect(applyOrientation)
 applyOrientation()
 
 --==========================================================================
