@@ -135,32 +135,43 @@ end
 --==========================================================================
 
 local COLUMNS, CARD_W, CARD_H, GAP = 4, 152, 186, 10
-local function sectionList(section)
-	local out = {}
-	for _, pet in ipairs(Pets.List) do
-		local kind = pet.rule.kind
-		local key = (kind == "crate" or kind == "egg") and kind or "earned"
-		if key == section then
-			table.insert(out, pet)
-		end
+-- One scrolling list: the pets you own at the top, then every pet you don't
+-- have yet, grouped by how it's unlocked (in this order).
+local CATEGORIES = {
+	{ title = "EARNED BY PLAYING", color = Color3.fromRGB(255, 120, 190) }, -- every kind not listed below
+	{ title = "SENSE MILESTONES", kinds = { sense = true }, color = Color3.fromRGB(255, 200, 50) },
+	{ title = "EGG PETS", kinds = { egg = true }, color = Color3.fromRGB(255, 190, 60), eggShop = true },
+	{ title = "AIRDROP CRATE PETS", kinds = { crate = true }, color = Color3.fromRGB(190, 100, 255) },
+	{ title = "SHOP EXCLUSIVE", kinds = { pass = true }, color = Color3.fromRGB(80, 200, 120) },
+}
+local RARITY_RANK = {}
+for i, name in ipairs(Pets.AllRarities) do
+	RARITY_RANK[name] = i
+end
+-- Pets of a category, rarest first (pets without a rarity keep list order).
+local listedKinds = {}
+for _, category in ipairs(CATEGORIES) do
+	for kind in pairs(category.kinds or {}) do
+		listedKinds[kind] = true
 	end
-	if section == "crate" or section == "egg" then
-		-- rarest first
-		local rank = {}
-		for i, name in ipairs(Pets.AllRarities) do
-			rank[name] = i
-		end
-		local indexOf = {}
-		for i, pet in ipairs(out) do
+end
+local function categoryPets(category)
+	local out, indexOf = {}, {}
+	for i, pet in ipairs(Pets.List) do
+		local kind = pet.rule.kind
+		local fits = category.kinds and category.kinds[kind] or (not category.kinds and not listedKinds[kind])
+		if fits then
+			table.insert(out, pet)
 			indexOf[pet.id] = i
 		end
-		table.sort(out, function(a, b)
-			if rank[a.rarity] ~= rank[b.rarity] then
-				return rank[a.rarity] > rank[b.rarity]
-			end
-			return indexOf[a.id] < indexOf[b.id]
-		end)
 	end
+	table.sort(out, function(a, b)
+		local ra, rb = RARITY_RANK[a.rarity] or 0, RARITY_RANK[b.rarity] or 0
+		if ra ~= rb then
+			return ra > rb
+		end
+		return indexOf[a.id] < indexOf[b.id]
+	end)
 	return out
 end
 local ROWS = 3 -- rows visible at once; longer lists scroll
@@ -247,23 +258,7 @@ if Icons.has("close") then
 	})
 end
 
-local section = "earned"
-local tabButtons = {}
-local function makeTab(key, text, x)
-	local b = textButton(window, text, Color3.fromRGB(95, 105, 140), {
-		Name = "Tab_" .. key,
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, x, 0, 12),
-		Size = UDim2.new(0, 124, 0, 34),
-		ZIndex = 4,
-	})
-	tabButtons[key] = b
-	return b
-end
-local earnedTab = makeTab("earned", "MY PETS", -334)
-local crateTab = makeTab("crate", "CRATES", -204)
-local eggTab = makeTab("egg", "EGGS", -74)
-local TAB_COLORS = { earned = PINK, crate = Color3.fromRGB(190, 100, 255), egg = Color3.fromRGB(255, 190, 60) }
+local eggSectionY = 0 -- where the EGG PETS section starts (the SHOP scrolls there)
 
 local grid = Instance.new("ScrollingFrame")
 grid.Name = "Pets"
@@ -289,9 +284,10 @@ end
 
 -- MY PETS banner: the next pet unlocked by total Sense (shown in full colour as a teaser) and
 -- a progress bar towards the total Sense it needs.
-local function renderGoal(pet)
+local function renderGoal(pet, y)
 	local card = frame(grid, {
 		Name = "NextSensePet",
+		Position = UDim2.new(0, 0, 0, y),
 		Size = UDim2.new(0, COLUMNS * CARD_W + (COLUMNS - 1) * GAP, 0, CARD_H),
 		BackgroundColor3 = TILE,
 		ZIndex = 3,
@@ -485,12 +481,12 @@ local function hatch(egg)
 	sfx(result.new and "hatch" or "toast")
 end
 
-renderEggShop = function()
+renderEggShop = function(y)
 	local width = (COLUMNS * CARD_W + (COLUMNS - 1) * GAP - GAP) / 2
 	for i, egg in ipairs(Pets.Eggs) do
 		local cardFrame = frame(grid, {
 			Name = "Egg_" .. egg.id,
-			Position = UDim2.new(0, (i - 1) * (width + GAP), 0, 0),
+			Position = UDim2.new(0, (i - 1) * (width + GAP), 0, y),
 			Size = UDim2.new(0, width, 0, CARD_H),
 			BackgroundColor3 = TILE,
 			ZIndex = 3,
@@ -529,7 +525,82 @@ renderEggShop = function()
 			end
 		end)
 	end
-	countLabel.Text = string.format("SENSE TO SPEND: %d", spendable())
+end
+
+-- One pet card at (x, y) in the grid.
+local function petCard(pet, x, y)
+	local has = owned[pet.id] == true
+	local isOn = has and equipped == pet.id
+	local card = frame(grid, {
+		Name = "Pet_" .. pet.id,
+		Position = UDim2.new(0, x, 0, y),
+		Size = UDim2.new(0, CARD_W, 0, CARD_H),
+		BackgroundColor3 = TILE,
+		ZIndex = 3,
+	})
+	corner(card, UDim.new(0, 14))
+	local rarity = pet.rarity and Pets.Rarities[pet.rarity]
+	stroke(card, isOn and 4 or 3, isOn and GOLD or (rarity and rarity.color) or (has and pet.color or INK))
+	local perk = Pets.perkFor(pet.id)
+	if perk > 0 then
+		label(card, {
+			Name = "Perk",
+			Position = UDim2.new(0, 6, 0, 4),
+			Size = UDim2.new(0, 90, 0, 18),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Text = string.format("+%d%% SENSE", math.floor(perk * 100 + 0.5)),
+			TextColor3 = Color3.fromRGB(120, 255, 130),
+			ZIndex = 6,
+		})
+	end
+
+	local viewport, animate = petPreview(card, pet.id, {
+		Position = UDim2.new(0, 6, 0, 6),
+		Size = UDim2.new(1, -12, 0, 84),
+		ZIndex = 4,
+	})
+	if has then
+		if animate then
+			table.insert(animations, animate)
+		end
+	else
+		-- Locked pets show as a dark silhouette.
+		viewport.ImageColor3 = Color3.new(0, 0, 0)
+		viewport.Ambient = Color3.new(0, 0, 0)
+		viewport.LightColor = Color3.new(0, 0, 0)
+	end
+	label(card, {
+		Position = UDim2.new(0, 4, 0, 92),
+		Size = UDim2.new(1, -8, 0, 22),
+		Text = has and string.upper(pet.name) or (pet.rarity and (string.upper(pet.rarity) .. " ???") or "???"),
+		TextColor3 = has and pet.color:Lerp(WHITE, 0.3) or (rarity and rarity.color) or Color3.fromRGB(150, 155, 185),
+		ZIndex = 4,
+	})
+	if has then
+		local button = textButton(card, isOn and "EQUIPPED" or "EQUIP", isOn and Color3.fromRGB(95, 105, 140) or GREEN, {
+			Name = "EquipButton",
+			Position = UDim2.new(0, 8, 1, -50),
+			Size = UDim2.new(1, -16, 0, 40),
+			ZIndex = 4,
+		})
+		button.MouseButton1Click:Connect(function()
+			if equipped ~= pet.id then
+				equipped = pet.id
+				sfx("equip")
+				EquipPet:FireServer(pet.id)
+				render()
+			end
+		end)
+	else
+		label(card, {
+			Position = UDim2.new(0, 6, 0, 118),
+			Size = UDim2.new(1, -12, 0, 62),
+			TextWrapped = true,
+			Text = pet.how,
+			TextColor3 = GOLD,
+			ZIndex = 4,
+		})
+	end
 end
 
 render = function()
@@ -538,103 +609,85 @@ render = function()
 	end
 	animations = {}
 	updateGoal = nil
-	local count = 0
-	local shown = sectionList(section)
-	local goal = section == "earned" and Pets.nextSensePet(owned) or nil
-	-- The egg shop, or the next pet banner, takes the first row.
-	local firstRow = (section == "egg" or goal) and 1 or 0
-	if goal then
-		renderGoal(goal)
-	end
-	local rows = math.max(ROWS, firstRow + math.ceil(#shown / COLUMNS))
-	grid.CanvasSize = UDim2.new(0, 0, 0, rows * (CARD_H + GAP))
-	grid.CanvasPosition = Vector2.new(0, grid.CanvasPosition.Y)
-	for key, tab in pairs(tabButtons) do
-		tab.BackgroundColor3 = key == section and TAB_COLORS[key] or Color3.fromRGB(95, 105, 140)
-	end
-	for i, pet in ipairs(shown) do
-		local has = owned[pet.id] == true
-		if has then
-			count += 1
-		end
-		local row = firstRow + math.floor((i - 1) / COLUMNS)
-		local col = (i - 1) % COLUMNS
-		local isOn = has and equipped == pet.id
-		local card = frame(grid, {
-			Name = "Pet_" .. pet.id,
-			Position = UDim2.new(0, col * (CARD_W + GAP), 0, row * (CARD_H + GAP)),
-			Size = UDim2.new(0, CARD_W, 0, CARD_H),
-			BackgroundColor3 = TILE,
-			ZIndex = 3,
+	local fullWidth = COLUMNS * CARD_W + (COLUMNS - 1) * GAP
+	local y = 0
+	local function header(text, color)
+		label(grid, {
+			Name = "Header",
+			Position = UDim2.new(0, 2, 0, y),
+			Size = UDim2.new(0, fullWidth, 0, 30),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Text = text,
+			TextColor3 = color,
+			ZIndex = 4,
 		})
-		corner(card, UDim.new(0, 14))
-		local rarity = pet.rarity and Pets.Rarities[pet.rarity]
-		stroke(card, isOn and 4 or 3, isOn and GOLD or (rarity and rarity.color) or (has and pet.color or INK))
-		local perk = Pets.perkFor(pet.id)
-		if perk > 0 then
-			label(card, {
-				Name = "Perk",
-				Position = UDim2.new(0, 6, 0, 4),
-				Size = UDim2.new(0, 90, 0, 18),
-				TextXAlignment = Enum.TextXAlignment.Left,
-				Text = string.format("+%d%% SENSE", math.floor(perk * 100 + 0.5)),
-				TextColor3 = Color3.fromRGB(120, 255, 130),
-				ZIndex = 6,
-			})
+		y += 38
+	end
+	local function cards(list)
+		for i, pet in ipairs(list) do
+			local col = (i - 1) % COLUMNS
+			local row = math.floor((i - 1) / COLUMNS)
+			petCard(pet, col * (CARD_W + GAP), y + row * (CARD_H + GAP))
 		end
+		y += math.ceil(#list / COLUMNS) * (CARD_H + GAP)
+	end
 
-		local viewport, animate = petPreview(card, pet.id, {
-			Position = UDim2.new(0, 6, 0, 6),
-			Size = UDim2.new(1, -12, 0, 84),
-			ZIndex = 4,
-		})
-		if has then
-			if animate then
-				table.insert(animations, animate)
+	-- Your pets first (newest kinds in category order, rarest first).
+	local mine, total = {}, 0
+	for _, category in ipairs(CATEGORIES) do
+		for _, pet in ipairs(categoryPets(category)) do
+			total += 1
+			if owned[pet.id] then
+				table.insert(mine, pet)
 			end
-		else
-			-- Locked pets show as a dark silhouette.
-			viewport.ImageColor3 = Color3.new(0, 0, 0)
-			viewport.Ambient = Color3.new(0, 0, 0)
-			viewport.LightColor = Color3.new(0, 0, 0)
 		end
-		label(card, {
-			Position = UDim2.new(0, 4, 0, 92),
-			Size = UDim2.new(1, -8, 0, 22),
-			Text = has and string.upper(pet.name) or (pet.rarity and (string.upper(pet.rarity) .. " ???") or "???"),
-			TextColor3 = has and pet.color:Lerp(WHITE, 0.3) or (rarity and rarity.color) or Color3.fromRGB(150, 155, 185),
+	end
+	header(string.format("MY PETS  (%d)", #mine), PINK)
+	if #mine == 0 then
+		label(grid, {
+			Position = UDim2.new(0, 2, 0, y),
+			Size = UDim2.new(0, fullWidth, 0, 30),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Font = Enum.Font.GothamBold,
+			Text = "No pets yet - unlock them below!",
+			TextColor3 = MUTED,
 			ZIndex = 4,
 		})
-		if has then
-			local button = textButton(card, isOn and "EQUIPPED" or "EQUIP", isOn and Color3.fromRGB(95, 105, 140) or GREEN, {
-				Name = "EquipButton",
-				Position = UDim2.new(0, 8, 1, -50),
-				Size = UDim2.new(1, -16, 0, 40),
-				ZIndex = 4,
-			})
-			button.MouseButton1Click:Connect(function()
-				if equipped ~= pet.id then
-					equipped = pet.id
-					sfx("equip")
-					EquipPet:FireServer(pet.id)
-					render()
-				end
-			end)
-		else
-			label(card, {
-				Position = UDim2.new(0, 6, 0, 118),
-				Size = UDim2.new(1, -12, 0, 62),
-				TextWrapped = true,
-				Text = pet.how,
-				TextColor3 = GOLD,
-				ZIndex = 4,
-			})
+		y += 44
+	else
+		cards(mine)
+	end
+
+	-- The next pet unlocked by total Sense.
+	local goal = Pets.nextSensePet(owned)
+	if goal then
+		renderGoal(goal, y)
+		y += CARD_H + GAP
+	end
+
+	-- Then the pets still to get, by category.
+	for _, category in ipairs(CATEGORIES) do
+		local locked = {}
+		for _, pet in ipairs(categoryPets(category)) do
+			if not owned[pet.id] then
+				table.insert(locked, pet)
+			end
+		end
+		if #locked > 0 or category.eggShop then
+			if category.eggShop then
+				eggSectionY = y
+			end
+			header(category.title, category.color)
+			if category.eggShop then
+				renderEggShop(y)
+				y += CARD_H + GAP
+			end
+			cards(locked)
 		end
 	end
-	countLabel.Text = string.format("%d / %d UNLOCKED", count, #shown)
-	if section == "egg" then
-		renderEggShop()
-	end
+
+	grid.CanvasSize = UDim2.new(0, 0, 0, math.max(y, ROWS * (CARD_H + GAP)))
+	countLabel.Text = string.format("%d / %d UNLOCKED   -   %s SENSE TO SPEND", #mine, total, commas(spendable()))
 end
 
 local loading = false
@@ -666,16 +719,8 @@ dim.MouseButton1Click:Connect(function()
 	gui.Enabled = false
 end)
 
-earnedTab.MouseButton1Click:Connect(function()
-	if section ~= "earned" then
-		section = "earned"
-		grid.CanvasPosition = Vector2.new(0, 0)
-		sfx("click")
-		render()
-	end
-end)
 local function refreshBalance()
-	if gui.Enabled and section == "egg" and not hatching then
+	if gui.Enabled and not hatching then
 		render()
 	end
 end
@@ -683,23 +728,6 @@ player:GetAttributeChangedSignal("SenseSpent"):Connect(refreshBalance)
 player:GetAttributeChangedSignal("Sense"):Connect(function()
 	if gui.Enabled and updateGoal then
 		updateGoal()
-	end
-end)
-
-eggTab.MouseButton1Click:Connect(function()
-	if section ~= "egg" then
-		section = "egg"
-		grid.CanvasPosition = Vector2.new(0, 0)
-		sfx("click")
-		render()
-	end
-end)
-crateTab.MouseButton1Click:Connect(function()
-	if section ~= "crate" then
-		section = "crate"
-		grid.CanvasPosition = Vector2.new(0, 0)
-		sfx("click")
-		render()
 	end
 end)
 
@@ -756,9 +784,7 @@ task.spawn(function()
 		if not gui.Enabled then
 			return
 		end
-		section = "egg"
-		grid.CanvasPosition = Vector2.new(0, 0)
-		render()
+		grid.CanvasPosition = Vector2.new(0, eggSectionY)
 		hatch(egg)
 	end)
 end)
