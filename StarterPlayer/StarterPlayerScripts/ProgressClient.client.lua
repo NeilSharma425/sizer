@@ -321,7 +321,7 @@ local function updateScale()
 		-- Phones and tablets: small (about 9% of the screen's height, at most
 		-- 0.6x). Computers: 0.9x-1.15x its original size.
 		local UserInputService = game:GetService("UserInputService")
-		local mobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+		local mobile = UserInputService.TouchEnabled or (workspace.CurrentCamera and (workspace.CurrentCamera.ViewportSize.X < 800 or workspace.CurrentCamera.ViewportSize.Y < 600))
 		local opts = { fx = 0.3, fy = 0.1, min = 0.9, max = 1.15 }
 		if mobile then
 			opts = { fx = 0.28, fy = 0.09, min = 0.35, max = 0.6 }
@@ -734,9 +734,12 @@ task.spawn(function()
 	end
 	local UserInputService = game:GetService("UserInputService")
 	local function update()
-		local mobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+		local mobile = UserInputService.TouchEnabled or (workspace.CurrentCamera and (workspace.CurrentCamera.ViewportSize.X < 800 or workspace.CurrentCamera.ViewportSize.Y < 600))
 		rankCard.Visible = not (mobile and gamePanel.Visible)
 	end
 	gamePanel:GetPropertyChangedSignal("Visible"):Connect(update)
+	if workspace.CurrentCamera then
+		workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(update)
+	end
 	update()
 end)
