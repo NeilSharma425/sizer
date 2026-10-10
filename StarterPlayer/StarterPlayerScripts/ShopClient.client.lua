@@ -161,7 +161,7 @@ corner(window, UDim.new(0, 22))
 stroke(window, 5, SHOP_COLOR)
 ScreenFit.fit(window, WIDTH + 40, HEIGHT + 40, { fx = 1, fy = 1, min = 0.45, max = 1 })
 
-Icons.image(window, "coin", {
+Icons.image(window, Icons.has("shopbag") and "shopbag" or "coin", {
 	Position = UDim2.new(0, 14, 0, 6),
 	Size = UDim2.fromOffset(58, 58),
 	Rotation = -10,
@@ -314,7 +314,8 @@ end
 
 local eggButtons = {}
 for _, egg in ipairs(Pets.Eggs) do
-	local _, button = card(string.upper(egg.name), oddsText(egg), egg.color)
+	local eggArt = egg.id .. "egg"
+	local _, button = card(string.upper(egg.name), oddsText(egg), Icons.has(eggArt) and eggArt or egg.color)
 	button.Name = "Buy_" .. egg.id
 	eggButtons[egg.id] = { button = button, egg = egg }
 	button.MouseButton1Click:Connect(function()
@@ -352,7 +353,7 @@ local passButtons = {}
 local productButtons = {}
 
 for _, pass in ipairs(Shop.Passes) do
-	local _, button = card(pass.name, pass.blurb, pass.icon)
+	local _, button = card(pass.name, pass.blurb, Shop.iconFor(pass, Icons))
 	button.Name = "Pass_" .. pass.key
 	passButtons[pass.key] = { button = button, pass = pass }
 	button.MouseButton1Click:Connect(function()
@@ -365,7 +366,7 @@ for _, pass in ipairs(Shop.Passes) do
 end
 
 for _, product in ipairs(Shop.Products) do
-	local _, button, detail = card(product.name, product.blurb, product.icon)
+	local _, button, detail = card(product.name, product.blurb, Shop.iconFor(product, Icons))
 	button.Name = "Product_" .. product.key
 	productButtons[product.key] = { button = button, product = product, detail = detail }
 	button.MouseButton1Click:Connect(function()
@@ -509,7 +510,7 @@ local offer = frame(offerGui, {
 corner(offer, UDim.new(0, 20))
 stroke(offer, 5, Color3.fromRGB(255, 140, 40))
 ScreenFit.fit(offer, 460, 280, { fx = 0.9, fy = 0.8, max = 1 })
-Icons.image(offer, "fire", {
+Icons.image(offer, Icons.has("streakshield") and "streakshield" or "fire", {
 	AnchorPoint = Vector2.new(0.5, 0.5),
 	Position = UDim2.new(0.5, 0, 0, 0),
 	Size = UDim2.fromOffset(80, 80),

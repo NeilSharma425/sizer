@@ -397,7 +397,7 @@ end
 local dailyButton = menuTile("DailyButton", 1, "calendar", "DAILY", DAILY_BLUE)
 local challengeButton = menuTile("ChallengeButton", 2, "stopwatch", "60s", GOLD)
 menuTile("PetsButton", 3, "paw", "PETS", Color3.fromRGB(255, 120, 190))
-menuTile("ShopButton", 4, "coin", "SHOP", Color3.fromRGB(80, 200, 120)) -- opened by ShopClient
+menuTile("ShopButton", 4, Icons.has("shopbag") and "shopbag" or "coin", "SHOP", Color3.fromRGB(80, 200, 120)) -- opened by ShopClient
 local helpButton = menuTile("HelpButton", 5, "help", "HELP", Color3.fromRGB(95, 110, 150))
 -- Only offered until the tutorial has been done.
 local function syncHelp()

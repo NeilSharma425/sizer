@@ -5,7 +5,8 @@
 	Bright cartoon icons in the Roblox simulator style, packed into one
 	1024x1024 image, assets/IconSheet.png, in 170-pixel cells (6 per row).
 
-	A second sheet, assets/IconSheet2.png, holds the UI button pictures.
+	A second sheet, assets/IconSheet2.png, holds the UI button pictures and
+	a third, assets/IconSheet3.png, the shop items.
 	To turn a sheet on, upload it once (Studio: View > Asset Manager > Bulk
 	Import, then right-click the image > Copy Asset ID) and paste the number
 	into SHEETS below. Until then its icons show as emoji (or drawn shapes).
@@ -26,6 +27,7 @@ local Icons = {}
 local SHEETS = {
 	72109873353372, -- assets/IconSheet.png
 	102148871559476, -- assets/IconSheet2.png (UI buttons)
+	0, -- assets/IconSheet3.png (shop items): paste its asset ID here
 }
 local CELL = 170
 
@@ -63,6 +65,14 @@ local CELLS = {
 	arrow_down = { 680, 680, "⬇" },
 	point_up = { 850, 680, "👆" },
 	point_down = { 0, 850, "👇" },
+	-- sheet 3: shop items
+	double = { 0, 0, "✖", 3 },
+	vip = { 170, 0, "💎", 3 },
+	diamondfox = { 340, 0, "🦊", 3 },
+	streakshield = { 510, 0, "🛡", 3 },
+	basicegg = { 680, 0, "🥚", 3 },
+	goldenegg = { 850, 0, "🌕", 3 },
+	shopbag = { 0, 170, "🛍", 3 },
 	-- sheet 2: UI buttons
 	help = { 0, 0, "❓", 2 },
 	playtime = { 170, 0, "🎁", 2 },

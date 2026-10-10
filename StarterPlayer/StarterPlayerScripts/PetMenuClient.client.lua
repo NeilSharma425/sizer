@@ -397,6 +397,13 @@ local hatchEgg = frame(overlay, {
 })
 corner(hatchEgg, UDim.new(0.5, 0))
 stroke(hatchEgg, 4)
+local hatchEggArt = Icons.image(overlay, "basicegg", {
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.fromScale(0.5, 0.42),
+	Size = UDim2.new(0, 160, 0, 190),
+	Visible = false,
+	ZIndex = 31,
+})
 local hatchTitle = label(overlay, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 40), Size = UDim2.new(0.8, 0, 0, 46), Text = "", ZIndex = 32 })
 local hatchSub = label(overlay, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 1, -170), Size = UDim2.new(0.8, 0, 0, 30), Text = "", TextColor3 = MUTED, ZIndex = 32 })
 local hatchViewport = nil
@@ -429,9 +436,19 @@ local function hatch(egg)
 	end
 	hatching = true
 	overlay.Visible = true
-	hatchEgg.Visible = true
+	-- The egg's cartoon picture once the shop icon sheet is uploaded,
+	-- otherwise a plain colored egg.
+	local art = egg.id .. "egg"
+	local eggShown = hatchEgg
+	hatchEgg.Visible = false
+	hatchEggArt.Visible = false
+	if Icons.has(art) then
+		Icons.set(hatchEggArt, art)
+		eggShown = hatchEggArt
+	end
+	eggShown.Visible = true
 	hatchEgg.BackgroundColor3 = egg.color
-	hatchEgg.Rotation = 0
+	eggShown.Rotation = 0
 	hatchTitle.Text = string.upper(egg.name)
 	hatchTitle.TextColor3 = WHITE
 	hatchSub.Text = "Hatching..."
@@ -443,17 +460,17 @@ local function hatch(egg)
 	end)
 	-- Wobble while it hatches.
 	for i = 1, 8 do
-		hatchEgg.Rotation = (i % 2 == 0 and 1 or -1) * (6 + i * 2)
+		eggShown.Rotation = (i % 2 == 0 and 1 or -1) * (6 + i * 2)
 		task.wait(0.12)
 	end
-	hatchEgg.Rotation = 0
+	eggShown.Rotation = 0
 	if not ok or type(result) ~= "table" or not result.ok then
 		hatchSub.Text = (type(result) == "table" and result.error) or "Couldn't hatch right now."
 		hatchOk.Visible = true
 		return
 	end
 
-	hatchEgg.Visible = false
+	eggShown.Visible = false
 	local rarity = Pets.Rarities[result.rarity]
 	local animate
 	hatchViewport, animate = petPreview(overlay, result.petId, {

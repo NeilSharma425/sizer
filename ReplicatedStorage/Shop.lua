@@ -23,6 +23,7 @@ Shop.Passes = {
 		blurb = "Earn double Sense from every round, daily, live round and playtime reward. Forever!",
 		price = 199,
 		icon = "bolt",
+		art = "double",
 	},
 	{
 		key = "vip",
@@ -31,6 +32,7 @@ Shop.Passes = {
 		blurb = "Gold VIP name tag, a VIP chat tag and double playtime rewards.",
 		price = 149,
 		icon = "crown",
+		art = "vip",
 	},
 	{
 		key = "pet",
@@ -39,6 +41,7 @@ Shop.Passes = {
 		blurb = "A shop-only pet with a crown and +15% Sense. Equip it from PETS.",
 		price = 249,
 		icon = "paw",
+		art = "diamondfox",
 		pet = "diamondfox",
 	},
 }
@@ -51,11 +54,21 @@ Shop.Products = {
 		blurb = "Missed a day? Get your login streak back, as if you never left.",
 		price = 25,
 		icon = "fire",
+		art = "streakshield",
 	},
 }
 
 Shop.DOUBLE_SENSE = 2 -- multiplier from the 2x Sense pass
 Shop.VIP_PLAYTIME = 2 -- playtime reward multiplier for VIPs
+
+-- The picture for an item: its own art once that icon sheet is uploaded,
+-- otherwise a stand-in icon.
+function Shop.iconFor(item, Icons)
+	if item.art and Icons.has(item.art) then
+		return item.art
+	end
+	return item.icon
+end
 
 function Shop.attribute(key)
 	return "Pass_" .. key
