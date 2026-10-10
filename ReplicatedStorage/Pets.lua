@@ -133,6 +133,18 @@ Pets.Rarities = {
 	Mythic = { color = Color3.fromRGB(255, 90, 200), weight = 1, perk = 0.35 }, -- 1% of drops
 }
 Pets.RarityOrder = { "Rare", "Epic", "Legendary", "Mythic" } -- crate rarities, rarest last
+
+-- Airdrop crate pets aren't all equally likely inside a rarity: within each
+-- rarity, later pets in Pets.List are rarer (each one's drop weight shrinks
+-- down the list) and give a bigger Sense perk. Each rarity's perks stay
+-- inside its own band, so every Mythic beats every Legendary, and so on.
+Pets.CRATE_PERK_BANDS = {
+	Rare = { 0.10, 0.14 },
+	Epic = { 0.15, 0.21 },
+	Legendary = { 0.22, 0.33 },
+	Mythic = { 0.35, 0.45 },
+}
+Pets.CRATE_WEIGHT_FALLOFF = 0.25 -- k-th pet in a rarity has weight 1 / (1 + k * this)
 Pets.AllRarities = { "Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythic" }
 
 -- Eggs sold for Sense. odds are rarity weights out of 100.
@@ -189,7 +201,18 @@ function Pets.rollEgg(egg, rng)
 			table.insert(pool, pet)
 		end
 	end
-	return pool[rng:NextInteger(1, #pool)]
+	local poolTotal = 0
+	for _, pet in ipairs(pool) do
+		poolTotal += pet.dropWeight or 1
+	end
+	local pick = rng:NextNumber(0, poolTotal)
+	for _, pet in ipairs(pool) do
+		pick -= pet.dropWeight or 1
+		if pick <= 0 then
+			return pet
+		end
+	end
+	return pool[#pool]
 end
 
 -- All crate pets (in list order).
@@ -205,6 +228,28 @@ end
 
 -- Picks a crate pet for a drop: a rarity by weight, then a random pet of
 -- that rarity. `rng` needs NextNumber(min, max) and NextInteger(min, max).
+-- Fills in dropWeight and perk for crate pets (once, at load).
+do
+	local byRarity = {}
+	for _, pet in ipairs(Pets.List) do
+		if pet.rule.kind == "crate" and pet.rarity then
+			byRarity[pet.rarity] = byRarity[pet.rarity] or {}
+			table.insert(byRarity[pet.rarity], pet)
+		end
+	end
+	for rarity, list in pairs(byRarity) do
+		local band = Pets.CRATE_PERK_BANDS[rarity]
+		for k, pet in ipairs(list) do
+			local step = k - 1
+			pet.dropWeight = 1 / (1 + step * Pets.CRATE_WEIGHT_FALLOFF)
+			if band and not pet.perk then
+				local t = #list > 1 and step / (#list - 1) or 0
+				pet.perk = math.floor((band[1] + (band[2] - band[1]) * t) * 100 + 0.5) / 100
+			end
+		end
+	end
+end
+
 function Pets.rollCratePet(rng)
 	local total = 0
 	for _, name in ipairs(Pets.RarityOrder) do
